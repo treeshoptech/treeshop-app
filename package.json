@@ -26,6 +26,8 @@
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
     "@mui/material-nextjs": "^7.3.5",
+    "convex": "^1.29.0",
+    "convex-helpers": "^0.1.104",
     "next": "^16.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

@@ -1,17 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import {
-  Container,
   Box,
   Typography,
   Card,
   CardContent,
   Grid,
-  AppBar,
-  Toolbar,
-  Button
 } from '@mui/material';
-import { UserButton } from "@clerk/nextjs";
 import {
   TrendingUp as TrendingUpIcon,
   Assignment as AssignmentIcon,
@@ -28,26 +23,8 @@ export default async function DashboardPage() {
 
   return (
     <>
-      {/* App Bar */}
-      <AppBar position="static" elevation={0}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            TreeShop
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button color="inherit" href="/">
-              Home
-            </Button>
-            <UserButton afterSignOutUrl="/" />
-          </Box>
-        </Toolbar>
-      </AppBar>
-
-      {/* Dashboard Content */}
-      <Container maxWidth="lg">
-        <Box sx={{ mt: 4, mb: 8 }}>
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 4 }}>
-            Dashboard
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 4 }}>
+        Dashboard
           </Typography>
 
           {/* KPI Cards */}
@@ -199,8 +176,6 @@ export default async function DashboardPage() {
               </Card>
             </Grid>
           </Grid>
-        </Box>
-      </Container>
     </>
   );
 }
