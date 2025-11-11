@@ -58,20 +58,23 @@ Follow the guide in `CLERK_ORGANIZATIONS_SETUP.md`:
    - ✅ Enable organization creation
    - ✅ Max organizations: Unlimited
 
-### Step 3: Create Custom Roles (10 minutes)
+### Step 3: Configure Roles (2 minutes)
 
-In Clerk Dashboard → Organizations → Roles, create:
+TreeShop uses a simplified 2-role system:
 
-1. **Manager** (`org:manager`)
-   - Can create projects and manage operations
+**Default Roles (Already Available):**
+- **Owner** (`org:owner`) - Automatically assigned to organization creator
+  - Full control over everything
 
-2. **Estimator** (`org:estimator`)
-   - Can use pricing calculators and create proposals
+- **Admin** (`org:admin`) - Elevated permissions
+  - Can manage equipment, employees, projects, and operations
+  - Can access all pricing calculators and create proposals
 
-3. **Crew Member** (`org:crew`)
-   - Can view assigned work only
+- **Member** (`org:member`) - Basic access
+  - Can view assigned work
+  - Limited to read-only operations
 
-**Note:** `org:owner` and `org:admin` already exist by default!
+**No custom roles needed!** The default Clerk roles are sufficient for TreeShop.
 
 ## 📋 Test Your Setup
 

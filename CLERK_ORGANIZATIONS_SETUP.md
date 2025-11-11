@@ -28,39 +28,30 @@ This guide walks you through enabling multi-tenancy with Clerk Organizations for
    - Invitation expiration: **7 days**
    - ✅ Allow members to invite
 
-## Step 2: Create Custom Roles (10 minutes)
+## Step 2: Understand the Role System (2 minutes)
 
-Clerk Organizations come with two default roles (Admin and Member). We need to create 3 additional custom roles for TreeShop.
+TreeShop uses a simplified 2-role system with Clerk's default roles - **no custom roles needed!**
 
-1. In Clerk Dashboard, go to **Organizations** → **Roles**
-2. You'll see the default roles:
-   - `org:admin` - Can manage members and settings
-   - `org:member` - Basic member access
+**Default Roles (Already Available):**
 
-3. Click **Create Role** and add each of the following:
+### Owner (`org:owner`)
+- Automatically assigned to the user who creates the organization
+- Full control over everything
+- Cannot be assigned manually
 
-### Role 1: Manager
+### Admin (`org:admin`)
+- Elevated permissions for managers and senior staff
+- Can manage equipment, employees, projects, and operations
+- Can access all pricing calculators and create proposals
+- Can manage team members
 
-- **Name:** Manager
-- **Key:** `org:manager`
-- **Description:** Can create projects, manage operations, and use all pricing tools
-- **Permissions:** (Clerk will auto-assign, or you can customize later)
+### Member (`org:member`)
+- Basic access for crew and field employees
+- Can view assigned work
+- Limited to read-only operations
+- Cannot manage organization settings
 
-### Role 2: Estimator
-
-- **Name:** Estimator
-- **Key:** `org:estimator`
-- **Description:** Can use pricing calculators and create proposals only
-- **Permissions:** Limited to pricing and proposal features
-
-### Role 3: Crew Member
-
-- **Name:** Crew Member
-- **Key:** `org:crew`
-- **Description:** Can view assigned work orders only
-- **Permissions:** Read-only access to assigned work
-
-**Note:** The `org:owner` role is automatically assigned to the user who creates the organization.
+**That's it!** These three roles cover all TreeShop needs without requiring custom role creation.
 
 ## Step 3: Configure Clerk JWT Template for Convex (5 minutes)
 
@@ -217,14 +208,12 @@ Run through this checklist:
 3. Check spam folder
 4. Verify the email address is correct
 
-### Can't create custom roles
+### Can't see custom roles
 
-**Problem:** "Create Role" button is disabled
+**Problem:** "Custom roles aren't showing up"
 
 **Solution:**
-1. Custom roles require a paid Clerk plan
-2. For development, the default Admin and Member roles work
-3. Upgrade your Clerk plan or use the default roles for now
+TreeShop uses the default Clerk roles (Owner, Admin, Member) - no custom roles needed! These three roles provide all the permission levels needed for tree service operations.
 
 ## Next Steps
 
@@ -239,22 +228,26 @@ Now that Clerk Organizations is set up:
 
 ## Permission System
 
-With the roles we've created, here's how permissions work:
+With the simplified role system, here's how permissions work:
 
-| Feature | Owner | Admin | Manager | Estimator | Crew |
-|---------|-------|-------|---------|-----------|------|
-| Billing & Subscription | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Delete Company | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Manage Members | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Equipment Management | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Employee Management | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Loadout Configuration | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Pricing Calculators | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Create Proposals | ✅ | ✅ | ✅ | ✅ | ❌ |
-| View Financial Reports | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Manage Customers | ✅ | ✅ | ✅ | ✅ | ❌ |
-| View All Projects | ✅ | ✅ | ✅ | ✅ | ❌ |
-| View Assigned Work | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | Owner | Admin | Member |
+|---------|-------|-------|--------|
+| Billing & Subscription | ✅ | ❌ | ❌ |
+| Delete Company | ✅ | ❌ | ❌ |
+| Manage Members | ✅ | ✅ | ❌ |
+| Equipment Management | ✅ | ✅ | ❌ |
+| Employee Management | ✅ | ✅ | ❌ |
+| Loadout Configuration | ✅ | ✅ | ❌ |
+| Pricing Calculators | ✅ | ✅ | ❌ |
+| Create Proposals | ✅ | ✅ | ❌ |
+| View Financial Reports | ✅ | ✅ | ❌ |
+| Manage Customers | ✅ | ✅ | ❌ |
+| View All Projects | ✅ | ✅ | ❌ |
+| View Assigned Work | ✅ | ✅ | ✅ |
+
+**Simple and effective:**
+- **Owner/Admin** = Full access to manage the business
+- **Member** = Field crew with read-only access to assigned work
 
 ## Resources
 

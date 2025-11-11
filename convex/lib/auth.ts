@@ -77,9 +77,10 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 
 /**
  * Check if user is owner, admin, or manager
+ * NOTE: Simplified to just owner and admin (manager role merged into admin)
  */
 export async function requireManager(ctx: QueryCtx | MutationCtx) {
-  return requireRole(ctx, ["org:owner", "org:admin", "org:manager"]);
+  return requireRole(ctx, ["org:owner", "org:admin"]);
 }
 
 /**
