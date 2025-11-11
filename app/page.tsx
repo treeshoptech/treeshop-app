@@ -1,4 +1,6 @@
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import {
   Container,
   Box,
@@ -18,7 +20,15 @@ import {
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 
-export default function Home() {
+export default async function Home() {
+  // Redirect logged-in users directly to dashboard
+  const { userId } = await auth();
+
+  if (userId) {
+    redirect("/dashboard");
+  }
+
+  // Show marketing landing page only for logged-out users
   return (
     <>
       {/* App Bar */}
@@ -27,23 +37,18 @@ export default function Home() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
             TreeShop
           </Typography>
-          <SignedOut>
-            <Stack direction="row" spacing={2}>
-              <SignInButton mode="modal">
-                <Button variant="outlined" color="primary">
-                  Sign In
-                </Button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <Button variant="contained" color="primary">
-                  Sign Up
-                </Button>
-              </SignUpButton>
-            </Stack>
-          </SignedOut>
-          <SignedIn>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
+          <Stack direction="row" spacing={2}>
+            <SignInButton mode="modal">
+              <Button variant="outlined" color="primary">
+                Sign In
+              </Button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <Button variant="contained" color="primary">
+                Sign Up
+              </Button>
+            </SignUpButton>
+          </Stack>
         </Toolbar>
       </AppBar>
 
@@ -78,28 +83,10 @@ export default function Home() {
               Scientific pricing and project management platform built for tree service professionals
             </Typography>
 
-            <SignedOut>
-              <SignUpButton mode="modal">
-                <Button
-                  variant="contained"
-                  size="large"
-                  sx={{
-                    px: 4,
-                    py: 1.5,
-                    fontSize: '1.1rem',
-                    fontWeight: 600
-                  }}
-                >
-                  Get Started
-                </Button>
-              </SignUpButton>
-            </SignedOut>
-
-            <SignedIn>
+            <SignUpButton mode="modal">
               <Button
                 variant="contained"
                 size="large"
-                href="/dashboard"
                 sx={{
                   px: 4,
                   py: 1.5,
@@ -107,9 +94,9 @@ export default function Home() {
                   fontWeight: 600
                 }}
               >
-                Go to Dashboard
+                Get Started
               </Button>
-            </SignedIn>
+            </SignUpButton>
           </Box>
 
           {/* Features Grid */}
@@ -240,27 +227,10 @@ export default function Home() {
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                 Join professional tree service companies using TreeShop to increase margins and close more deals
               </Typography>
-              <SignedOut>
-                <SignUpButton mode="modal">
-                  <Button
-                    variant="contained"
-                    size="large"
-                    sx={{
-                      px: 4,
-                      py: 1.5,
-                      fontSize: '1.1rem',
-                      fontWeight: 600
-                    }}
-                  >
-                    Start Free Trial
-                  </Button>
-                </SignUpButton>
-              </SignedOut>
-              <SignedIn>
+              <SignUpButton mode="modal">
                 <Button
                   variant="contained"
                   size="large"
-                  href="/dashboard"
                   sx={{
                     px: 4,
                     py: 1.5,
@@ -268,9 +238,9 @@ export default function Home() {
                     fontWeight: 600
                   }}
                 >
-                  Go to Dashboard
+                  Start Free Trial
                 </Button>
-              </SignedIn>
+              </SignUpButton>
             </Card>
           </Box>
         </Box>
