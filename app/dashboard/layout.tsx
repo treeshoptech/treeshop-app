@@ -1,20 +1,26 @@
 "use client";
 
+import { useState } from 'react';
 import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 import {
   AppBar,
   Toolbar,
   Box,
   Container,
+  IconButton,
 } from '@mui/material';
+import { Menu as MenuIcon } from '@mui/icons-material';
 import Image from 'next/image';
 import { BottomNav } from './BottomNav';
+import { RightSideNav } from './RightSideNav';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [rightNavOpen, setRightNavOpen] = useState(false);
+
   return (
     <>
       {/* Top App Bar - Compact for mobile */}
@@ -56,6 +62,20 @@ export default function DashboardLayout({
             />
           </Box>
 
+          {/* Hamburger Menu Button */}
+          <IconButton
+            onClick={() => setRightNavOpen(true)}
+            sx={{
+              mr: 1,
+              color: '#FFFFFF',
+              '&:hover': {
+                backgroundColor: '#1C1C1E',
+              },
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+
           {/* User Button - Right aligned */}
           <UserButton
             afterSignOutUrl="/"
@@ -85,6 +105,9 @@ export default function DashboardLayout({
 
       {/* Bottom Navigation - Mobile First, Right Thumb Optimized */}
       <BottomNav />
+
+      {/* Right Side Navigation - Settings Menu */}
+      <RightSideNav open={rightNavOpen} onClose={() => setRightNavOpen(false)} />
     </>
   );
 }
