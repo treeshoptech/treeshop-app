@@ -10,14 +10,15 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Fab,
   Tabs, Tab, Divider, List, ListItem, ListItemText, Avatar, Paper,
   FormControl, InputLabel, Select, OutlinedInput, Checkbox, Alert, InputAdornment,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Collapse, Menu,
 } from '@mui/material';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as CopyIcon,
   Search as SearchIcon, Close as CloseIcon, People as PeopleIcon, Construction as EquipmentIcon,
   AttachMoney as MoneyIcon, TrendingUp as ProductionIcon, Security as SafetyIcon,
   Schedule as ScheduleIcon, CheckCircle as CheckIcon, Warning as WarningIcon,
-  PlayArrow as ActiveIcon, Pause as InactiveIcon,
+  PlayArrow as ActiveIcon, Pause as InactiveIcon, ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon, MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 
 const SERVICE_TYPES = [
@@ -40,6 +41,9 @@ function LoadoutsPageContent() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLoadout, setEditingLoadout] = useState<any>(null);
   const [formTab, setFormTab] = useState(0);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedLoadout, setSelectedLoadout] = useState<any>(null);
 
   // Hardcoded loadouts for demo (will connect to Convex later)
   const loadouts = [
@@ -308,18 +312,66 @@ function LoadoutsPageContent() {
         </Grid>
       </Paper>
 
-      {/* Loadout Cards */}
-      <Grid container spacing={3}>
-        {filteredLoadouts.map((loadout) => (
-          <Grid item xs={12} md={6} lg={4} key={loadout._id}>
-            <Card sx={{ bgcolor: '#1c1c1e', border: '1px solid #2c2c2e', height: '100%' }}>
-              <CardContent>
-                {/* Header */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" sx={{ color: '#ffffff', fontWeight: 600, mb: 0.5 }}>
-                      {loadout.name}
-                    </Typography>
+      {/* Loadout Table */}
+      <TableContainer component={Paper} sx={{ bgcolor: '#1c1c1e', border: '1px solid #2c2c2e' }}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ bgcolor: '#2c2c2e' }}>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }}>
+                Loadout Name
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }}>
+                Service Type
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="center">
+                Crew
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="center">
+                Equipment
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
+                Cost/Hr
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="center">
+                Margin
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
+                Billing Rate
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
+                Profit/Hr
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
+                Production
+              </TableCell>
+              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
+                Actions
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredLoadouts.map((loadout) => (
+              <>
+                {/* Collapsed Row */}
+                <TableRow
+                  key={loadout._id}
+                  sx={{
+                    '&:hover': { bgcolor: '#2c2c2e' },
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setExpandedRow(expandedRow === loadout._id ? null : loadout._id)}
+                >
+                  <TableCell sx={{ color: '#ffffff', borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <IconButton size="small" sx={{ color: '#8e8e93' }}>
+                        {expandedRow === loadout._id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      </IconButton>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {loadout.name}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
                     <Chip
                       label={loadout.serviceType}
                       size="small"
@@ -330,72 +382,27 @@ function LoadoutsPageContent() {
                         height: 24,
                       }}
                     />
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenDialog(loadout)}
-                      sx={{ color: '#007AFF' }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      sx={{ color: '#8e8e93' }}
-                    >
-                      <CopyIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </Box>
-
-                <Divider sx={{ mb: 2, borderColor: '#2c2c2e' }} />
-
-                {/* Composition */}
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  <Grid item xs={6}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <PeopleIcon sx={{ color: '#007AFF', fontSize: 20 }} />
-                      <Box>
-                        <Typography variant="body2" sx={{ color: '#8e8e93', fontSize: '0.75rem' }}>
-                          Crew
-                        </Typography>
-                        <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 600 }}>
-                          {loadout.employeeCount} members
-                        </Typography>
-                      </Box>
+                  </TableCell>
+                  <TableCell align="center" sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                      <PeopleIcon sx={{ color: '#007AFF', fontSize: 16 }} />
+                      <Typography variant="body2" sx={{ color: '#ffffff' }}>
+                        {loadout.employeeCount}
+                      </Typography>
                     </Box>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <EquipmentIcon sx={{ color: '#007AFF', fontSize: 20 }} />
-                      <Box>
-                        <Typography variant="body2" sx={{ color: '#8e8e93', fontSize: '0.75rem' }}>
-                          Equipment
-                        </Typography>
-                        <Typography variant="body1" sx={{ color: '#ffffff', fontWeight: 600 }}>
-                          {loadout.equipmentCount} items
-                        </Typography>
-                      </Box>
+                  </TableCell>
+                  <TableCell align="center" sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                      <EquipmentIcon sx={{ color: '#007AFF', fontSize: 16 }} />
+                      <Typography variant="body2" sx={{ color: '#ffffff' }}>
+                        {loadout.equipmentCount}
+                      </Typography>
                     </Box>
-                  </Grid>
-                </Grid>
-
-                <Divider sx={{ mb: 2, borderColor: '#2c2c2e' }} />
-
-                {/* Financial Summary */}
-                <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" sx={{ color: '#8e8e93' }}>
-                      Hourly Cost
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#ffffff' }}>
-                      ${loadout.totalCostPerHour.toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" sx={{ color: '#8e8e93' }}>
-                      Target Margin
-                    </Typography>
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: '#ffffff', borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
+                    ${loadout.totalCostPerHour.toFixed(2)}
+                  </TableCell>
+                  <TableCell align="center" sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
                     <Chip
                       label={`${loadout.targetMargin}%`}
                       size="small"
@@ -403,46 +410,238 @@ function LoadoutsPageContent() {
                         bgcolor: loadout.targetMargin >= 35 ? '#34C759' : loadout.targetMargin >= 30 ? '#FF9500' : '#FF3B30',
                         color: '#ffffff',
                         fontWeight: 600,
-                        height: 20,
-                        fontSize: '0.7rem',
+                        height: 22,
+                        fontSize: '0.75rem',
+                        minWidth: 45,
                       }}
                     />
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" sx={{ color: '#8e8e93' }}>
-                      Billing Rate
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: '#007AFF', fontWeight: 600, borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
+                    ${loadout.billingRate.toFixed(2)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: '#34C759', fontWeight: 600, borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
+                    +${loadout.profitPerHour.toFixed(2)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: '#ffffff', borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                      {loadout.productionRate} {loadout.serviceType === 'Forestry Mulching' ? 'IA/hr' : loadout.serviceType === 'Stump Grinding' ? 'pts/hr' : 'trees/day'}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#007AFF', fontWeight: 600 }}>
-                      ${loadout.billingRate.toFixed(2)}/hr
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="body2" sx={{ color: '#8e8e93' }}>
-                      Profit/Hour
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#34C759', fontWeight: 600 }}>
-                      +${loadout.profitPerHour.toFixed(2)}
-                    </Typography>
-                  </Box>
-                </Box>
+                  </TableCell>
+                  <TableCell align="right" sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAnchorEl(e.currentTarget);
+                        setSelectedLoadout(loadout);
+                      }}
+                      sx={{ color: '#8e8e93' }}
+                    >
+                      <MoreVertIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
 
-                <Divider sx={{ mb: 2, borderColor: '#2c2c2e' }} />
+                {/* Expanded Row */}
+                <TableRow>
+                  <TableCell colSpan={10} sx={{ py: 0, borderBottom: '1px solid #2c2c2e', bgcolor: '#000000' }}>
+                    <Collapse in={expandedRow === loadout._id} timeout="auto" unmountOnExit>
+                      <Box sx={{ py: 2, px: 3 }}>
+                        <Grid container spacing={3}>
+                          {/* Labor Breakdown */}
+                          <Grid item xs={12} md={6}>
+                            <Paper sx={{ p: 2, bgcolor: '#1c1c1e', border: '1px solid #2c2c2e' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                <PeopleIcon sx={{ color: '#007AFF' }} />
+                                <Typography variant="subtitle2" sx={{ color: '#ffffff', fontWeight: 600 }}>
+                                  Labor Breakdown
+                                </Typography>
+                              </Box>
+                              <List dense>
+                                <ListItem sx={{ px: 0 }}>
+                                  <ListItemText
+                                    primary="Lead Climber (TRS4+L+E2+ISA)"
+                                    secondary="$110.50/hr (with 1.7x burden)"
+                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
+                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
+                                  />
+                                </ListItem>
+                                <ListItem sx={{ px: 0 }}>
+                                  <ListItemText
+                                    primary="Ground Tech (TRS2+E1)"
+                                    secondary="$59.50/hr (with 1.7x burden)"
+                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
+                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
+                                  />
+                                </ListItem>
+                                <Divider sx={{ my: 1, borderColor: '#2c2c2e' }} />
+                                <ListItem sx={{ px: 0 }}>
+                                  <ListItemText
+                                    primary="Total Labor Cost"
+                                    primaryTypographyProps={{ color: '#ffffff', fontWeight: 600, fontSize: '0.9rem' }}
+                                  />
+                                  <Typography variant="body2" sx={{ color: '#34C759', fontWeight: 600 }}>
+                                    $170.00/hr
+                                  </Typography>
+                                </ListItem>
+                              </List>
+                            </Paper>
+                          </Grid>
 
-                {/* Production Rate */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <ProductionIcon sx={{ color: '#007AFF', fontSize: 18 }} />
-                  <Typography variant="body2" sx={{ color: '#8e8e93' }}>
-                    Production:
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 600 }}>
-                    {loadout.productionRate} {loadout.serviceType === 'Forestry Mulching' ? 'IA/hr' : loadout.serviceType === 'Stump Grinding' ? 'pts/hr' : 'trees/day'}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                          {/* Equipment Breakdown */}
+                          <Grid item xs={12} md={6}>
+                            <Paper sx={{ p: 2, bgcolor: '#1c1c1e', border: '1px solid #2c2c2e' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                <EquipmentIcon sx={{ color: '#007AFF' }} />
+                                <Typography variant="subtitle2" sx={{ color: '#ffffff', fontWeight: 600 }}>
+                                  Equipment Breakdown
+                                </Typography>
+                              </Box>
+                              <List dense>
+                                <ListItem sx={{ px: 0 }}>
+                                  <ListItemText
+                                    primary="Ford F450 Chip Truck"
+                                    secondary="$25.00/hr"
+                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
+                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
+                                  />
+                                </ListItem>
+                                <ListItem sx={{ px: 0 }}>
+                                  <ListItemText
+                                    primary='12" Bandit Chipper'
+                                    secondary="$35.00/hr"
+                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
+                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
+                                  />
+                                </ListItem>
+                                <ListItem sx={{ px: 0 }}>
+                                  <ListItemText
+                                    primary="Climbing Gear & Chainsaw"
+                                    secondary="$13.00/hr"
+                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
+                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
+                                  />
+                                </ListItem>
+                                <Divider sx={{ my: 1, borderColor: '#2c2c2e' }} />
+                                <ListItem sx={{ px: 0 }}>
+                                  <ListItemText
+                                    primary="Total Equipment Cost"
+                                    primaryTypographyProps={{ color: '#ffffff', fontWeight: 600, fontSize: '0.9rem' }}
+                                  />
+                                  <Typography variant="body2" sx={{ color: '#34C759', fontWeight: 600 }}>
+                                    $73.00/hr
+                                  </Typography>
+                                </ListItem>
+                              </List>
+                            </Paper>
+                          </Grid>
+
+                          {/* Financial Summary */}
+                          <Grid item xs={12}>
+                            <Paper sx={{ p: 2, bgcolor: '#2c2c2e', border: '2px solid #007AFF' }}>
+                              <Grid container spacing={2}>
+                                <Grid item xs={12} sm={6} md={3}>
+                                  <Typography variant="body2" sx={{ color: '#8e8e93', mb: 0.5 }}>
+                                    Total Cost
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ color: '#ffffff', fontWeight: 600 }}>
+                                    ${loadout.totalCostPerHour.toFixed(2)}/hr
+                                  </Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                  <Typography variant="body2" sx={{ color: '#8e8e93', mb: 0.5 }}>
+                                    Billing Rate
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ color: '#007AFF', fontWeight: 600 }}>
+                                    ${loadout.billingRate.toFixed(2)}/hr
+                                  </Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                  <Typography variant="body2" sx={{ color: '#8e8e93', mb: 0.5 }}>
+                                    Profit per Hour
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ color: '#34C759', fontWeight: 600 }}>
+                                    +${loadout.profitPerHour.toFixed(2)}
+                                  </Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                  <Typography variant="body2" sx={{ color: '#8e8e93', mb: 0.5 }}>
+                                    Profit Margin
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ color: loadout.targetMargin >= 35 ? '#34C759' : loadout.targetMargin >= 30 ? '#FF9500' : '#FF3B30', fontWeight: 600 }}>
+                                    {loadout.targetMargin}%
+                                  </Typography>
+                                </Grid>
+                              </Grid>
+                            </Paper>
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    </Collapse>
+                  </TableCell>
+                </TableRow>
+              </>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Action Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        PaperProps={{
+          sx: {
+            bgcolor: '#1c1c1e',
+            border: '1px solid #2c2c2e',
+            minWidth: 180,
+          }
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            handleOpenDialog(selectedLoadout);
+            setAnchorEl(null);
+          }}
+          sx={{
+            color: '#ffffff',
+            '&:hover': { bgcolor: '#2c2c2e' },
+          }}
+        >
+          <EditIcon sx={{ mr: 1, fontSize: 18 }} />
+          Edit Loadout
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            console.log('Clone loadout:', selectedLoadout);
+            // TODO: Implement clone logic
+            setAnchorEl(null);
+          }}
+          sx={{
+            color: '#ffffff',
+            '&:hover': { bgcolor: '#2c2c2e' },
+          }}
+        >
+          <CopyIcon sx={{ mr: 1, fontSize: 18 }} />
+          Clone Loadout
+        </MenuItem>
+        <Divider sx={{ borderColor: '#2c2c2e' }} />
+        <MenuItem
+          onClick={() => {
+            console.log('Delete loadout:', selectedLoadout);
+            // TODO: Implement delete logic with confirmation
+            setAnchorEl(null);
+          }}
+          sx={{
+            color: '#FF3B30',
+            '&:hover': { bgcolor: '#2c2c2e' },
+          }}
+        >
+          <DeleteIcon sx={{ mr: 1, fontSize: 18 }} />
+          Delete Loadout
+        </MenuItem>
+      </Menu>
 
       {/* Loadout Builder Dialog - Continued in next message due to length */}
     </Box>
