@@ -23,11 +23,12 @@ export function ConvexAuthGuard({ children }: ConvexAuthGuardProps) {
     setAuthReady(false);
 
     // Wait for both auth and organization to be fully loaded
-    if (authLoaded && orgLoaded && isSignedIn && organization) {
+    if (authLoaded && orgLoaded && isSignedIn && organization && orgId) {
       // Delay to ensure JWT token has fully propagated to Convex
+      // Need longer delay for JWT to update with org context
       const timer = setTimeout(() => {
         setAuthReady(true);
-      }, 300);
+      }, 500);
 
       return () => clearTimeout(timer);
     }
@@ -67,7 +68,7 @@ export function ConvexAuthGuard({ children }: ConvexAuthGuardProps) {
   }
 
   // No organization selected
-  if (!organization) {
+  if (!organization || !orgId) {
     return (
       <Box sx={{ textAlign: 'center', py: 8 }}>
         <Typography variant="h6" gutterBottom>
@@ -76,6 +77,11 @@ export function ConvexAuthGuard({ children }: ConvexAuthGuardProps) {
         <Typography color="text.secondary">
           Please select or create an organization using the switcher above.
         </Typography>
+        {organization && !orgId && (
+          <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 2 }}>
+            Organization found but orgId missing. Please sign out and sign back in.
+          </Typography>
+        )}
       </Box>
     );
   }
