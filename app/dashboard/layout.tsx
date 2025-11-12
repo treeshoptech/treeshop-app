@@ -4,18 +4,9 @@ import {
   Toolbar,
   Box,
   Container,
-  BottomNavigation,
-  BottomNavigationAction,
-  Paper,
 } from '@mui/material';
-import {
-  Dashboard as DashboardIcon,
-  People as PeopleIcon,
-  Construction as ConstructionIcon,
-  Description as DescriptionIcon,
-} from '@mui/icons-material';
 import Image from 'next/image';
-import Link from 'next/link';
+import { BottomNav } from './BottomNav';
 
 export default function DashboardLayout({
   children,
@@ -91,64 +82,7 @@ export default function DashboardLayout({
       </Container>
 
       {/* Bottom Navigation - Mobile First, Right Thumb Optimized */}
-      <Paper
-        sx={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1000,
-        }}
-        elevation={3}
-      >
-        <BottomNavigation
-          showLabels
-          sx={{
-            backgroundColor: '#1C1C1E',
-            height: 70,
-            '& .MuiBottomNavigationAction-root': {
-              color: '#8E8E93',
-              minWidth: 'auto',
-              padding: '6px 12px',
-              '&.Mui-selected': {
-                color: '#007AFF',
-              },
-            },
-            '& .MuiBottomNavigationAction-label': {
-              fontSize: '11px',
-              '&.Mui-selected': {
-                fontSize: '12px',
-                fontWeight: 600,
-              },
-            },
-          }}
-        >
-          <BottomNavigationAction
-            label="Dashboard"
-            icon={<DashboardIcon />}
-            component={Link}
-            href="/dashboard"
-          />
-          <BottomNavigationAction
-            label="Equipment"
-            icon={<ConstructionIcon />}
-            component={Link}
-            href="/dashboard/equipment"
-          />
-          <BottomNavigationAction
-            label="Customers"
-            icon={<PeopleIcon />}
-            component={Link}
-            href="/dashboard/customers"
-          />
-          <BottomNavigationAction
-            label="Projects"
-            icon={<DescriptionIcon />}
-            component={Link}
-            href="/dashboard/projects"
-          />
-        </BottomNavigation>
-      </Paper>
+      <BottomNav />
     </>
   );
 }
