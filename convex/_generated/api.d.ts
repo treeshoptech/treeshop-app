@@ -8,12 +8,23 @@
  * @module
  */
 
+import type * as afissFactors from "../afissFactors.js";
+import type * as analytics from "../analytics.js";
 import type * as customers from "../customers.js";
+import type * as employees from "../employees.js";
 import type * as equipment from "../equipment.js";
+import type * as invoices from "../invoices.js";
 import type * as leads from "../leads.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lineItemTemplates from "../lineItemTemplates.js";
+import type * as lineItems from "../lineItems.js";
+import type * as loadouts from "../loadouts.js";
+import type * as maps from "../maps.js";
+import type * as organizationSettings from "../organizationSettings.js";
 import type * as organizations from "../organizations.js";
 import type * as projects from "../projects.js";
+import type * as timeEntries from "../timeEntries.js";
+import type * as workOrders from "../workOrders.js";
 
 import type {
   ApiFromModules,
@@ -22,12 +33,23 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  afissFactors: typeof afissFactors;
+  analytics: typeof analytics;
   customers: typeof customers;
+  employees: typeof employees;
   equipment: typeof equipment;
+  invoices: typeof invoices;
   leads: typeof leads;
   "lib/auth": typeof lib_auth;
+  lineItemTemplates: typeof lineItemTemplates;
+  lineItems: typeof lineItems;
+  loadouts: typeof loadouts;
+  maps: typeof maps;
+  organizationSettings: typeof organizationSettings;
   organizations: typeof organizations;
   projects: typeof projects;
+  timeEntries: typeof timeEntries;
+  workOrders: typeof workOrders;
 }>;
 
 /**

@@ -115,6 +115,11 @@ const menuSections = [
         icon: <OrganizationIcon />,
         path: '/dashboard/settings/organization',
       },
+      {
+        title: 'Line Items Library',
+        icon: <LeadIcon />,
+        path: '/dashboard/settings/line-items',
+      },
     ],
   },
 ];
@@ -143,9 +148,9 @@ export function RightSideNav({ open, onClose }: RightSideNavProps) {
         },
       }}
     >
-      {/* Header with Close Button and Org Switcher */}
+      {/* Header with Close Button */}
       <Box sx={{ px: 2, pt: 2, pb: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Menu
           </Typography>
@@ -158,33 +163,6 @@ export function RightSideNav({ open, onClose }: RightSideNavProps) {
           >
             <CloseIcon />
           </IconButton>
-        </Box>
-
-        {/* Organization Switcher */}
-        <Box sx={{ mb: 1 }}>
-          <OrganizationSwitcher
-            appearance={{
-              elements: {
-                rootBox: {
-                  display: "flex",
-                  width: "100%",
-                },
-                organizationSwitcherTrigger: {
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  border: "1px solid #2C2C2E",
-                  backgroundColor: "#1C1C1E",
-                  color: "#FFFFFF",
-                  fontSize: "14px",
-                  justifyContent: "flex-start",
-                  "&:hover": {
-                    borderColor: "#007AFF",
-                  },
-                },
-              },
-            }}
-          />
         </Box>
       </Box>
 
@@ -254,8 +232,41 @@ export function RightSideNav({ open, onClose }: RightSideNavProps) {
 
       <Divider sx={{ borderColor: '#2C2C2E' }} />
 
-      {/* Footer with User Profile */}
+      {/* Footer with Organization Switcher and User Profile */}
       <Box sx={{ p: 2 }}>
+        {/* Organization Switcher */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="caption" color="#8E8E93" sx={{ mb: 1, display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
+            Organization
+          </Typography>
+          <OrganizationSwitcher
+            appearance={{
+              elements: {
+                rootBox: {
+                  display: "flex",
+                  width: "100%",
+                },
+                organizationSwitcherTrigger: {
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid #2C2C2E",
+                  backgroundColor: "#1C1C1E",
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  justifyContent: "flex-start",
+                  "&:hover": {
+                    borderColor: "#007AFF",
+                  },
+                },
+              },
+            }}
+          />
+        </Box>
+
+        <Divider sx={{ borderColor: '#2C2C2E', mb: 2 }} />
+
+        {/* User Profile */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
           <UserButton
             appearance={{
@@ -276,6 +287,7 @@ export function RightSideNav({ open, onClose }: RightSideNavProps) {
             </Typography>
           </Box>
         </Box>
+
         <Typography variant="caption" color="#8E8E93" sx={{ display: 'block' }}>
           TreeShop v1.0.0
         </Typography>
