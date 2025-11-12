@@ -115,6 +115,11 @@ const menuSections = [
         icon: <OrganizationIcon />,
         path: '/dashboard/settings/organization',
       },
+      {
+        title: 'Line Items Library',
+        icon: <LeadIcon />,
+        path: '/dashboard/settings/line-items',
+      },
     ],
   },
 ];
