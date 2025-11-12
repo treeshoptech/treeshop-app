@@ -502,4 +502,92 @@ export default defineSchema({
     .index("by_org_status", ["organizationId", "status"])
     .index("by_invoice_number", ["organizationId", "invoiceNumber"])
     .index("by_due_date", ["organizationId", "dueDate"]),
+
+  // Line Item Templates - Organization's reusable line items library
+  lineItemTemplates: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Template Info
+    name: v.string(),
+    description: v.string(),
+    category: v.string(), // "Tree Removal", "Stump Grinding", "Mulching", "Land Clearing", "Equipment Rental", "Labor", "Materials", "Other"
+    serviceType: v.optional(v.string()),
+
+    // Default Pricing
+    defaultUnit: v.string(), // "Each", "Hour", "Day", "Acre", "Linear Foot", "Square Foot", "Cubic Yard", "Ton", "Tree", "Stump"
+    defaultUnitPrice: v.number(),
+    defaultQuantity: v.optional(v.number()),
+
+    // Costing
+    costPerUnit: v.optional(v.number()),
+    defaultMargin: v.optional(v.number()),
+
+    // AFISS Presets (saved complexity factors for this type of work)
+    afissPresets: v.optional(v.array(v.object({
+      name: v.string(),
+      category: v.string(),
+      factor: v.string(),
+      impact: v.number(), // percentage multiplier
+    }))),
+
+    // Metadata
+    usageCount: v.optional(v.number()),
+    lastUsed: v.optional(v.number()),
+    tags: v.optional(v.array(v.string())),
+    notes: v.optional(v.string()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_org_category", ["organizationId", "category"])
+    .index("by_org_service", ["organizationId", "serviceType"]),
+
+  // Organization Settings - Terms, conditions, and document templates
+  organizationSettings: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Terms & Conditions
+    proposalTerms: v.optional(v.string()), // Default terms for proposals
+    workOrderTerms: v.optional(v.string()), // Default terms for work orders
+    invoiceTerms: v.optional(v.string()), // Default terms for invoices
+    paymentTerms: v.optional(v.string()), // Payment terms (Net 30, Due on Receipt, etc)
+
+    // Proposal Settings
+    proposalValidityDays: v.optional(v.number()), // How long proposal is valid
+    proposalFooter: v.optional(v.string()),
+    proposalHeader: v.optional(v.string()),
+    showDetailedBreakdown: v.optional(v.boolean()), // Show line item costs in proposal
+
+    // Invoice Settings
+    invoicePrefix: v.optional(v.string()), // Invoice number prefix (INV-)
+    invoiceStartNumber: v.optional(v.number()),
+    invoiceFooter: v.optional(v.string()),
+    lateFeePercentage: v.optional(v.number()),
+    lateFeeDaysAfterDue: v.optional(v.number()),
+
+    // Work Order Settings
+    requireCustomerSignature: v.optional(v.boolean()),
+    requirePhotoDocumentation: v.optional(v.boolean()),
+    minimumPhotos: v.optional(v.number()),
+
+    // Business Info (for documents)
+    companyLegalName: v.optional(v.string()),
+    companyTagline: v.optional(v.string()),
+    licenseNumber: v.optional(v.string()),
+    insuranceCertificate: v.optional(v.string()),
+    taxId: v.optional(v.string()),
+    website: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+
+    // Liability & Insurance
+    liabilityDisclaimer: v.optional(v.string()),
+    insuranceInfo: v.optional(v.string()),
+    warrantyInfo: v.optional(v.string()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"]),
 });
