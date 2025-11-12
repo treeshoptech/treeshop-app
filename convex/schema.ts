@@ -219,7 +219,7 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     projectId: v.id("projects"),
     customerId: v.id("customers"),
-    loadoutId: v.id("loadouts"),
+    loadoutId: v.optional(v.id("loadouts")), // Optional: may have multiple loadouts via line items
     scopeOfWork: v.string(),
     whatsIncluded: v.array(v.string()),
     whatsNotIncluded: v.array(v.string()),
@@ -235,10 +235,271 @@ export default defineSchema({
     signatureData: v.optional(v.string()),
     signedBy: v.optional(v.string()),
     signedAt: v.optional(v.number()),
+    validUntil: v.optional(v.number()),
+    driveTimeMinutes: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_organization", ["organizationId"])
     .index("by_project", ["projectId"])
     .index("by_org_status", ["organizationId", "status"]),
+
+  // Line Items (atomic units of work with scoring)
+  lineItems: defineTable({
+    organizationId: v.id("organizations"),
+    parentDocId: v.string(), // ID of parent document (proposal, work order, or invoice)
+    parentDocType: v.string(), // "Proposal", "WorkOrder", "Invoice"
+    lineNumber: v.number(),
+
+    // Service Details
+    serviceType: v.string(), // "Stump Grinding", "Mulching", "Tree Removal", etc.
+    description: v.string(),
+
+    // Scoring System
+    formulaUsed: v.string(), // "StumpScore", "TreeShopScore", "ClearingScore", "TreeScore", "TrimScore"
+    workVolumeInputs: v.any(), // Service-specific inputs (JSON object)
+    baseScore: v.number(),
+    complexityMultiplier: v.number(), // AFISS multiplier
+    adjustedScore: v.number(),
+
+    // Loadout Assignment
+    loadoutId: v.id("loadouts"),
+    loadoutName: v.string(),
+    productionRatePPH: v.number(), // Points per hour for this service type
+    costPerHour: v.number(),
+    billingRatePerHour: v.number(),
+    targetMargin: v.number(),
+
+    // Time Estimates
+    productionHours: v.number(), // Score ÷ PPH
+    transportHours: v.number(), // (Drive × 2) × transport_rate
+    bufferHours: v.number(), // (Prod + Transport) × 0.10
+    totalEstimatedHours: v.number(),
+
+    // Pricing
+    pricingMethod: v.string(), // "Hourly", "Fixed", "Time & Materials"
+    totalCost: v.number(),
+    totalPrice: v.number(),
+    profit: v.number(),
+    marginPercent: v.number(),
+
+    // Optional Upsells
+    upsells: v.optional(v.array(v.object({
+      upsellId: v.string(),
+      description: v.string(),
+      scoreAddition: v.number(),
+      price: v.number(),
+      selected: v.boolean(),
+    }))),
+
+    // Time Tracking (activated when Work Order created)
+    timeTrackingEnabled: v.boolean(),
+    totalActualHours: v.optional(v.number()),
+    varianceHours: v.optional(v.number()),
+
+    // Status
+    status: v.string(), // "Pending", "In Progress", "Completed", "Invoiced"
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_parent_doc", ["parentDocId", "parentDocType"])
+    .index("by_org_status", ["organizationId", "status"])
+    .index("by_loadout", ["loadoutId"]),
+
+  // Work Orders (execution phase with time tracking)
+  workOrders: defineTable({
+    organizationId: v.id("organizations"),
+    proposalId: v.id("proposals"),
+    projectId: v.id("projects"),
+    customerId: v.id("customers"),
+
+    // Scheduling
+    scheduledDate: v.number(),
+    scheduledStartTime: v.optional(v.string()), // "08:00"
+    actualStartTime: v.optional(v.number()),
+    actualEndTime: v.optional(v.number()),
+    totalJobHours: v.optional(v.number()),
+
+    // Assigned Resources
+    primaryLoadoutId: v.optional(v.id("loadouts")),
+    crewMemberIds: v.array(v.id("employees")),
+    equipmentIds: v.array(v.id("equipment")),
+
+    // Site Conditions
+    propertyAddress: v.string(),
+    weather: v.optional(v.string()),
+    accessNotes: v.optional(v.string()),
+    hazards: v.optional(v.array(v.string())),
+    parkingInstructions: v.optional(v.string()),
+
+    // Safety
+    safetyBriefingCompleted: v.boolean(),
+    safetyBriefingTime: v.optional(v.number()),
+    safetyAttendees: v.optional(v.array(v.id("employees"))),
+    ppeVerified: v.boolean(),
+    incidentReports: v.optional(v.array(v.string())),
+
+    // Documentation
+    photosBefore: v.optional(v.array(v.string())),
+    photosDuring: v.optional(v.array(v.string())),
+    photosAfter: v.optional(v.array(v.string())),
+    crewNotes: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      note: v.string(),
+      createdBy: v.id("employees"),
+    }))),
+    customerCommunications: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      note: v.string(),
+      createdBy: v.id("employees"),
+    }))),
+
+    // Materials Used
+    fuelGallons: v.optional(v.number()),
+    consumablesCost: v.optional(v.number()),
+    materialsNotes: v.optional(v.string()),
+
+    // Completion Checklist
+    allLineItemsComplete: v.boolean(),
+    finalPhotosUploaded: v.boolean(),
+    customerWalkthroughComplete: v.boolean(),
+    customerSignature: v.optional(v.string()),
+    customerSignedAt: v.optional(v.number()),
+    debrisRemoved: v.boolean(),
+    siteRestored: v.boolean(),
+    equipmentCleaned: v.boolean(),
+
+    // Status
+    status: v.string(), // "Scheduled", "In Progress", "Paused", "Completed", "Invoiced", "Cancelled"
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_proposal", ["proposalId"])
+    .index("by_project", ["projectId"])
+    .index("by_customer", ["customerId"])
+    .index("by_org_status", ["organizationId", "status"])
+    .index("by_scheduled_date", ["organizationId", "scheduledDate"]),
+
+  // Time Entries (activity tracking per line item)
+  timeEntries: defineTable({
+    organizationId: v.id("organizations"),
+    workOrderId: v.id("workOrders"),
+    lineItemId: v.id("lineItems"),
+
+    // Employee & Loadout
+    employeeId: v.id("employees"),
+    employeeCode: v.string(), // e.g., "STG3+E2"
+    loadoutId: v.optional(v.id("loadouts")),
+
+    // Activity Classification
+    activityCategory: v.string(), // "Production", "Support"
+    activityType: v.string(), // "Grinding", "Transport", "Setup", etc.
+    activityDetail: v.optional(v.string()),
+    billable: v.boolean(),
+
+    // Time Data
+    startTime: v.number(),
+    endTime: v.optional(v.number()),
+    durationMinutes: v.optional(v.number()),
+    durationHours: v.optional(v.number()),
+
+    // Location Tracking
+    locationStart: v.optional(v.object({
+      lat: v.number(),
+      lng: v.number(),
+    })),
+    locationEnd: v.optional(v.object({
+      lat: v.number(),
+      lng: v.number(),
+    })),
+
+    // Documentation
+    notes: v.optional(v.string()),
+    photos: v.optional(v.array(v.string())),
+
+    // Tracking Metadata
+    recordedBy: v.string(), // "Employee", "Manager", "Auto"
+    recordedMethod: v.string(), // "Mobile App", "Manual Entry", "GPS Auto"
+    timestampRecorded: v.number(),
+
+    // Approval
+    approved: v.boolean(),
+    approvedBy: v.optional(v.id("employees")),
+    approvedDate: v.optional(v.number()),
+
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_work_order", ["workOrderId"])
+    .index("by_line_item", ["lineItemId"])
+    .index("by_employee", ["employeeId"])
+    .index("by_org_employee", ["organizationId", "employeeId"])
+    .index("by_billable", ["organizationId", "billable"]),
+
+  // Invoices (final billing)
+  invoices: defineTable({
+    organizationId: v.id("organizations"),
+    workOrderId: v.id("workOrders"),
+    projectId: v.id("projects"),
+    customerId: v.id("customers"),
+
+    // Invoice Details
+    invoiceNumber: v.optional(v.string()), // Custom invoice number (auto-generated if not provided)
+    invoiceDate: v.number(),
+    dueDate: v.number(),
+    paymentTerms: v.string(), // "Net 15", "Net 30", "Due on Receipt"
+
+    // Billing Address
+    billingName: v.string(),
+    billingAddress: v.string(),
+    billingCity: v.optional(v.string()),
+    billingState: v.optional(v.string()),
+    billingZip: v.optional(v.string()),
+
+    // Financial Totals
+    subtotal: v.number(),
+    taxRate: v.optional(v.number()),
+    taxAmount: v.optional(v.number()),
+    additionalCharges: v.optional(v.number()),
+    additionalChargesDescription: v.optional(v.string()),
+    discountAmount: v.optional(v.number()),
+    discountDescription: v.optional(v.string()),
+    totalAmount: v.number(),
+
+    // Payment Tracking
+    amountPaid: v.number(),
+    balanceRemaining: v.number(),
+    payments: v.optional(v.array(v.object({
+      paymentId: v.string(),
+      paymentDate: v.number(),
+      paymentMethod: v.string(), // "Cash", "Check", "Card", "ACH", "Wire"
+      transactionId: v.optional(v.string()),
+      amount: v.number(),
+      recordedBy: v.optional(v.id("employees")),
+    }))),
+
+    // Status
+    status: v.string(), // "Draft", "Sent", "Viewed", "Paid", "Partial", "Overdue", "Void"
+    sentAt: v.optional(v.number()),
+    viewedAt: v.optional(v.number()),
+    paidInFullAt: v.optional(v.number()),
+
+    // Notes
+    notes: v.optional(v.string()),
+    internalNotes: v.optional(v.string()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_work_order", ["workOrderId"])
+    .index("by_project", ["projectId"])
+    .index("by_customer", ["customerId"])
+    .index("by_org_status", ["organizationId", "status"])
+    .index("by_invoice_number", ["organizationId", "invoiceNumber"])
+    .index("by_due_date", ["organizationId", "dueDate"]),
 });
