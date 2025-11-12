@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 import {
   AppBar,
   Toolbar,
@@ -11,6 +10,7 @@ import {
 } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { RightSideNav } from './RightSideNav';
 
 export default function DashboardLayout({
@@ -19,14 +19,26 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [rightNavOpen, setRightNavOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <>
       {/* Top App Bar - Compact for mobile */}
       <AppBar position="static" elevation={0}>
         <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
-          {/* Logo */}
-          <Box sx={{ mr: 2, display: 'flex', alignItems: 'center' }}>
+          {/* Logo - Clickable to Dashboard */}
+          <Box
+            sx={{
+              mr: 2,
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              '&:hover': {
+                opacity: 0.8,
+              }
+            }}
+            onClick={() => router.push('/dashboard')}
+          >
             <Image
               src="/images/logo.png"
               alt="TreeShop"
@@ -36,36 +48,13 @@ export default function DashboardLayout({
             />
           </Box>
 
-          {/* Organization Switcher - Centered */}
-          <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
-            <OrganizationSwitcher
-              appearance={{
-                elements: {
-                  rootBox: {
-                    display: "flex",
-                    alignItems: "center",
-                  },
-                  organizationSwitcherTrigger: {
-                    padding: "6px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid #2C2C2E",
-                    backgroundColor: "#1C1C1E",
-                    color: "#FFFFFF",
-                    fontSize: "14px",
-                    "&:hover": {
-                      borderColor: "#007AFF",
-                    },
-                  },
-                },
-              }}
-            />
-          </Box>
+          {/* Spacer */}
+          <Box sx={{ flexGrow: 1 }} />
 
           {/* Hamburger Menu Button */}
           <IconButton
             onClick={() => setRightNavOpen(true)}
             sx={{
-              mr: 1,
               color: '#FFFFFF',
               '&:hover': {
                 backgroundColor: '#1C1C1E',
@@ -74,19 +63,6 @@ export default function DashboardLayout({
           >
             <MenuIcon />
           </IconButton>
-
-          {/* User Button - Right aligned */}
-          <UserButton
-            afterSignOutUrl="/"
-            appearance={{
-              elements: {
-                avatarBox: {
-                  width: "32px",
-                  height: "32px",
-                },
-              },
-            }}
-          />
         </Toolbar>
       </AppBar>
 
