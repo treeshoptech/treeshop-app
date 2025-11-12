@@ -287,7 +287,7 @@ export default function MapsPage() {
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Map Container - Full Screen */}
       <Box sx={{ flex: 1, position: 'relative' }}>
-            <GoogleMap
+        <GoogleMap
               mapContainerStyle={{ width: '100%', height: '100%' }}
               center={mapCenter}
               zoom={13}
@@ -454,26 +454,25 @@ export default function MapsPage() {
                 currentDrawing={currentDrawing}
                 currentMeasurements={measurements}
               />
-            </GoogleMap>
+        </GoogleMap>
 
-          {/* Map Controls */}
-          <MapControls
-            drawingMode={drawingMode}
-            onDrawingModeChange={setDrawingMode}
-            onSave={() => setSaveDialogOpen(true)}
-            onClear={handleClearDrawing}
-            onGPSClick={() => {
-              if (gpsLocation && mapRef.current) {
-                mapRef.current.panTo(gpsLocation);
-                mapRef.current.setZoom(18);
-              }
-            }}
-            hasDrawing={!!currentDrawing}
-            gpsLocation={gpsLocation}
-            layers={layers}
-            onLayersChange={setLayers}
-          />
-        </Box>
+        {/* Map Controls */}
+        <MapControls
+          drawingMode={drawingMode}
+          onDrawingModeChange={setDrawingMode}
+          onSave={() => setSaveDialogOpen(true)}
+          onClear={handleClearDrawing}
+          onGPSClick={() => {
+            if (gpsLocation && mapRef.current) {
+              mapRef.current.panTo(gpsLocation);
+              mapRef.current.setZoom(18);
+            }
+          }}
+          hasDrawing={!!currentDrawing}
+          gpsLocation={gpsLocation}
+          layers={layers}
+          onLayersChange={setLayers}
+        />
       </Box>
 
       {/* Save Drawing Dialog */}
