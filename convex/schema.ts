@@ -585,4 +585,31 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_organization", ["organizationId"]),
+
+  // Saved Drawings - Map drawings for proposals and measurements
+  savedDrawings: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    drawingData: v.object({
+      type: v.string(), // 'polygon', 'circle', 'polyline', 'marker'
+      coordinates: v.optional(v.array(v.object({ lat: v.number(), lng: v.number() }))),
+      center: v.optional(v.object({ lat: v.number(), lng: v.number() })),
+      radius: v.optional(v.number()),
+      position: v.optional(v.object({ lat: v.number(), lng: v.number() }))
+    }),
+    measurements: v.optional(v.object({
+      area: v.optional(v.string()),
+      areaSqFt: v.optional(v.number()),
+      perimeter: v.optional(v.number()),
+      perimeterMiles: v.optional(v.string()),
+      distance: v.optional(v.number()),
+      distanceMiles: v.optional(v.string()),
+      radius: v.optional(v.number()),
+      circumference: v.optional(v.number())
+    })),
+    tags: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"]),
 });

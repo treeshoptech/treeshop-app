@@ -8,8 +8,6 @@ import { Id } from "@/convex/_generated/dataModel";
 import {
   Box,
   Card,
-  CardContent,
-  CardActions,
   Typography,
   Button,
   IconButton,
@@ -23,8 +21,6 @@ import {
   MenuItem,
   Fab,
   InputAdornment,
-  Tabs,
-  Tab,
   Divider,
   List,
   ListItem,
@@ -37,6 +33,12 @@ import {
   Checkbox,
   ListItemIcon,
   Paper,
+  Collapse,
+  Menu,
+  ListItemButton,
+  Stack,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -52,7 +54,20 @@ import {
   Business as BusinessIcon,
   ContactMail as ContactMailIcon,
   LocalOffer as TagIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  MoreVert as MoreVertIcon,
+  Map as MapIcon,
+  Assignment as AssignmentIcon,
+  Note as NoteIcon,
+  AttachMoney as MoneyIcon,
+  CalendarToday as CalendarIcon,
+  LocationOn as LocationIcon,
+  Folder as FolderIcon,
+  FolderOpen as FolderOpenIcon,
 } from '@mui/icons-material';
+import { AddressAutocomplete } from '@/app/components/customers/AddressAutocomplete';
+import { PropertyMapPreview } from '@/app/components/customers/PropertyMapPreview';
 
 const CUSTOMER_SOURCES = ['Referral', 'Website', 'Google Search', 'Social Media', 'Repeat Customer', 'Door Hanger', 'Yard Sign', 'Vehicle Wrap', 'Other'];
 const CUSTOMER_TYPES = ['Residential', 'Commercial', 'Municipal', 'HOA', 'Property Management', 'Real Estate'];
@@ -82,12 +97,14 @@ function CustomersPageContent() {
   const deleteCustomer = useMutation(api.customers.remove);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [editingId, setEditingId] = useState<Id<"customers"> | null>(null);
-  const [selectedId, setSelectedId] = useState<Id<"customers"> | null>(null);
-  const [formTab, setFormTab] = useState(0);
-  const [detailTab, setDetailTab] = useState(0);
+  const [expandedCustomer, setExpandedCustomer] = useState<Id<"customers"> | null>(null);
+  const [expandedSection, setExpandedSection] = useState<'details' | 'projects' | 'map' | 'notes' | null>('details');
   const [searchQuery, setSearchQuery] = useState('');
+  const [formTab, setFormTab] = useState(0);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuCustomerId, setMenuCustomerId] = useState<Id<"customers"> | null>(null);
+
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '', secondaryPhone: '', company: '',
     propertyAddress: '', propertyCity: '', propertyState: 'FL', propertyZip: '',
@@ -96,157 +113,635 @@ function CustomersPageContent() {
     tags: [] as string[], notes: '',
   });
 
-  const selectedCustomer = customers?.find(c => c._id === selectedId);
-  const customerProjects = projects?.filter(p => p.customerId === selectedId) || [];
-
   const filteredCustomers = customers?.filter(customer => {
     if (!searchQuery) return true;
     const search = searchQuery.toLowerCase();
-    const fullName = `${customer.firstName} ${customer.lastName}`.toLowerCase();
-    return fullName.includes(search) || (customer.email || '').toLowerCase().includes(search) ||
-           (customer.phone || '').toLowerCase().includes(search) || (customer.company || '').toLowerCase().includes(search) ||
+    return customer.firstName.toLowerCase().includes(search) ||
+           customer.lastName.toLowerCase().includes(search) ||
+           customer.email?.toLowerCase().includes(search) ||
+           customer.phone?.toLowerCase().includes(search) ||
+           customer.company?.toLowerCase().includes(search) ||
            customer.propertyAddress.toLowerCase().includes(search);
-  }) || [];
+  });
 
-  const getInitials = (firstName: string, lastName: string) => `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const getAvatarColor = (name: string) => {
-    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
-    return colors[name.charCodeAt(0) % colors.length];
-  };
-
-  const handleAdd = () => {
+  const handleOpenForm = () => {
     setEditingId(null);
-    setFormData({ firstName: '', lastName: '', email: '', phone: '', secondaryPhone: '', company: '',
+    setFormData({
+      firstName: '', lastName: '', email: '', phone: '', secondaryPhone: '', company: '',
       propertyAddress: '', propertyCity: '', propertyState: 'FL', propertyZip: '',
       billingAddress: '', billingCity: '', billingState: 'FL', billingZip: '',
       source: 'Website', referredBy: '', customerType: 'Residential', preferredContactMethod: 'Phone',
-      tags: [], notes: '' });
+      tags: [], notes: '',
+    });
     setFormTab(0);
     setFormOpen(true);
   };
 
-  const handleEdit = (id: Id<"customers">) => {
-    const customer = customers?.find(c => c._id === id);
-    if (customer) {
-      setEditingId(id);
-      setFormData({
-        firstName: customer.firstName, lastName: customer.lastName, email: customer.email || '', phone: customer.phone || '',
-        secondaryPhone: customer.secondaryPhone || '', company: customer.company || '',
-        propertyAddress: customer.propertyAddress, propertyCity: customer.propertyCity || '',
-        propertyState: customer.propertyState || 'FL', propertyZip: customer.propertyZip || '',
-        billingAddress: customer.billingAddress || '', billingCity: customer.billingCity || '',
-        billingState: customer.billingState || 'FL', billingZip: customer.billingZip || '',
-        source: customer.source || 'Website', referredBy: customer.referredBy || '',
-        customerType: customer.customerType || 'Residential', preferredContactMethod: customer.preferredContactMethod || 'Phone',
-        tags: customer.tags || [], notes: customer.notes || ''
-      });
-      setFormTab(0);
-      setFormOpen(true);
-    }
+  const handleEdit = (customerId: Id<"customers">) => {
+    const customer = customers?.find(c => c._id === customerId);
+    if (!customer) return;
+
+    setEditingId(customerId);
+    setFormData({
+      firstName: customer.firstName, lastName: customer.lastName,
+      email: customer.email || '', phone: customer.phone || '', secondaryPhone: customer.secondaryPhone || '',
+      company: customer.company || '',
+      propertyAddress: customer.propertyAddress, propertyCity: customer.propertyCity || '',
+      propertyState: customer.propertyState || 'FL', propertyZip: customer.propertyZip || '',
+      billingAddress: customer.billingAddress || '', billingCity: customer.billingCity || '',
+      billingState: customer.billingState || 'FL', billingZip: customer.billingZip || '',
+      source: customer.source || 'Website', referredBy: customer.referredBy || '',
+      customerType: customer.customerType || 'Residential',
+      preferredContactMethod: customer.preferredContactMethod || 'Phone',
+      tags: customer.tags || [], notes: customer.notes || '',
+    });
+    setFormTab(0);
+    setFormOpen(true);
+    setAnchorEl(null);
   };
 
-  const handleDelete = async (id: Id<"customers">) => {
-    if (confirm('Delete this customer?')) {
-      try {
-        await deleteCustomer({ id });
-        if (selectedId === id) { setDetailOpen(false); setSelectedId(null); }
-      } catch (error: any) {
-        alert(error.message || 'Failed to delete');
-      }
+  const handleDelete = async (customerId: Id<"customers">) => {
+    if (confirm('Delete this customer? This cannot be undone.')) {
+      await deleteCustomer({ customerId });
+      setAnchorEl(null);
     }
   };
 
   const handleSubmit = async () => {
     if (!formData.firstName || !formData.lastName || !formData.propertyAddress) {
-      alert('Please fill required fields');
+      alert('Please fill in required fields (First Name, Last Name, Property Address)');
       return;
     }
-    if (editingId) {
-      await updateCustomer({ id: editingId, ...formData });
-    } else {
-      await createCustomer(formData);
+
+    try {
+      if (editingId) {
+        await updateCustomer({ customerId: editingId, ...formData });
+      } else {
+        await createCustomer(formData);
+      }
+      setFormOpen(false);
+    } catch (error) {
+      console.error('Error saving customer:', error);
+      alert('Error saving customer');
     }
-    setFormOpen(false);
+  };
+
+  const toggleExpand = (customerId: Id<"customers">) => {
+    if (expandedCustomer === customerId) {
+      setExpandedCustomer(null);
+      setExpandedSection(null);
+    } else {
+      setExpandedCustomer(customerId);
+      setExpandedSection('details');
+    }
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, customerId: Id<"customers">) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setMenuCustomerId(customerId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setMenuCustomerId(null);
+  };
+
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName[0]}${lastName[0]}`.toUpperCase();
+  };
+
+  const getAvatarColor = (name: string) => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
+  const getCustomerProjects = (customerId: Id<"customers">) => {
+    return projects?.filter(p => p.customerId === customerId) || [];
+  };
+
+  const getTotalRevenue = (customerId: Id<"customers">) => {
+    const customerProjects = getCustomerProjects(customerId);
+    // This would calculate total from invoices/quotes when those are added
+    return customerProjects.length * 5000; // Placeholder
   };
 
   return (
-    <>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>Customers</Typography>
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>Customers</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {customers?.length || 0} total customers
+          </Typography>
+        </Box>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenForm}>
+          Add Customer
+        </Button>
       </Box>
 
-      <TextField fullWidth placeholder="Search customers..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} sx={{ mb: 3 }}
+      {/* Search */}
+      <TextField
+        fullWidth
+        placeholder="Search customers..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        sx={{ mb: 3 }}
         InputProps={{
-          startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
-          endAdornment: searchQuery && <InputAdornment position="end"><IconButton size="small" onClick={() => setSearchQuery('')}><CloseIcon /></IconButton></InputAdornment>,
-        }} />
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon />
+            </InputAdornment>
+          ),
+        }}
+      />
 
-      {customers === undefined ? (
-        <Box sx={{ textAlign: 'center', py: 8 }}><Typography color="text.secondary">Loading...</Typography></Box>
-      ) : filteredCustomers.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <PersonIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h6" gutterBottom>{searchQuery ? 'No customers found' : 'No customers yet'}</Typography>
-          {!searchQuery && <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>Add Customer</Button>}
-        </Box>
-      ) : (
-        <Grid container spacing={2}>
-          {filteredCustomers.map((customer) => {
-            const custProjects = projects?.filter(p => p.customerId === customer._id) || [];
-            const fullName = `${customer.firstName} ${customer.lastName}`;
-            return (
-              <Grid item xs={12} sm={6} md={4} key={customer._id}>
-                <Card sx={{ cursor: 'pointer', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}
-                  onClick={() => { setSelectedId(customer._id); setDetailOpen(true); setDetailTab(0); }}>
-                  <CardContent sx={{ pb: 1 }}>
-                    <Box sx={{ display: 'flex', mb: 2 }}>
-                      <Avatar sx={{ bgcolor: getAvatarColor(fullName), mr: 2, width: 56, height: 56, fontSize: '1.25rem', fontWeight: 600 }}>{getInitials(customer.firstName, customer.lastName)}</Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.5 }}>{fullName}</Typography>
-                        {customer.company && <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{customer.company}</Typography>}
-                        <Chip label={customer.customerType || 'Residential'} size="small" sx={{ bgcolor: '#007AFF', color: '#FFF', fontWeight: 500, height: 20, fontSize: '0.7rem' }} />
-                      </Box>
-                    </Box>
-                    <Divider sx={{ my: 2 }} />
-                    {customer.email && <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}><EmailIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} /><Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{customer.email}</Typography></Box>}
-                    {customer.phone && <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}><PhoneIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} /><Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{customer.phone}</Typography></Box>}
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}><HomeIcon sx={{ fontSize: 16, mr: 1, mt: 0.3, color: 'text.secondary' }} /><Typography variant="body2" sx={{ fontSize: '0.875rem', lineHeight: 1.4 }}>{customer.propertyAddress}</Typography></Box>
-                    <Divider sx={{ my: 2 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Box><Typography variant="caption" color="text.secondary">Projects</Typography><Typography variant="h6" sx={{ fontWeight: 600, color: '#007AFF' }}>{custProjects.length}</Typography></Box>
-                      {customer.source && <Box sx={{ textAlign: 'right' }}><Typography variant="caption" color="text.secondary">Source</Typography><Typography variant="body2" sx={{ fontWeight: 500 }}>{customer.source}</Typography></Box>}
-                    </Box>
-                    {customer.tags && customer.tags.length > 0 && (
-                      <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {customer.tags.slice(0, 3).map((tag, i) => <Chip key={i} label={tag} size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#2C2C2E' }} />)}
-                        {customer.tags.length > 3 && <Chip label={`+${customer.tags.length - 3}`} size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#2C2C2E' }} />}
-                      </Box>
+      {/* Customer Directory List */}
+      <Paper sx={{ bgcolor: '#1C1C1E', border: '1px solid #2C2C2E' }}>
+        {filteredCustomers?.map((customer) => {
+          const isExpanded = expandedCustomer === customer._id;
+          const customerProjects = getCustomerProjects(customer._id);
+          const totalRevenue = getTotalRevenue(customer._id);
+
+          return (
+            <Box key={customer._id} sx={{ borderBottom: '1px solid #2C2C2E', '&:last-child': { borderBottom: 'none' } }}>
+              {/* Customer Row */}
+              <ListItemButton
+                onClick={() => toggleExpand(customer._id)}
+                sx={{
+                  py: 2,
+                  px: 3,
+                  bgcolor: isExpanded ? '#2C2C2E' : 'transparent',
+                  '&:hover': { bgcolor: '#2C2C2E' },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+                  {/* Expand/Collapse Icon */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 24 }}>
+                    {isExpanded ? <FolderOpenIcon sx={{ color: '#007AFF' }} /> : <FolderIcon sx={{ color: 'text.secondary' }} />}
+                  </Box>
+
+                  {/* Avatar */}
+                  <Avatar
+                    sx={{
+                      bgcolor: getAvatarColor(`${customer.firstName} ${customer.lastName}`),
+                      width: 40,
+                      height: 40,
+                      fontSize: '0.875rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    {getInitials(customer.firstName, customer.lastName)}
+                  </Avatar>
+
+                  {/* Name and Company */}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.25 }}>
+                      {customer.firstName} {customer.lastName}
+                    </Typography>
+                    {customer.company && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        {customer.company}
+                      </Typography>
                     )}
-                  </CardContent>
-                  <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleEdit(customer._id); }}><EditIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDelete(customer._id); }}><DeleteIcon fontSize="small" /></IconButton>
-                  </CardActions>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
-      )}
+                  </Box>
 
-      <Fab color="primary" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleAdd}><AddIcon /></Fab>
+                  {/* Stats */}
+                  <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 3 }}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        Projects
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {customerProjects.length}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        Revenue
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
+                        ${(totalRevenue / 1000).toFixed(1)}k
+                      </Typography>
+                    </Box>
+                  </Box>
 
-      {/* FORM DIALOG - TABBED */}
+                  {/* Type Badge */}
+                  <Chip
+                    label={customer.customerType || 'Residential'}
+                    size="small"
+                    sx={{
+                      bgcolor: customer.customerType === 'Commercial' ? '#FF9500' : '#007AFF',
+                      color: '#FFF',
+                      fontWeight: 500,
+                      display: { xs: 'none', sm: 'flex' }
+                    }}
+                  />
+
+                  {/* Tags */}
+                  {customer.tags && customer.tags.length > 0 && (
+                    <Box sx={{ display: { xs: 'none', lg: 'flex' }, gap: 0.5 }}>
+                      {customer.tags.slice(0, 2).map((tag) => (
+                        <Chip
+                          key={tag}
+                          label={tag}
+                          size="small"
+                          sx={{ bgcolor: '#2C2C2E', fontSize: '0.75rem', height: 24 }}
+                        />
+                      ))}
+                      {customer.tags.length > 2 && (
+                        <Chip
+                          label={`+${customer.tags.length - 2}`}
+                          size="small"
+                          sx={{ bgcolor: '#2C2C2E', fontSize: '0.75rem', height: 24 }}
+                        />
+                      )}
+                    </Box>
+                  )}
+
+                  {/* Actions Menu */}
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleMenuOpen(e, customer._id)}
+                    sx={{ ml: 1 }}
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                </Box>
+              </ListItemButton>
+
+              {/* Expanded Content */}
+              <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                <Box sx={{ bgcolor: '#000', p: 3 }}>
+                  <Grid container spacing={3}>
+                    {/* Left Column - Navigation */}
+                    <Grid item xs={12} md={3}>
+                      <List sx={{ p: 0 }}>
+                        <ListItemButton
+                          selected={expandedSection === 'details'}
+                          onClick={() => setExpandedSection('details')}
+                          sx={{
+                            borderRadius: 1,
+                            mb: 0.5,
+                            '&.Mui-selected': { bgcolor: '#007AFF', '&:hover': { bgcolor: '#0051D5' } }
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 36 }}>
+                            <PersonIcon sx={{ color: expandedSection === 'details' ? '#FFF' : 'text.secondary' }} />
+                          </ListItemIcon>
+                          <ListItemText primary="Details" />
+                        </ListItemButton>
+
+                        <ListItemButton
+                          selected={expandedSection === 'map'}
+                          onClick={() => setExpandedSection('map')}
+                          sx={{
+                            borderRadius: 1,
+                            mb: 0.5,
+                            '&.Mui-selected': { bgcolor: '#007AFF', '&:hover': { bgcolor: '#0051D5' } }
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 36 }}>
+                            <MapIcon sx={{ color: expandedSection === 'map' ? '#FFF' : 'text.secondary' }} />
+                          </ListItemIcon>
+                          <ListItemText primary="Property Map" />
+                        </ListItemButton>
+
+                        <ListItemButton
+                          selected={expandedSection === 'projects'}
+                          onClick={() => setExpandedSection('projects')}
+                          sx={{
+                            borderRadius: 1,
+                            mb: 0.5,
+                            '&.Mui-selected': { bgcolor: '#007AFF', '&:hover': { bgcolor: '#0051D5' } }
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 36 }}>
+                            <AssignmentIcon sx={{ color: expandedSection === 'projects' ? '#FFF' : 'text.secondary' }} />
+                          </ListItemIcon>
+                          <ListItemText primary={`Projects (${customerProjects.length})`} />
+                        </ListItemButton>
+
+                        <ListItemButton
+                          selected={expandedSection === 'notes'}
+                          onClick={() => setExpandedSection('notes')}
+                          sx={{
+                            borderRadius: 1,
+                            '&.Mui-selected': { bgcolor: '#007AFF', '&:hover': { bgcolor: '#0051D5' } }
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 36 }}>
+                            <NoteIcon sx={{ color: expandedSection === 'notes' ? '#FFF' : 'text.secondary' }} />
+                          </ListItemIcon>
+                          <ListItemText primary="Notes" />
+                        </ListItemButton>
+                      </List>
+                    </Grid>
+
+                    {/* Right Column - Content */}
+                    <Grid item xs={12} md={9}>
+                      {/* Details Section */}
+                      {expandedSection === 'details' && (
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                            Contact Information
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6}>
+                              <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                  Email
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <EmailIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                  <Typography variant="body2">{customer.email || 'Not provided'}</Typography>
+                                </Box>
+                              </Paper>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                  Phone
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <PhoneIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                  <Typography variant="body2">{customer.phone || 'Not provided'}</Typography>
+                                </Box>
+                              </Paper>
+                            </Grid>
+                            {customer.secondaryPhone && (
+                              <Grid item xs={12} sm={6}>
+                                <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                    Secondary Phone
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <PhoneIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                    <Typography variant="body2">{customer.secondaryPhone}</Typography>
+                                  </Box>
+                                </Paper>
+                              </Grid>
+                            )}
+                          </Grid>
+
+                          <Typography variant="h6" sx={{ fontWeight: 600, mt: 3, mb: 2 }}>
+                            Addresses
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} md={6}>
+                              <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                  Property Address
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                  <HomeIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.3 }} />
+                                  <Box>
+                                    <Typography variant="body2">{customer.propertyAddress}</Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {customer.propertyCity && `${customer.propertyCity}, `}
+                                      {customer.propertyState} {customer.propertyZip}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              </Paper>
+                            </Grid>
+                            {customer.billingAddress && (
+                              <Grid item xs={12} md={6}>
+                                <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                    Billing Address
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                    <ReceiptIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.3 }} />
+                                    <Box>
+                                      <Typography variant="body2">{customer.billingAddress}</Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                        {customer.billingCity && `${customer.billingCity}, `}
+                                        {customer.billingState} {customer.billingZip}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                </Paper>
+                              </Grid>
+                            )}
+                          </Grid>
+
+                          <Typography variant="h6" sx={{ fontWeight: 600, mt: 3, mb: 2 }}>
+                            Customer Information
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                  Type
+                                </Typography>
+                                <Typography variant="body2">{customer.customerType || 'Residential'}</Typography>
+                              </Paper>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                  Source
+                                </Typography>
+                                <Typography variant="body2">{customer.source || 'N/A'}</Typography>
+                              </Paper>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                  Preferred Contact
+                                </Typography>
+                                <Typography variant="body2">{customer.preferredContactMethod || 'Phone'}</Typography>
+                              </Paper>
+                            </Grid>
+                            {customer.referredBy && (
+                              <Grid item xs={12} sm={6} md={3}>
+                                <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                    Referred By
+                                  </Typography>
+                                  <Typography variant="body2">{customer.referredBy}</Typography>
+                                </Paper>
+                              </Grid>
+                            )}
+                          </Grid>
+
+                          {customer.tags && customer.tags.length > 0 && (
+                            <Box sx={{ mt: 3 }}>
+                              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                                Tags
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                {customer.tags.map((tag) => (
+                                  <Chip
+                                    key={tag}
+                                    label={tag}
+                                    icon={<TagIcon />}
+                                    sx={{ bgcolor: '#2C2C2E' }}
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+
+                      {/* Map Section */}
+                      {expandedSection === 'map' && (
+                        <Box>
+                          <PropertyMapPreview
+                            address={customer.propertyAddress}
+                            city={customer.propertyCity}
+                            state={customer.propertyState}
+                            zip={customer.propertyZip}
+                          />
+                        </Box>
+                      )}
+
+                      {/* Projects Section */}
+                      {expandedSection === 'projects' && (
+                        <Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                              Projects ({customerProjects.length})
+                            </Typography>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              startIcon={<AddIcon />}
+                              onClick={() => {/* TODO: Create project for this customer */}}
+                            >
+                              New Project
+                            </Button>
+                          </Box>
+                          {customerProjects.length === 0 ? (
+                            <Paper sx={{ p: 4, textAlign: 'center', bgcolor: '#1C1C1E' }}>
+                              <AssignmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                              <Typography color="text.secondary">No projects yet</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Create a project to get started
+                              </Typography>
+                            </Paper>
+                          ) : (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              {customerProjects.map((project) => (
+                                <Paper key={project._id} sx={{ p: 2, bgcolor: '#1C1C1E', cursor: 'pointer', '&:hover': { bgcolor: '#2C2C2E' } }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <Box sx={{ flex: 1 }}>
+                                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                        {project.serviceType}
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                        {project.propertyAddress}
+                                      </Typography>
+                                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                        <Chip
+                                          label={project.status}
+                                          size="small"
+                                          sx={{
+                                            bgcolor: project.status === 'Work Order' ? '#34C759' : project.status === 'Proposal' ? '#FF9500' : '#007AFF',
+                                            color: '#FFF',
+                                            fontSize: '0.75rem',
+                                            height: 24
+                                          }}
+                                        />
+                                        {project.createdAt && (
+                                          <Typography variant="caption" color="text.secondary">
+                                            Created {new Date(project.createdAt).toLocaleDateString()}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </Box>
+                                    <IconButton size="small">
+                                      <MoreVertIcon />
+                                    </IconButton>
+                                  </Box>
+                                </Paper>
+                              ))}
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+
+                      {/* Notes Section */}
+                      {expandedSection === 'notes' && (
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                            Notes
+                          </Typography>
+                          {customer.notes ? (
+                            <Paper sx={{ p: 2, bgcolor: '#1C1C1E' }}>
+                              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                                {customer.notes}
+                              </Typography>
+                            </Paper>
+                          ) : (
+                            <Paper sx={{ p: 4, textAlign: 'center', bgcolor: '#1C1C1E' }}>
+                              <NoteIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                              <Typography color="text.secondary">No notes yet</Typography>
+                            </Paper>
+                          )}
+                        </Box>
+                      )}
+                    </Grid>
+                  </Grid>
+                </Box>
+              </Collapse>
+            </Box>
+          );
+        })}
+
+        {filteredCustomers?.length === 0 && (
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <PersonIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+            <Typography color="text.secondary">
+              {searchQuery ? 'No customers found' : 'No customers yet'}
+            </Typography>
+            {!searchQuery && (
+              <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenForm} sx={{ mt: 2 }}>
+                Add First Customer
+              </Button>
+            )}
+          </Box>
+        )}
+      </Paper>
+
+      {/* Actions Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => menuCustomerId && handleEdit(menuCustomerId)}>
+          <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Edit</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => menuCustomerId && handleDelete(menuCustomerId)} sx={{ color: 'error.main' }}>
+          <ListItemIcon><DeleteIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
+          <ListItemText>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* Add/Edit Customer Dialog */}
       <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { backgroundColor: '#1C1C1E', border: '1px solid #2C2C2E' } }}>
-        <DialogTitle>{editingId ? 'Edit Customer' : 'Add Customer'}</DialogTitle>
-        
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {editingId ? 'Edit Customer' : 'Add New Customer'}
+            </Typography>
+            <IconButton onClick={() => setFormOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
         <Tabs value={formTab} onChange={(_, v) => setFormTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
-          <Tab icon={<PersonIcon />} label="Contact" iconPosition="start" />
-          <Tab icon={<HomeIcon />} label="Addresses" iconPosition="start" />
-          <Tab icon={<TagIcon />} label="Details" iconPosition="start" />
+          <Tab label="Basic Info" />
+          <Tab label="Addresses" />
+          <Tab label="Details" />
         </Tabs>
-
-        <DialogContent sx={{ minHeight: 400 }}>
+        <DialogContent>
           <TabPanel value={formTab} index={0}>
             <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -263,13 +758,12 @@ function CustomersPageContent() {
             <Paper sx={{ p: 3, bgcolor: '#2C2C2E' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <ContactMailIcon sx={{ mr: 1, color: '#007AFF' }} />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Contact Methods</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Contact</Typography>
               </Box>
               <Grid container spacing={2}>
-                <Grid item xs={6}><TextField fullWidth type="email" label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></Grid>
-                <Grid item xs={6}><TextField fullWidth select label="Preferred Contact" value={formData.preferredContactMethod} onChange={(e) => setFormData({ ...formData, preferredContactMethod: e.target.value })}>{CONTACT_METHODS.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</TextField></Grid>
-                <Grid item xs={6}><TextField fullWidth label="Primary Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="(555) 555-5555" /></Grid>
-                <Grid item xs={6}><TextField fullWidth label="Secondary Phone" value={formData.secondaryPhone} onChange={(e) => setFormData({ ...formData, secondaryPhone: e.target.value })} placeholder="(555) 555-5555" /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></Grid>
+                <Grid item xs={6}><TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></Grid>
+                <Grid item xs={6}><TextField fullWidth label="Secondary Phone" value={formData.secondaryPhone} onChange={(e) => setFormData({ ...formData, secondaryPhone: e.target.value })} /></Grid>
               </Grid>
             </Paper>
           </TabPanel>
@@ -281,7 +775,30 @@ function CustomersPageContent() {
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Property Address</Typography>
               </Box>
               <Grid container spacing={2}>
-                <Grid item xs={12}><TextField fullWidth label="Street Address" value={formData.propertyAddress} onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })} required /></Grid>
+                <Grid item xs={12}>
+                  <AddressAutocomplete
+                    value={formData.propertyAddress}
+                    onChange={(address, details) => {
+                      setFormData({ ...formData, propertyAddress: address });
+                      if (details?.address_components) {
+                        const components = details.address_components;
+                        const city = components.find(c => c.types.includes('locality'))?.long_name || '';
+                        const state = components.find(c => c.types.includes('administrative_area_level_1'))?.short_name || '';
+                        const zip = components.find(c => c.types.includes('postal_code'))?.long_name || '';
+                        setFormData(prev => ({
+                          ...prev,
+                          propertyAddress: address,
+                          propertyCity: city || prev.propertyCity,
+                          propertyState: state || prev.propertyState,
+                          propertyZip: zip || prev.propertyZip,
+                        }));
+                      }
+                    }}
+                    label="Property Address"
+                    placeholder="Start typing street address..."
+                    required
+                  />
+                </Grid>
                 <Grid item xs={5}><TextField fullWidth label="City" value={formData.propertyCity} onChange={(e) => setFormData({ ...formData, propertyCity: e.target.value })} /></Grid>
                 <Grid item xs={3}><TextField fullWidth label="State" value={formData.propertyState} onChange={(e) => setFormData({ ...formData, propertyState: e.target.value })} /></Grid>
                 <Grid item xs={4}><TextField fullWidth label="ZIP" value={formData.propertyZip} onChange={(e) => setFormData({ ...formData, propertyZip: e.target.value })} /></Grid>
@@ -310,74 +827,87 @@ function CustomersPageContent() {
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Customer Details</Typography>
               </Box>
               <Grid container spacing={2}>
-                <Grid item xs={6}><TextField fullWidth select label="Customer Type" value={formData.customerType} onChange={(e) => setFormData({ ...formData, customerType: e.target.value })}>{CUSTOMER_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}</TextField></Grid>
-                <Grid item xs={6}><TextField fullWidth select label="Source" value={formData.source} onChange={(e) => setFormData({ ...formData, source: e.target.value })}>{CUSTOMER_SOURCES.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField></Grid>
-                {formData.source === 'Referral' && <Grid item xs={12}><TextField fullWidth label="Referred By" value={formData.referredBy} onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })} placeholder="Name of referrer" /></Grid>}
-                <Grid item xs={12}>
+                <Grid item xs={6}>
                   <FormControl fullWidth>
-                    <InputLabel>Tags</InputLabel>
-                    <Select multiple value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value })} input={<OutlinedInput label="Tags" />} renderValue={(sel) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{sel.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
-                      {AVAILABLE_TAGS.map(tag => <MenuItem key={tag} value={tag}><Checkbox checked={formData.tags.indexOf(tag) > -1} /><ListItemText primary={tag} /></MenuItem>)}
+                    <InputLabel>Customer Type</InputLabel>
+                    <Select value={formData.customerType} label="Customer Type" onChange={(e) => setFormData({ ...formData, customerType: e.target.value })}>
+                      {CUSTOMER_TYPES.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12}><TextField fullWidth multiline rows={4} label="Notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Additional notes about this customer..." /></Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Source</InputLabel>
+                    <Select value={formData.source} label="Source" onChange={(e) => setFormData({ ...formData, source: e.target.value })}>
+                      {CUSTOMER_SOURCES.map(source => <MenuItem key={source} value={source}>{source}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Preferred Contact Method</InputLabel>
+                    <Select value={formData.preferredContactMethod} label="Preferred Contact Method" onChange={(e) => setFormData({ ...formData, preferredContactMethod: e.target.value })}>
+                      {CONTACT_METHODS.map(method => <MenuItem key={method} value={method}>{method}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}><TextField fullWidth label="Referred By" value={formData.referredBy} onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })} /></Grid>
               </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <TagIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Tags</Typography>
+              </Box>
+              <FormControl fullWidth>
+                <InputLabel>Select Tags</InputLabel>
+                <Select
+                  multiple
+                  value={formData.tags}
+                  onChange={(e) => setFormData({ ...formData, tags: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value })}
+                  input={<OutlinedInput label="Select Tags" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (<Chip key={value} label={value} size="small" />))}
+                    </Box>
+                  )}
+                >
+                  {AVAILABLE_TAGS.map((tag) => (
+                    <MenuItem key={tag} value={tag}>
+                      <Checkbox checked={formData.tags.indexOf(tag) > -1} />
+                      <ListItemText primary={tag} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Paper>
+
+            <Paper sx={{ p: 3, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <NoteIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Notes</Typography>
+              </Box>
+              <TextField fullWidth multiline rows={4} label="Customer Notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Add any notes about this customer..." />
             </Paper>
           </TabPanel>
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setFormOpen(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={!formData.firstName || !formData.lastName || !formData.propertyAddress}>{editingId ? 'Save Changes' : 'Add Customer'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={!formData.firstName || !formData.lastName || !formData.propertyAddress}>
+            {editingId ? 'Save Changes' : 'Add Customer'}
+          </Button>
         </DialogActions>
       </Dialog>
-
-      {/* DETAIL DIALOG */}
-      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { backgroundColor: '#1C1C1E', border: '1px solid #2C2C2E' } }}>
-        {selectedCustomer && (
-          <>
-            <DialogTitle>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Avatar sx={{ bgcolor: getAvatarColor(`${selectedCustomer.firstName} ${selectedCustomer.lastName}`), width: 48, height: 48, fontSize: '1.25rem', fontWeight: 600 }}>{getInitials(selectedCustomer.firstName, selectedCustomer.lastName)}</Avatar>
-                <Box><Typography variant="h6" sx={{ fontWeight: 600 }}>{selectedCustomer.firstName} {selectedCustomer.lastName}</Typography>{selectedCustomer.company && <Typography variant="body2" color="text.secondary">{selectedCustomer.company}</Typography>}</Box>
-                <Chip label={selectedCustomer.customerType || 'Residential'} size="small" sx={{ bgcolor: '#007AFF', color: '#FFF', fontWeight: 500, ml: 'auto' }} />
-              </Box>
-            </DialogTitle>
-            <Tabs value={detailTab} onChange={(_, v) => setDetailTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}><Tab label="Details" /><Tab label="Projects" /><Tab label="Notes" /></Tabs>
-            <DialogContent>
-              <TabPanel value={detailTab} index={0}>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>Contact</Typography>
-                <List>
-                  {selectedCustomer.email && <ListItem><ListItemIcon><EmailIcon /></ListItemIcon><ListItemText primary="Email" secondary={selectedCustomer.email} /></ListItem>}
-                  {selectedCustomer.phone && <ListItem><ListItemIcon><PhoneIcon /></ListItemIcon><ListItemText primary="Phone" secondary={selectedCustomer.phone} /></ListItem>}
-                  {selectedCustomer.secondaryPhone && <ListItem><ListItemIcon><PhoneIcon /></ListItemIcon><ListItemText primary="Secondary" secondary={selectedCustomer.secondaryPhone} /></ListItem>}
-                </List>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>Addresses</Typography>
-                <List>
-                  <ListItem><ListItemIcon><HomeIcon /></ListItemIcon><ListItemText primary="Property" secondary={<>{selectedCustomer.propertyAddress}<br />{selectedCustomer.propertyCity && `${selectedCustomer.propertyCity}, `}{selectedCustomer.propertyState} {selectedCustomer.propertyZip}</>} /></ListItem>
-                  {selectedCustomer.billingAddress && <ListItem><ListItemIcon><ReceiptIcon /></ListItemIcon><ListItemText primary="Billing" secondary={<>{selectedCustomer.billingAddress}<br />{selectedCustomer.billingCity && `${selectedCustomer.billingCity}, `}{selectedCustomer.billingState} {selectedCustomer.billingZip}</>} /></ListItem>}
-                </List>
-              </TabPanel>
-              <TabPanel value={detailTab} index={1}>
-                {customerProjects.length === 0 ? <Box sx={{ textAlign: 'center', py: 4 }}><ReceiptIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} /><Typography color="text.secondary">No projects</Typography></Box> : <List>{customerProjects.map(p => <ListItem key={p._id} sx={{ bgcolor: '#2C2C2E', mb: 1, borderRadius: 1 }}><ListItemText primary={p.serviceType} secondary={<>{p.propertyAddress}<br />Status: {p.status}</>} /><Chip label={p.status} size="small" sx={{ bgcolor: '#007AFF', color: '#FFF' }} /></ListItem>)}</List>}
-              </TabPanel>
-              <TabPanel value={detailTab} index={2}>
-                {selectedCustomer.notes ? <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{selectedCustomer.notes}</Typography> : <Box sx={{ textAlign: 'center', py: 4 }}><Typography color="text.secondary">No notes</Typography></Box>}
-              </TabPanel>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDetailOpen(false)}>Close</Button>
-              <Button variant="contained" startIcon={<EditIcon />} onClick={() => { setDetailOpen(false); handleEdit(selectedCustomer._id); }}>Edit</Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
-    </>
+    </Box>
   );
 }
 
 export default function CustomersPage() {
-  return (<ConvexAuthGuard><CustomersPageContent /></ConvexAuthGuard>);
+  return (
+    <ConvexAuthGuard>
+      <CustomersPageContent />
+    </ConvexAuthGuard>
+  );
 }

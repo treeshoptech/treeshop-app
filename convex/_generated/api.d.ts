@@ -9,6 +9,7 @@
  */
 
 import type * as afissFactors from "../afissFactors.js";
+import type * as analytics from "../analytics.js";
 import type * as customers from "../customers.js";
 import type * as employees from "../employees.js";
 import type * as equipment from "../equipment.js";
@@ -18,6 +19,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lineItemTemplates from "../lineItemTemplates.js";
 import type * as lineItems from "../lineItems.js";
 import type * as loadouts from "../loadouts.js";
+import type * as maps from "../maps.js";
 import type * as organizationSettings from "../organizationSettings.js";
 import type * as organizations from "../organizations.js";
 import type * as projects from "../projects.js";
@@ -32,6 +34,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   afissFactors: typeof afissFactors;
+  analytics: typeof analytics;
   customers: typeof customers;
   employees: typeof employees;
   equipment: typeof equipment;
@@ -41,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   lineItemTemplates: typeof lineItemTemplates;
   lineItems: typeof lineItems;
   loadouts: typeof loadouts;
+  maps: typeof maps;
   organizationSettings: typeof organizationSettings;
   organizations: typeof organizations;
   projects: typeof projects;
