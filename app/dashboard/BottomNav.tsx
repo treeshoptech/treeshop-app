@@ -19,9 +19,9 @@ export function BottomNav() {
 
   const navItems = [
     { label: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { label: 'Equipment', icon: <ConstructionIcon />, path: '/dashboard/equipment' },
+    { label: 'Leads', icon: <DescriptionIcon />, path: '/dashboard/leads' },
     { label: 'Customers', icon: <PeopleIcon />, path: '/dashboard/customers' },
-    { label: 'Projects', icon: <DescriptionIcon />, path: '/dashboard/projects' },
+    { label: 'Equipment', icon: <ConstructionIcon />, path: '/dashboard/equipment' },
   ];
 
   // Find current value based on pathname

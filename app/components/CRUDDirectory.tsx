@@ -36,6 +36,12 @@ export interface CRUDItem {
   metadata?: Record<string, any>;
 }
 
+interface CustomAction<T extends CRUDItem> {
+  label: string;
+  onClick: (item: T) => void;
+  color?: 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
+}
+
 interface CRUDDirectoryProps<T extends CRUDItem> {
   title: string;
   items: T[];
@@ -47,6 +53,7 @@ interface CRUDDirectoryProps<T extends CRUDItem> {
   searchPlaceholder?: string;
   emptyMessage?: string;
   statusColors?: Record<string, string>;
+  customActions?: CustomAction<T>[];
 }
 
 export function CRUDDirectory<T extends CRUDItem>({
@@ -64,6 +71,7 @@ export function CRUDDirectory<T extends CRUDItem>({
     inactive: '#8E8E93',
     pending: '#FF9500',
   },
+  customActions = [],
 }: CRUDDirectoryProps<T>) {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -189,6 +197,24 @@ export function CRUDDirectory<T extends CRUDItem>({
 
                       {/* Action Buttons - Right aligned for thumb */}
                       <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
+                        {customActions.map((action, index) => (
+                          <IconButton
+                            key={index}
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              action.onClick(item);
+                            }}
+                            sx={{
+                              color: action.color === 'error' ? '#FF3B30' : '#007AFF',
+                              '&:hover': {
+                                backgroundColor: action.color === 'error' ? '#FF3B3020' : '#007AFF20',
+                              },
+                            }}
+                          >
+                            <MoreIcon fontSize="small" />
+                          </IconButton>
+                        ))}
                         <IconButton
                           size="small"
                           onClick={(e) => {

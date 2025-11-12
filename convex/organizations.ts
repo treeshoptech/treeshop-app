@@ -44,6 +44,42 @@ export const update = mutation({
 });
 
 /**
+ * Public mutation to sync organization from client
+ * Use this to ensure your organization exists in Convex
+ */
+export const sync = mutation({
+  args: {
+    clerkOrgId: v.string(),
+    name: v.string(),
+    slug: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Check if organization already exists
+    const existing = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org_id", (q) => q.eq("clerkOrgId", args.clerkOrgId))
+      .first();
+
+    if (existing) {
+      // Update existing organization
+      await ctx.db.patch(existing._id, {
+        name: args.name,
+        slug: args.slug,
+      });
+      return existing._id;
+    }
+
+    // Create new organization
+    return await ctx.db.insert("organizations", {
+      clerkOrgId: args.clerkOrgId,
+      name: args.name,
+      slug: args.slug,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/**
  * Internal mutation to sync organization from Clerk webhook
  * This is called when a new organization is created in Clerk
  */

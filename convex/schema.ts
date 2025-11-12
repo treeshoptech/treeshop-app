@@ -28,23 +28,54 @@ export default defineSchema({
   // Equipment
   equipment: defineTable({
     organizationId: v.id("organizations"),
-    name: v.string(),
-    category: v.string(), // "Truck", "Mulcher", "Stump Grinder", "Excavator", "Trailer", "Support"
+    // Identity
+    nickname: v.optional(v.string()),
+    year: v.number(),
+    make: v.string(),
+    model: v.string(),
+    serialNumber: v.optional(v.string()),
+    vin: v.optional(v.string()),
+    licensePlate: v.optional(v.string()),
+    equipmentType: v.optional(v.string()), // Carrier, Attachment, Support Equipment, Tool
+    equipmentSubtype: v.optional(v.string()), // Forestry Mulcher, Skid Steer, etc
+    // Acquisition & Financial
     purchasePrice: v.number(),
-    usefulLifeYears: v.number(),
-    annualHours: v.number(),
+    purchaseDate: v.optional(v.number()),
+    dealer: v.optional(v.string()),
+    purchaseOrderNumber: v.optional(v.string()),
+    loanTermMonths: v.optional(v.number()),
     financeRate: v.optional(v.number()),
-    insuranceCostPerYear: v.optional(v.number()),
-    registrationCostPerYear: v.optional(v.number()),
-    fuelGallonsPerHour: v.number(),
-    fuelPricePerGallon: v.number(),
-    maintenanceCostPerYear: v.number(),
-    repairCostPerYear: v.number(),
-    // Calculated fields
-    ownershipCostPerHour: v.number(),
-    operatingCostPerHour: v.number(),
-    totalCostPerHour: v.number(),
-    status: v.string(), // "Active", "Maintenance", "Retired"
+    depreciationMethod: v.optional(v.string()),
+    usefulLifeYears: v.number(),
+    salvageValue: v.optional(v.number()),
+    insurancePolicyNumber: v.optional(v.string()),
+    insuranceCost: v.optional(v.number()),
+    registrationCost: v.optional(v.number()),
+    // Cost Structure
+    fuelType: v.optional(v.string()),
+    fuelConsumptionGPH: v.optional(v.number()),
+    fuelPricePerGallon: v.optional(v.number()),
+    maintenanceCostAnnual: v.optional(v.number()),
+    repairCostAnnual: v.optional(v.number()),
+    annualHours: v.number(),
+    // Operations
+    engineHP: v.optional(v.number()),
+    operatingWeight: v.optional(v.number()),
+    cuttingWidth: v.optional(v.number()),
+    maxCuttingDiameter: v.optional(v.number()),
+    fuelTankCapacity: v.optional(v.number()),
+    productivityRate: v.optional(v.number()), // Points per Hour (PpH)
+    // Status & Tracking
+    currentMeterReading: v.optional(v.number()),
+    status: v.string(), // Available, In Use, Maintenance, Down, Retired
+    currentLocation: v.optional(v.string()),
+    assignedOperator: v.optional(v.string()),
+    // Maintenance
+    serviceInterval: v.optional(v.number()),
+    lastServiceDate: v.optional(v.number()),
+    lastServiceHours: v.optional(v.number()),
+    // Other
+    notes: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_organization", ["organizationId"])
@@ -95,23 +126,45 @@ export default defineSchema({
   // Customers
   customers: defineTable({
     organizationId: v.id("organizations"),
-    name: v.string(),
+    // Contact Information
+    firstName: v.string(),
+    lastName: v.string(),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    secondaryPhone: v.optional(v.string()),
     company: v.optional(v.string()),
+    // Property Address (Primary)
     propertyAddress: v.string(),
+    propertyCity: v.optional(v.string()),
+    propertyState: v.optional(v.string()),
+    propertyZip: v.optional(v.string()),
     coordinates: v.optional(
       v.object({
         lat: v.number(),
         lng: v.number(),
       })
     ),
+    // Billing Address (if different)
+    billingAddress: v.optional(v.string()),
+    billingCity: v.optional(v.string()),
+    billingState: v.optional(v.string()),
+    billingZip: v.optional(v.string()),
+    // Additional Details
+    source: v.optional(v.string()), // "Referral", "Website", "Google", "Repeat", "Other"
+    referredBy: v.optional(v.string()),
+    customerType: v.optional(v.string()), // "Residential", "Commercial", "Municipal", "HOA"
+    preferredContactMethod: v.optional(v.string()), // "Phone", "Email", "Text"
+    tags: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
+    // Stats
+    totalProjects: v.optional(v.number()),
+    totalRevenue: v.optional(v.number()),
+    lastProjectDate: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_organization", ["organizationId"])
     .searchIndex("search_customers", {
-      searchField: "name",
+      searchField: "lastName",
       filterFields: ["organizationId"],
     }),
 

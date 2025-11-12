@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth, useOrganization } from '@clerk/nextjs';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Box, CircularProgress, Typography } from '@mui/material';
 
 interface ConvexAuthGuardProps {
@@ -16,23 +18,32 @@ interface ConvexAuthGuardProps {
 export function ConvexAuthGuard({ children }: ConvexAuthGuardProps) {
   const { isLoaded: authLoaded, isSignedIn, orgId } = useAuth();
   const { organization, isLoaded: orgLoaded } = useOrganization();
+  const syncOrganization = useMutation(api.organizations.sync);
   const [authReady, setAuthReady] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    // Reset authReady when auth state changes
-    setAuthReady(false);
-
     // Wait for both auth and organization to be fully loaded
-    if (authLoaded && orgLoaded && isSignedIn && organization && orgId) {
-      // Delay to ensure JWT token has fully propagated to Convex
-      // Need longer delay for JWT to update with org context
-      const timer = setTimeout(() => {
+    if (authLoaded && orgLoaded && isSignedIn && organization && orgId && !authReady && !syncing) {
+      // Sync organization to Convex
+      const syncAndReady = async () => {
+        setSyncing(true);
+        try {
+          await syncOrganization({
+            clerkOrgId: organization.id,
+            name: organization.name,
+            slug: organization.slug || undefined,
+          });
+        } catch (error) {
+          console.error('Failed to sync organization:', error);
+        }
+        setSyncing(false);
         setAuthReady(true);
-      }, 500);
+      };
 
-      return () => clearTimeout(timer);
+      syncAndReady();
     }
-  }, [authLoaded, orgLoaded, isSignedIn, orgId, organization]);
+  }, [authLoaded, orgLoaded, isSignedIn, orgId, organization?.id, syncOrganization, authReady, syncing]);
 
   // Still loading auth state
   if (!authLoaded || !orgLoaded || !authReady) {

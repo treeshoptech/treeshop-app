@@ -37,19 +37,54 @@ export const get = query({
 // Create new equipment
 export const create = mutation({
   args: {
-    name: v.string(),
-    category: v.string(),
+    // Identity
+    nickname: v.optional(v.string()),
+    year: v.number(),
+    make: v.string(),
+    model: v.string(),
+    serialNumber: v.optional(v.string()),
+    vin: v.optional(v.string()),
+    licensePlate: v.optional(v.string()),
+    equipmentType: v.optional(v.string()),
+    equipmentSubtype: v.optional(v.string()),
+    // Acquisition
     purchasePrice: v.number(),
-    usefulLifeYears: v.number(),
-    annualHours: v.number(),
+    purchaseDate: v.optional(v.number()),
+    dealer: v.optional(v.string()),
+    purchaseOrderNumber: v.optional(v.string()),
+    loanTermMonths: v.optional(v.number()),
     financeRate: v.optional(v.number()),
+    depreciationMethod: v.optional(v.string()),
+    usefulLifeYears: v.number(),
+    salvageValue: v.optional(v.number()),
+    insurancePolicyNumber: v.optional(v.string()),
     insuranceCost: v.optional(v.number()),
     registrationCost: v.optional(v.number()),
+    // Cost
+    fuelType: v.optional(v.string()),
     fuelConsumptionGPH: v.optional(v.number()),
     fuelPricePerGallon: v.optional(v.number()),
     maintenanceCostAnnual: v.optional(v.number()),
     repairCostAnnual: v.optional(v.number()),
+    annualHours: v.number(),
+    // Operations
+    engineHP: v.optional(v.number()),
+    operatingWeight: v.optional(v.number()),
+    cuttingWidth: v.optional(v.number()),
+    maxCuttingDiameter: v.optional(v.number()),
+    fuelTankCapacity: v.optional(v.number()),
+    productivityRate: v.optional(v.number()),
+    // Status
+    currentMeterReading: v.optional(v.number()),
     status: v.string(),
+    currentLocation: v.optional(v.string()),
+    assignedOperator: v.optional(v.string()),
+    // Maintenance
+    serviceInterval: v.optional(v.number()),
+    lastServiceDate: v.optional(v.number()),
+    lastServiceHours: v.optional(v.number()),
+    // Other
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Only admins can create equipment
@@ -68,19 +103,54 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("equipment"),
-    name: v.optional(v.string()),
-    category: v.optional(v.string()),
+    // Identity
+    nickname: v.optional(v.string()),
+    year: v.optional(v.number()),
+    make: v.optional(v.string()),
+    model: v.optional(v.string()),
+    serialNumber: v.optional(v.string()),
+    vin: v.optional(v.string()),
+    licensePlate: v.optional(v.string()),
+    equipmentType: v.optional(v.string()),
+    equipmentSubtype: v.optional(v.string()),
+    // Acquisition
     purchasePrice: v.optional(v.number()),
-    usefulLifeYears: v.optional(v.number()),
-    annualHours: v.optional(v.number()),
+    purchaseDate: v.optional(v.number()),
+    dealer: v.optional(v.string()),
+    purchaseOrderNumber: v.optional(v.string()),
+    loanTermMonths: v.optional(v.number()),
     financeRate: v.optional(v.number()),
+    depreciationMethod: v.optional(v.string()),
+    usefulLifeYears: v.optional(v.number()),
+    salvageValue: v.optional(v.number()),
+    insurancePolicyNumber: v.optional(v.string()),
     insuranceCost: v.optional(v.number()),
     registrationCost: v.optional(v.number()),
+    // Cost
+    fuelType: v.optional(v.string()),
     fuelConsumptionGPH: v.optional(v.number()),
     fuelPricePerGallon: v.optional(v.number()),
     maintenanceCostAnnual: v.optional(v.number()),
     repairCostAnnual: v.optional(v.number()),
+    annualHours: v.optional(v.number()),
+    // Operations
+    engineHP: v.optional(v.number()),
+    operatingWeight: v.optional(v.number()),
+    cuttingWidth: v.optional(v.number()),
+    maxCuttingDiameter: v.optional(v.number()),
+    fuelTankCapacity: v.optional(v.number()),
+    productivityRate: v.optional(v.number()),
+    // Status
+    currentMeterReading: v.optional(v.number()),
     status: v.optional(v.string()),
+    currentLocation: v.optional(v.string()),
+    assignedOperator: v.optional(v.string()),
+    // Maintenance
+    serviceInterval: v.optional(v.number()),
+    lastServiceDate: v.optional(v.number()),
+    lastServiceHours: v.optional(v.number()),
+    // Other
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);

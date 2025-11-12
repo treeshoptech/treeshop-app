@@ -11,7 +11,6 @@ import {
 } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 import Image from 'next/image';
-import { BottomNav } from './BottomNav';
 import { RightSideNav } from './RightSideNav';
 
 export default function DashboardLayout({
@@ -91,22 +90,19 @@ export default function DashboardLayout({
         </Toolbar>
       </AppBar>
 
-      {/* Main Content - Bottom padding for navigation */}
+      {/* Main Content */}
       <Container
         maxWidth="lg"
         sx={{
           mt: 2,
-          mb: 10, // Space for bottom nav
+          mb: 2,
           px: { xs: 2, sm: 3 }
         }}
       >
         {children}
       </Container>
 
-      {/* Bottom Navigation - Mobile First, Right Thumb Optimized */}
-      <BottomNav />
-
-      {/* Right Side Navigation - Settings Menu */}
+      {/* Right Side Navigation */}
       <RightSideNav open={rightNavOpen} onClose={() => setRightNavOpen(false)} />
     </>
   );
