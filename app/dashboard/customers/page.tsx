@@ -66,8 +66,9 @@ import {
   Folder as FolderIcon,
   FolderOpen as FolderOpenIcon,
 } from '@mui/icons-material';
-import { AddressAutocomplete } from '@/app/components/customers/AddressAutocomplete';
-import { PropertyMapPreview } from '@/app/components/customers/PropertyMapPreview';
+// Google Maps components temporarily removed - causing production errors
+// import { AddressAutocomplete } from '@/app/components/customers/AddressAutocomplete';
+// import { PropertyMapPreview } from '@/app/components/customers/PropertyMapPreview';
 
 const CUSTOMER_SOURCES = ['Referral', 'Website', 'Google Search', 'Social Media', 'Repeat Customer', 'Door Hanger', 'Yard Sign', 'Vehicle Wrap', 'Other'];
 const CUSTOMER_TYPES = ['Residential', 'Commercial', 'Municipal', 'HOA', 'Property Management', 'Real Estate'];
@@ -591,12 +592,16 @@ function CustomersPageContent() {
                       {/* Map Section */}
                       {expandedSection === 'map' && (
                         <Box>
-                          <PropertyMapPreview
-                            address={customer.propertyAddress}
-                            city={customer.propertyCity}
-                            state={customer.propertyState}
-                            zip={customer.propertyZip}
-                          />
+                          <Card>
+                            <Box sx={{ p: 3, textAlign: 'center' }}>
+                              <Typography variant="body1" color="text.secondary">
+                                Property maps feature coming soon
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                {customer.propertyAddress}, {customer.propertyCity}, {customer.propertyState} {customer.propertyZip}
+                              </Typography>
+                            </Box>
+                          </Card>
                         </Box>
                       )}
 
@@ -776,27 +781,13 @@ function CustomersPageContent() {
               </Box>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <AddressAutocomplete
-                    value={formData.propertyAddress}
-                    onChange={(address, details) => {
-                      setFormData({ ...formData, propertyAddress: address });
-                      if (details?.address_components) {
-                        const components = details.address_components;
-                        const city = components.find(c => c.types.includes('locality'))?.long_name || '';
-                        const state = components.find(c => c.types.includes('administrative_area_level_1'))?.short_name || '';
-                        const zip = components.find(c => c.types.includes('postal_code'))?.long_name || '';
-                        setFormData(prev => ({
-                          ...prev,
-                          propertyAddress: address,
-                          propertyCity: city || prev.propertyCity,
-                          propertyState: state || prev.propertyState,
-                          propertyZip: zip || prev.propertyZip,
-                        }));
-                      }
-                    }}
+                  <TextField
                     label="Property Address"
-                    placeholder="Start typing street address..."
+                    value={formData.propertyAddress}
+                    onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
+                    fullWidth
                     required
+                    placeholder="123 Main St"
                   />
                 </Grid>
                 <Grid item xs={5}><TextField fullWidth label="City" value={formData.propertyCity} onChange={(e) => setFormData({ ...formData, propertyCity: e.target.value })} /></Grid>
