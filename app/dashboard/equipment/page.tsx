@@ -45,6 +45,26 @@ export default function EquipmentPage() {
   const updateEquipment = useMutation(api.equipment.update);
   const deleteEquipment = useMutation(api.equipment.remove);
 
+  // Handle authentication/organization errors
+  if (equipment === undefined) {
+    // Still loading, show loading state
+  } else if (equipment instanceof Error) {
+    // Error occurred - likely auth issue
+    return (
+      <Box sx={{ textAlign: 'center', py: 8 }}>
+        <Typography variant="h6" color="error" gutterBottom>
+          Authentication Error
+        </Typography>
+        <Typography color="text.secondary">
+          Please make sure you're signed in and have selected an organization.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          See CONVEX_AUTH_FIX.md for setup instructions.
+        </Typography>
+      </Box>
+    );
+  }
+
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<Id<"equipment"> | null>(null);
   const [formData, setFormData] = useState({
