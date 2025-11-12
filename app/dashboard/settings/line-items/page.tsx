@@ -72,13 +72,6 @@ const AFISS_CATEGORIES = [
   "Safety",
 ];
 
-interface AFISSPreset {
-  name: string;
-  category: string;
-  factor: string;
-  impact: number;
-}
-
 export default function LineItemsLibraryPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [formOpen, setFormOpen] = useState(false);
@@ -112,13 +105,11 @@ export default function LineItemsLibraryPage() {
     notes: "",
   });
 
-  const [afissPresets, setAfissPresets] = useState<AFISSPreset[]>([]);
-  const [newAfissPreset, setNewAfissPreset] = useState<AFISSPreset>({
-    name: "",
-    category: "Access",
-    factor: "",
-    impact: 0,
-  });
+  // Fetch AFISS factors from server
+  const afissFactors = useQuery(api.afissFactors.listFactors);
+
+  // Selected AFISS factor IDs for this template
+  const [selectedAfissFactors, setSelectedAfissFactors] = useState<string[]>([]);
 
   const handleOpenForm = (template?: any) => {
     if (template) {

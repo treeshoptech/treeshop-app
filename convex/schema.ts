@@ -522,13 +522,8 @@ export default defineSchema({
     costPerUnit: v.optional(v.number()),
     defaultMargin: v.optional(v.number()),
 
-    // AFISS Presets (saved complexity factors for this type of work)
-    afissPresets: v.optional(v.array(v.object({
-      name: v.string(),
-      category: v.string(),
-      factor: v.string(),
-      impact: v.number(), // percentage multiplier
-    }))),
+    // AFISS Factor IDs (selected complexity factors - percentages calculated server-side)
+    afissFactorIds: v.optional(v.array(v.string())),
 
     // Metadata
     usageCount: v.optional(v.number()),
