@@ -132,9 +132,8 @@ function EquipmentPageContent() {
   };
 
   return (
-    <ConvexAuthGuard>
-      <>
-        <CRUDDirectory
+    <>
+      <CRUDDirectory
         title="Equipment"
         items={equipmentItems}
         loading={equipment === undefined}
@@ -333,7 +332,7 @@ function EquipmentPageContent() {
           </Button>
         </DialogActions>
       </Dialog>
-      </>
+    </>
   );
 }
 
