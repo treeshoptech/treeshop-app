@@ -91,6 +91,8 @@ export default function LineItemsLibraryPage() {
   const createTemplate = useMutation(api.lineItemTemplates.create);
   const updateTemplate = useMutation(api.lineItemTemplates.update);
   const deleteTemplate = useMutation(api.lineItemTemplates.remove);
+  const seedDefaults = useMutation(api.seedDefaultLineItemTemplates.seedDefaults);
+  const resetDefaults = useMutation(api.seedDefaultLineItemTemplates.resetDefaults);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -188,6 +190,22 @@ export default function LineItemsLibraryPage() {
     }
   };
 
+  const handleSeedDefaults = async () => {
+    if (confirm("Create default TreeShop enhanced line item templates for the five core service types?")) {
+      try {
+        await seedDefaults();
+      } catch (error: any) {
+        if (error.message?.includes("already exist")) {
+          if (confirm("Default templates already exist. Do you want to reset and recreate them? This will delete all existing templates.")) {
+            await resetDefaults();
+          }
+        } else {
+          console.error("Error seeding defaults:", error);
+        }
+      }
+    }
+  };
+
   const stats = {
     total: allTemplates?.length || 0,
     byCategory: CATEGORIES.map((cat) => ({
@@ -209,14 +227,25 @@ export default function LineItemsLibraryPage() {
               Reusable line items with pricing and AFISS complexity presets
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenForm()}
-            size="large"
-          >
-            New Template
-          </Button>
+          <Stack direction="row" spacing={2}>
+            {(allTemplates?.length || 0) === 0 && (
+              <Button
+                variant="outlined"
+                onClick={handleSeedDefaults}
+                size="large"
+              >
+                Create Default Templates
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenForm()}
+              size="large"
+            >
+              New Template
+            </Button>
+          </Stack>
         </Box>
 
         {/* Stats */}
