@@ -36,8 +36,8 @@ export default async function Home() {
             <Image
               src="/treeshop-logo.png"
               alt="TreeShop"
-              width={240}
-              height={80}
+              width={320}
+              height={107}
               style={{ objectFit: 'contain' }}
               priority
             />
@@ -77,7 +77,7 @@ export default async function Home() {
         bgcolor: 'background.default',
         pt: 18,
         pb: 14,
-        background: 'linear-gradient(135deg, rgba(0, 122, 255, 0.05) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 122, 255, 0.05) 100%)'
+        background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.03) 0%, rgba(255, 255, 255, 0) 40%, rgba(144, 202, 249, 0.04) 100%)'
       }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
