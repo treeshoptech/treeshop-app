@@ -103,7 +103,7 @@ export default function NewProposalPage() {
       profit: (template.defaultUnitPrice - (template.costPerUnit || 0)) * (template.defaultQuantity || 1),
       marginPercent: template.defaultMargin || 0,
       totalEstimatedHours: (template.defaultQuantity || 1) / 1, // Placeholder
-      afissFactors: template.afissPresets || [],
+      afissFactorIds: template.afissFactorIds || [], // Store factor IDs
     };
 
     setLineItems([...lineItems, lineItem]);
@@ -541,9 +541,9 @@ export default function NewProposalPage() {
                         }).format(template.defaultUnitPrice)}
                       </TableCell>
                       <TableCell>
-                        {template.afissPresets && template.afissPresets.length > 0 ? (
+                        {template.afissFactorIds && template.afissFactorIds.length > 0 ? (
                           <Chip
-                            label={`${template.afissPresets.length} presets`}
+                            label={`${template.afissFactorIds.length} factors`}
                             size="small"
                             color="primary"
                           />
