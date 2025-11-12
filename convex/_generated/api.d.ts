@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as equipment from "../equipment.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as organizations from "../organizations.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  equipment: typeof equipment;
   "lib/auth": typeof lib_auth;
   organizations: typeof organizations;
 }>;
