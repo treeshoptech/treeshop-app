@@ -41,7 +41,7 @@ export default function DashboardPage() {
 
       {/* Top Row: Key Financial Metrics */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} lg={3}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Total Revenue"
             value={metrics.totalRevenue}
