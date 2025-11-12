@@ -81,7 +81,7 @@ export default function CalculatorsPage() {
               </MenuItem>
               {loadouts?.map((loadout) => (
                 <MenuItem key={loadout._id} value={loadout._id}>
-                  {loadout.name} - {loadout.productionRatePPH} PPH
+                  {loadout.name} - {loadout.productionRate} PPH
                 </MenuItem>
               ))}
             </Select>
