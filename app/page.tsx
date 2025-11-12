@@ -11,7 +11,12 @@ import {
   Toolbar,
   Stack,
   Link,
+  Card,
+  Grid,
 } from '@mui/material';
+import {
+  CheckCircle as CheckIcon,
+} from '@mui/icons-material';
 
 export default async function Home() {
   // Redirect logged-in users directly to dashboard
@@ -21,46 +26,61 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
-  // Show marketing landing page only for logged-out users
+  // Landing page for logged-out users
   return (
     <>
-      {/* Navigation */}
+      {/* Navigation - Standard login position top-right */}
       <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
         <Toolbar>
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
             <Image
               src="/treeshop-logo.png"
               alt="TreeShop"
-              width={220}
+              width={240}
               height={80}
               style={{ objectFit: 'contain' }}
               priority
             />
           </Box>
           <Stack direction="row" spacing={2}>
+            <SignInButton mode="modal">
+              <Button
+                variant="text"
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  color: 'text.primary',
+                  '&:hover': {
+                    bgcolor: 'action.hover'
+                  }
+                }}
+              >
+                Sign In
+              </Button>
+            </SignInButton>
             <Link
               href="https://treeshop.app/tech"
               target="_blank"
               rel="noopener noreferrer"
               sx={{ textDecoration: 'none' }}
             >
-              <Button variant="outlined" color="primary" sx={{ textTransform: 'none', fontWeight: 600 }}>
+              <Button variant="contained" color="primary" sx={{ textTransform: 'none', fontWeight: 600 }}>
                 Apply for Access
               </Button>
             </Link>
-            <SignInButton mode="modal">
-              <Button variant="contained" color="primary" sx={{ textTransform: 'none', fontWeight: 600 }}>
-                Sign In
-              </Button>
-            </SignInButton>
           </Stack>
         </Toolbar>
       </AppBar>
 
-      {/* Hero Section */}
-      <Box sx={{ bgcolor: 'background.default', pt: 16, pb: 12 }}>
+      {/* Hero Section - Outcome-focused headline */}
+      <Box sx={{
+        bgcolor: 'background.default',
+        pt: 18,
+        pb: 14,
+        background: 'linear-gradient(135deg, rgba(0, 122, 255, 0.05) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 122, 255, 0.05) 100%)'
+      }}>
         <Container maxWidth="lg">
-          <Box sx={{ textAlign: 'center', mb: 8 }}>
+          <Box sx={{ textAlign: 'center', mb: 6 }}>
             <Typography
               variant="h1"
               component="h1"
@@ -68,43 +88,42 @@ export default async function Home() {
               sx={{
                 fontSize: { xs: '2.5rem', md: '4.5rem' },
                 fontWeight: 800,
-                mb: 4,
+                mb: 3,
                 lineHeight: 1.1,
               }}
             >
-              TreeShopOS
+              Stop Estimating. Start Knowing.
             </Typography>
             <Typography
               variant="h3"
               component="h2"
               color="text.secondary"
               sx={{
-                mb: 6,
-                fontSize: { xs: '1.5rem', md: '2.25rem' },
-                fontWeight: 500,
-                maxWidth: '1000px',
+                mb: 4,
+                fontSize: { xs: '1.35rem', md: '1.75rem' },
+                fontWeight: 400,
+                maxWidth: '900px',
                 mx: 'auto',
-                lineHeight: 1.4,
+                lineHeight: 1.5,
               }}
             >
-              Shift Control Back to Business Owners.
+              Transform project uncertainty into mathematical precision.
               <br />
-              Deliver Real Value to Clients.
+              Protect profits. Eliminate surprises.
             </Typography>
             <Typography
               variant="h6"
               color="text.secondary"
               sx={{
-                mb: 8,
-                maxWidth: '800px',
+                mb: 6,
+                maxWidth: '750px',
                 mx: 'auto',
-                fontSize: { xs: '1.1rem', md: '1.35rem' },
-                lineHeight: 1.6,
+                fontSize: { xs: '1.1rem', md: '1.25rem' },
+                lineHeight: 1.7,
               }}
             >
-              Replace overpriced, overleveraged "professionals" with systems that work.
-              <br />
-              Help everyone operate in their lane of business successfully.
+              Your experience + Our algorithms = Unbeatable accuracy.
+              Know if a project is profitable before you finish it, not after you've lost money.
             </Typography>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} justifyContent="center">
@@ -120,10 +139,16 @@ export default async function Home() {
                   sx={{
                     px: 8,
                     py: 2.5,
-                    fontSize: '1.35rem',
+                    fontSize: '1.25rem',
                     fontWeight: 700,
                     textTransform: 'none',
                     borderRadius: 2,
+                    boxShadow: 3,
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: 6,
+                    }
                   }}
                 >
                   Apply for Access
@@ -136,10 +161,14 @@ export default async function Home() {
                   sx={{
                     px: 8,
                     py: 2.5,
-                    fontSize: '1.35rem',
+                    fontSize: '1.25rem',
                     fontWeight: 700,
                     textTransform: 'none',
                     borderRadius: 2,
+                    borderWidth: 2,
+                    '&:hover': {
+                      borderWidth: 2,
+                    }
                   }}
                 >
                   Sign In
@@ -150,92 +179,207 @@ export default async function Home() {
         </Container>
       </Box>
 
-      {/* Mission Section */}
-      <Box sx={{ py: 12, bgcolor: 'grey.900', color: 'white' }}>
-        <Container maxWidth="md">
-          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 6 }}>
-            The Problem Is Simple
-          </Typography>
-
-          <Typography variant="h5" align="center" sx={{ mb: 6, lineHeight: 1.8, fontWeight: 400, color: 'grey.300' }}>
-            Tree service business owners are losing control of their operations to expensive consultants,
-            complicated software they don't understand, and systems built by people who've never run equipment.
-          </Typography>
-
-          <Typography variant="h5" align="center" sx={{ lineHeight: 1.8, fontWeight: 400, color: 'grey.300' }}>
-            Clients are paying inflated prices because nobody knows their real costs.
-            <br />
-            Crews are directionless because there's no clear path forward.
-            <br />
-            Everyone is guessing.
-          </Typography>
+      {/* Problem-Precision-Power Section */}
+      <Box sx={{ py: 14, bgcolor: 'grey.900', color: 'white' }}>
+        <Container maxWidth="lg">
+          <Grid container spacing={8}>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'error.light', mb: 3 }}>
+                  Problem
+                </Typography>
+                <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'grey.300' }}>
+                  Even the best estimators face uncertainty. Rough cost estimates leave you exposed to losses on profitable-looking jobs.
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'info.light', mb: 3 }}>
+                  Precision
+                </Typography>
+                <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'grey.300' }}>
+                  TreeShopOS automatically calculates exact equipment and labor costs based on your actual data. No spreadsheets, no guesswork.
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'success.light', mb: 3 }}>
+                  Power
+                </Typography>
+                <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'grey.300' }}>
+                  Bill for 100% of your costs—not 85%—and increase margins without raising prices. Reclaim control.
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
         </Container>
       </Box>
 
-      {/* Solution Section */}
-      <Box sx={{ py: 12 }}>
-        <Container maxWidth="md">
-          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 6 }}>
-            TreeShopOS Changes That
+      {/* Empowerment Features - Results, not calculations */}
+      <Box sx={{ py: 14 }}>
+        <Container maxWidth="lg">
+          <Typography variant="h2" align="center" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+            Precision That Empowers
+          </Typography>
+          <Typography variant="h6" align="center" color="text.secondary" sx={{ mb: 10, maxWidth: '800px', mx: 'auto' }}>
+            While TreeShopOS handles verification automatically, you reclaim 10 hours per week for business growth.
           </Typography>
 
-          <Stack spacing={6} sx={{ mt: 6 }}>
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'primary.main', mb: 2 }}>
-                For Business Owners
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                Know your equipment costs down to the hour. See employee burden rates automatically calculated.
-                Price jobs with mathematical certainty. Take back control from consultants charging $15K for spreadsheets.
-              </Typography>
-            </Box>
+          <Grid container spacing={5}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{
+                p: 4,
+                height: '100%',
+                transition: 'all 0.3s',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                }
+              }}>
+                <CheckIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2 }} />
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
+                  Real Equipment Costs
+                </Typography>
+                <Typography variant="h6" color="primary.main" sx={{ mb: 2, fontWeight: 600 }}>
+                  Know what every piece of equipment actually costs to run
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                  Ownership cost per hour + operating cost per hour = total cost per hour. Built-in safeguards ensure precision—automatically verified so you can focus on winning profitable work.
+                </Typography>
+              </Card>
+            </Grid>
 
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'primary.main', mb: 2 }}>
-                For Clients
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                Get honest pricing based on actual costs, not inflated guesses. Work with operators who know
-                their numbers and can explain exactly what you're paying for.
-              </Typography>
-            </Box>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{
+                p: 4,
+                height: '100%',
+                transition: 'all 0.3s',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                }
+              }}>
+                <CheckIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2 }} />
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
+                  True Employee Burden
+                </Typography>
+                <Typography variant="h6" color="primary.main" sx={{ mb: 2, fontWeight: 600 }}>
+                  Stop guessing at payroll taxes, insurance, and overhead
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                  Base wage × burden multiplier = real cost per hour. The system learns what's normal for your business, then validates data to protect your margins.
+                </Typography>
+              </Card>
+            </Grid>
 
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'primary.main', mb: 2 }}>
-                For Crews
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                Clear career paths. Know exactly what it takes to advance. See your productivity measured fairly.
-                Work for operators who have their business dialed in.
-              </Typography>
-            </Box>
-          </Stack>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{
+                p: 4,
+                height: '100%',
+                transition: 'all 0.3s',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                }
+              }}>
+                <CheckIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2 }} />
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
+                  24/7 Profit Guardian
+                </Typography>
+                <Typography variant="h6" color="primary.main" sx={{ mb: 2, fontWeight: 600 }}>
+                  Catch profit leaks in real-time, not after the money is gone
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                  Know your margins before the job is done. Instant alerts when metrics shift—catching errors in milliseconds that would take hours to find manually.
+                </Typography>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{
+                p: 4,
+                height: '100%',
+                transition: 'all 0.3s',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                }
+              }}>
+                <CheckIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2 }} />
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
+                  Superhuman Capabilities
+                </Typography>
+                <Typography variant="h6" color="primary.main" sx={{ mb: 2, fontWeight: 600 }}>
+                  Track 50 projects simultaneously—impossible with spreadsheets
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
+                  Productivity tracking in inch-acres, StumpScore, and service-specific metrics. Replace "we worked hard" with actual data that drives fair pay and clear advancement.
+                </Typography>
+              </Card>
+            </Grid>
+          </Grid>
         </Container>
       </Box>
 
-      {/* Credibility Section */}
-      <Box sx={{ py: 12, bgcolor: 'primary.dark', color: 'white' }}>
+      {/* Respectful Disruption - Attack the system, not the people */}
+      <Box sx={{ py: 14, bgcolor: 'primary.dark', color: 'white' }}>
         <Container maxWidth="md">
-          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 6 }}>
+          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
             Built By An Operator, For Operators
           </Typography>
 
-          <Stack spacing={4} sx={{ mt: 6 }}>
-            <Typography variant="h6" align="center" sx={{ lineHeight: 1.8, color: 'grey.200' }}>
-              10+ years running tree care operations
-            </Typography>
-            <Typography variant="h6" align="center" sx={{ lineHeight: 1.8, color: 'grey.200' }}>
-              5+ years specializing in forestry mulching
-            </Typography>
-            <Typography variant="h6" align="center" sx={{ lineHeight: 1.8, color: 'grey.200' }}>
-              10+ hurricane disaster deployments
-            </Typography>
-            <Typography variant="h6" align="center" sx={{ lineHeight: 1.8, color: 'grey.200' }}>
-              17,000+ YouTube subscribers learning these systems
-            </Typography>
-          </Stack>
+          <Typography variant="h6" align="center" sx={{ mb: 8, lineHeight: 1.8, color: 'grey.200', fontWeight: 400 }}>
+            You've built valuable expertise through years of experience.
+            <br />
+            Now amplify that expertise with mathematical precision.
+          </Typography>
 
-          <Typography variant="h5" align="center" sx={{ mt: 8, fontWeight: 500, lineHeight: 1.6 }}>
+          <Grid container spacing={4}>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
+                  10+
+                </Typography>
+                <Typography variant="body1" sx={{ color: 'grey.300' }}>
+                  Years in tree care operations
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
+                  5+
+                </Typography>
+                <Typography variant="body1" sx={{ color: 'grey.300' }}>
+                  Years forestry mulching specialty
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
+                  10+
+                </Typography>
+                <Typography variant="body1" sx={{ color: 'grey.300' }}>
+                  Hurricane disaster deployments
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
+                  17K+
+                </Typography>
+                <Typography variant="body1" sx={{ color: 'grey.300' }}>
+                  YouTube subscribers learning these systems
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+
+          <Typography variant="h5" align="center" sx={{ mt: 10, fontWeight: 500, lineHeight: 1.6 }}>
             This isn't software built by developers who Googled "tree removal."
             <br />
             It's mathematics built from boots-on-ground experience.
@@ -243,78 +387,38 @@ export default async function Home() {
         </Container>
       </Box>
 
-      {/* How It Works */}
-      <Box sx={{ py: 12 }}>
+      {/* Evolution Narrative - Respectful framing */}
+      <Box sx={{ py: 14 }}>
         <Container maxWidth="md">
-          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 8 }}>
-            What You Get
+          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 6 }}>
+            The Industry Is Evolving
           </Typography>
 
-          <Stack spacing={6}>
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                Real Equipment Costs
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                Ownership cost per hour + operating cost per hour = total cost per hour.
-                Know what every piece of equipment actually costs to run.
-              </Typography>
-            </Box>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 4, lineHeight: 1.8 }}>
+            Traditional approaches worked for their era. But market dynamics have shifted—customer expectations, competition, technology have all changed.
+          </Typography>
 
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                True Employee Burden
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                Base wage × burden multiplier = real cost per hour.
-                Stop guessing at payroll taxes, insurance, and overhead.
-              </Typography>
-            </Box>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 4, lineHeight: 1.8 }}>
+            Companies clinging to fear-based pressure tactics and expensive guesswork are losing trust. The winners build genuine connections, transparent operations, and relationship-based growth.
+          </Typography>
 
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                Scientific Job Pricing
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                TreeScore complexity × AFISS risk factors × production rate = accurate estimate.
-                Price based on mathematics, not hope.
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                Career Progression Systems
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                16 defined roles with clear advancement paths.
-                Your crew knows what it takes to move up and earn more.
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                Productivity Tracking
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                Measure output in inch-acres, StumpScore, or service-specific metrics.
-                Replace "we worked hard" with actual data.
-              </Typography>
-            </Box>
-          </Stack>
+          <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
+            Most teams lack tools to do this at scale. Those who adapt will thrive.
+          </Typography>
         </Container>
       </Box>
 
-      {/* Access Section */}
-      <Box sx={{ py: 14, bgcolor: 'primary.main', color: 'white' }}>
+      {/* CTA Section - Invite-only positioning */}
+      <Box sx={{ py: 16, bgcolor: 'primary.main', color: 'white' }}>
         <Container maxWidth="sm">
           <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
             This Is Invite-Only
           </Typography>
 
           <Typography variant="h5" align="center" sx={{ mb: 8, lineHeight: 1.8, fontWeight: 400 }}>
-            We're working with serious operators who are tired of being sold expensive nonsense.
+            We're working with serious operators who are tired of expensive nonsense that doesn't work.
             <br /><br />
-            If you run equipment, know your business needs help, and are ready to take back control—apply.
+            If you run equipment, know your business needs help, and are ready to amplify your expertise with precision—apply.
           </Typography>
 
           <Stack spacing={3} alignItems="center">
@@ -335,8 +439,12 @@ export default async function Home() {
                   fontSize: '1.5rem',
                   fontWeight: 700,
                   textTransform: 'none',
+                  boxShadow: 6,
+                  transition: 'all 0.3s',
                   '&:hover': {
                     bgcolor: 'grey.100',
+                    transform: 'translateY(-2px)',
+                    boxShadow: 8,
                   }
                 }}
               >
@@ -346,7 +454,7 @@ export default async function Home() {
             <Typography variant="body1" sx={{ color: 'grey.200', mt: 3 }}>
               Already have access?{' '}
               <SignInButton mode="modal">
-                <Link component="button" sx={{ color: 'white', fontWeight: 600, cursor: 'pointer' }}>
+                <Link component="button" sx={{ color: 'white', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
                   Sign in here
                 </Link>
               </SignInButton>
@@ -361,7 +469,7 @@ export default async function Home() {
           <Typography variant="body2" align="center" color="text.secondary">
             TreeShopOS © 2025
             <br />
-            Built for operators who know there's a better way.
+            Precision that empowers. Built for operators who know there's a better way.
           </Typography>
         </Container>
       </Box>
