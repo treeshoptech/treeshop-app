@@ -45,8 +45,8 @@ export const create = mutation({
     serialNumber: v.optional(v.string()),
     vin: v.optional(v.string()),
     licensePlate: v.optional(v.string()),
-    equipmentType: v.optional(v.string()),
-    equipmentSubtype: v.optional(v.string()),
+    equipmentCategory: v.string(),
+    equipmentSubcategory: v.string(),
     // Acquisition
     purchasePrice: v.number(),
     purchaseDate: v.optional(v.number()),
@@ -111,8 +111,8 @@ export const update = mutation({
     serialNumber: v.optional(v.string()),
     vin: v.optional(v.string()),
     licensePlate: v.optional(v.string()),
-    equipmentType: v.optional(v.string()),
-    equipmentSubtype: v.optional(v.string()),
+    equipmentCategory: v.string(),
+    equipmentSubcategory: v.string(),
     // Acquisition
     purchasePrice: v.optional(v.number()),
     purchaseDate: v.optional(v.number()),

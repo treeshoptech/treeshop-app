@@ -23,6 +23,7 @@ import type * as maps from "../maps.js";
 import type * as organizationSettings from "../organizationSettings.js";
 import type * as organizations from "../organizations.js";
 import type * as projects from "../projects.js";
+import type * as seedDefaultLineItemTemplates from "../seedDefaultLineItemTemplates.js";
 import type * as timeEntries from "../timeEntries.js";
 import type * as workOrders from "../workOrders.js";
 
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   organizationSettings: typeof organizationSettings;
   organizations: typeof organizations;
   projects: typeof projects;
+  seedDefaultLineItemTemplates: typeof seedDefaultLineItemTemplates;
   timeEntries: typeof timeEntries;
   workOrders: typeof workOrders;
 }>;
