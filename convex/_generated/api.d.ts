@@ -11,10 +11,14 @@
 import type * as customers from "../customers.js";
 import type * as employees from "../employees.js";
 import type * as equipment from "../equipment.js";
+import type * as invoices from "../invoices.js";
 import type * as leads from "../leads.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lineItems from "../lineItems.js";
 import type * as organizations from "../organizations.js";
 import type * as projects from "../projects.js";
+import type * as timeEntries from "../timeEntries.js";
+import type * as workOrders from "../workOrders.js";
 
 import type {
   ApiFromModules,
@@ -26,10 +30,14 @@ declare const fullApi: ApiFromModules<{
   customers: typeof customers;
   employees: typeof employees;
   equipment: typeof equipment;
+  invoices: typeof invoices;
   leads: typeof leads;
   "lib/auth": typeof lib_auth;
+  lineItems: typeof lineItems;
   organizations: typeof organizations;
   projects: typeof projects;
+  timeEntries: typeof timeEntries;
+  workOrders: typeof workOrders;
 }>;
 
 /**
