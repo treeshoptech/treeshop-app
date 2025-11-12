@@ -36,8 +36,11 @@ export default defineSchema({
     serialNumber: v.optional(v.string()),
     vin: v.optional(v.string()),
     licensePlate: v.optional(v.string()),
-    equipmentCategory: v.string(), // Major category from EQUIPMENT_TAXONOMY (e.g., "Trucks & Vehicles", "Carriers", "Attachments - Mulching & Cutting")
-    equipmentSubcategory: v.string(), // Specific subcategory (e.g., "Heavy Duty Pickup", "Skid Steer", "Skid Steer Forestry Mulcher")
+    equipmentCategory: v.optional(v.string()), // Major category from EQUIPMENT_TAXONOMY (e.g., "Trucks & Vehicles", "Carriers", "Attachments - Mulching & Cutting")
+    equipmentSubcategory: v.optional(v.string()), // Specific subcategory (e.g., "Heavy Duty Pickup", "Skid Steer", "Skid Steer Forestry Mulcher")
+    // Legacy fields (deprecated but kept for backward compatibility)
+    equipmentType: v.optional(v.string()),
+    equipmentSubtype: v.optional(v.string()),
     // Acquisition & Financial
     purchasePrice: v.number(),
     purchaseDate: v.optional(v.number()),
