@@ -28,8 +28,11 @@ export function AddressAutocomplete({
   fullWidth = true,
   required = false
 }: AddressAutocompleteProps) {
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  // If no API key, fall back to regular text input
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: apiKey || '',
     libraries,
   });
 
@@ -73,6 +76,29 @@ export function AddressAutocomplete({
     // Also update parent with raw input value
     onChange(newValue);
   };
+
+  // If Google Maps fails to load or no API key, show regular text input
+  if (loadError || !apiKey) {
+    return (
+      <TextField
+        label={label}
+        value={inputValue}
+        onChange={handleInputChange}
+        placeholder={placeholder}
+        fullWidth={fullWidth}
+        required={required}
+        error={error}
+        helperText={helperText || (loadError ? "Address autocomplete unavailable" : "Enter full address manually")}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <LocationOnIcon color="action" />
+            </InputAdornment>
+          ),
+        }}
+      />
+    );
+  }
 
   if (!isLoaded) {
     return (
