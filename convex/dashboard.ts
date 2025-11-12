@@ -6,7 +6,36 @@ import { getOrganization } from "./lib/auth";
  */
 export const getMetrics = query({
   handler: async (ctx) => {
-    const org = await getOrganization(ctx);
+    let org;
+    try {
+      org = await getOrganization(ctx);
+    } catch (error) {
+      // Return empty metrics if org not found
+      return {
+        totalRevenue: 0,
+        totalCosts: 0,
+        grossProfit: 0,
+        profitMargin: 0,
+        monthlyRevenue: 0,
+        avgJobValue: 0,
+        pipelineValue: 0,
+        totalLeads: 0,
+        totalProposals: 0,
+        totalWorkOrders: 0,
+        totalInvoices: 0,
+        leadToProposal: 0,
+        proposalToClose: 0,
+        revenueByService: {},
+        completedJobs: 0,
+        activeJobs: 0,
+        completionRate: 0,
+        avgResponseTime: "N/A",
+        customerSatisfaction: 0,
+        repeatCustomerRate: 0,
+        recentProposalsCount: 0,
+        recentInvoicesCount: 0,
+      };
+    }
 
     // Get all projects
     const projects = await ctx.db
@@ -134,7 +163,13 @@ export const getMetrics = query({
  */
 export const getRevenueTrend = query({
   handler: async (ctx) => {
-    const org = await getOrganization(ctx);
+    let org;
+    try {
+      org = await getOrganization(ctx);
+    } catch (error) {
+      // Return empty trend if org not found
+      return [];
+    }
 
     const projects = await ctx.db
       .query("projects")
