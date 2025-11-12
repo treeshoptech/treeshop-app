@@ -693,6 +693,7 @@ function LoadoutsPageContent() {
           );
         })}
       </Grid>
+      )}
 
       {/* Action Menu */}
       <Menu
