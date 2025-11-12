@@ -19,16 +19,19 @@ export function ConvexAuthGuard({ children }: ConvexAuthGuardProps) {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    // Reset authReady when auth state changes
+    setAuthReady(false);
+
     // Wait for both auth and organization to be fully loaded
-    if (authLoaded && orgLoaded) {
-      // Small delay to ensure JWT token has propagated
+    if (authLoaded && orgLoaded && isSignedIn && organization) {
+      // Delay to ensure JWT token has fully propagated to Convex
       const timer = setTimeout(() => {
         setAuthReady(true);
-      }, 100);
+      }, 300);
 
       return () => clearTimeout(timer);
     }
-  }, [authLoaded, orgLoaded, isSignedIn, orgId]);
+  }, [authLoaded, orgLoaded, isSignedIn, orgId, organization]);
 
   // Still loading auth state
   if (!authLoaded || !orgLoaded || !authReady) {

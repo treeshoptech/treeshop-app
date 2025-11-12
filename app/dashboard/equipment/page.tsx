@@ -40,7 +40,7 @@ const EQUIPMENT_STATUS = [
   'Retired',
 ];
 
-export default function EquipmentPage() {
+function EquipmentPageContent() {
   const equipment = useQuery(api.equipment.list);
   const createEquipment = useMutation(api.equipment.create);
   const updateEquipment = useMutation(api.equipment.update);
@@ -334,6 +334,13 @@ export default function EquipmentPage() {
         </DialogActions>
       </Dialog>
       </>
+  );
+}
+
+export default function EquipmentPage() {
+  return (
+    <ConvexAuthGuard>
+      <EquipmentPageContent />
     </ConvexAuthGuard>
   );
 }
