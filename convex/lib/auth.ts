@@ -18,9 +18,19 @@ export async function getUserIdentity(ctx: QueryCtx | MutationCtx) {
 export async function getOrganizationId(ctx: QueryCtx | MutationCtx) {
   const identity = await getUserIdentity(ctx);
 
-  const orgId = identity.orgId;
+  // Debug: Log all available claims
+  console.log("Available identity claims:", Object.keys(identity));
+  console.log("Full identity:", identity);
+
+  // Try multiple possible claim names
+  const orgId = (identity as any).org_id ||
+                (identity as any).orgId ||
+                (identity as any).organizationId ||
+                (identity as any).organization_id;
+
   if (!orgId) {
-    throw new Error("No organization context. User must belong to an organization.");
+    console.error("No org_id found in token. Available claims:", Object.keys(identity));
+    throw new Error("No organization context. User must belong to an organization. Please configure Clerk JWT template.");
   }
 
   return orgId;
@@ -53,7 +63,8 @@ export async function requireRole(
 ) {
   const identity = await getUserIdentity(ctx);
 
-  const role = identity.orgRole;
+  // Clerk JWT tokens use 'org_role' in token claims
+  const role = (identity as any).org_role;
   if (!role || !allowedRoles.includes(role)) {
     throw new Error(`Insufficient permissions. Required roles: ${allowedRoles.join(", ")}`);
   }
