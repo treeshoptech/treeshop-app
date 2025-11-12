@@ -92,7 +92,7 @@ function TabPanel(props: TabPanelProps) {
 
 function CustomersPageContent() {
   const customers = useQuery(api.customers.list);
-  const projects = useQuery(api.projects.listAll);
+  const projects = useQuery(api.projects.list);
   const createCustomer = useMutation(api.customers.create);
   const updateCustomer = useMutation(api.customers.update);
   const deleteCustomer = useMutation(api.customers.remove);
