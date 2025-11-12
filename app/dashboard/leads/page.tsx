@@ -1,308 +1,579 @@
 "use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { CRUDDirectory, CRUDItem } from "@/app/components/CRUDDirectory";
-import { ConvexAuthGuard } from "@/app/components/ConvexAuthGuard";
-import { Id } from "@/convex/_generated/dataModel";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  MenuItem,
-  Grid,
   Box,
-  Autocomplete,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  Grid,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
   Typography,
-} from '@mui/material';
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  LocationOn as LocationIcon,
+  ArrowForward as ArrowForwardIcon,
+} from "@mui/icons-material";
+import { Id } from "@/convex/_generated/dataModel";
 
-interface Lead extends CRUDItem {
-  _id: Id<"projects">;
-  serviceType: string;
-  propertyAddress: string;
-  customerName?: string;
-  driveTimeMinutes?: number;
-}
+type LeadStatus = "New" | "Contacted" | "Qualified" | "Site Visit Scheduled" | "Lost";
 
-const SERVICE_TYPES = [
-  'Forestry Mulching',
-  'Land Clearing',
-  'Stump Grinding',
-  'Tree Removal',
-  'Tree Trimming',
-  'Tree Inspection',
-];
+const STATUS_COLORS: Record<LeadStatus, "default" | "info" | "warning" | "success" | "error"> = {
+  "New": "info",
+  "Contacted": "default",
+  "Qualified": "warning",
+  "Site Visit Scheduled": "success",
+  "Lost": "error",
+};
 
-function LeadsPageContent() {
-  const leads = useQuery(api.leads.list);
-  const customers = useQuery(api.customers.list);
-  const createLead = useMutation(api.leads.create);
-  const updateLead = useMutation(api.leads.update);
-  const deleteLead = useMutation(api.leads.remove);
-  const convertToProposal = useMutation(api.leads.convertToProposal);
+export default function LeadsPage() {
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | "All">("All");
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<Id<"projects"> | null>(null);
+  // Fetch projects (leads are projects with status "Lead")
+  const allProjects = useQuery(api.projects.list);
+  const leads = allProjects?.filter((p) => p.status === "Lead") || [];
+
+  // Filter by status
+  const filteredLeads = statusFilter === "All"
+    ? leads
+    : leads.filter((l) => l.leadStatus === statusFilter);
+
+  // Mutations
+  const createProject = useMutation(api.projects.create);
+  const updateProject = useMutation(api.projects.update);
+  const deleteProject = useMutation(api.projects.remove);
+
+  // Form state for new lead
   const [formData, setFormData] = useState({
-    customerId: '' as Id<"customers"> | '',
-    serviceType: 'Forestry Mulching',
-    propertyAddress: '',
-    driveTimeMinutes: 0,
-    notes: '',
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
+    propertyAddress: "",
+    serviceType: "Stump Grinding" as any,
+    estimatedValue: "",
+    leadSource: "",
+    notes: "",
+    leadStatus: "New" as LeadStatus,
   });
 
-  // Transform leads for CRUDDirectory
-  const leadItems: Lead[] = (leads || []).map(lead => ({
-    id: lead._id,
-    _id: lead._id,
-    title: lead.customer?.name || 'Unknown Customer',
-    subtitle: `${lead.serviceType} - ${lead.propertyAddress}`,
-    status: 'Lead',
-    serviceType: lead.serviceType,
-    propertyAddress: lead.propertyAddress,
-    customerName: lead.customer?.name,
-    driveTimeMinutes: lead.driveTimeMinutes,
-  }));
+  const handleAddLead = async () => {
+    try {
+      await createProject({
+        name: `${formData.customerName} - ${formData.serviceType}`,
+        customerName: formData.customerName,
+        customerEmail: formData.customerEmail,
+        customerPhone: formData.customerPhone,
+        propertyAddress: formData.propertyAddress,
+        serviceType: formData.serviceType,
+        status: "Lead",
+        leadStatus: formData.leadStatus,
+        leadSource: formData.leadSource || undefined,
+        estimatedValue: formData.estimatedValue ? parseFloat(formData.estimatedValue) : undefined,
+        notes: formData.notes || undefined,
+      });
 
-  const handleAdd = () => {
-    setEditingId(null);
-    setFormData({
-      customerId: '',
-      serviceType: 'Forestry Mulching',
-      propertyAddress: '',
-      driveTimeMinutes: 0,
-      notes: '',
-    });
-    setFormOpen(true);
-  };
-
-  const handleEdit = (item: Lead) => {
-    const fullLead = leads?.find(l => l._id === item._id);
-    if (fullLead) {
-      setEditingId(item._id);
+      setAddDialogOpen(false);
       setFormData({
-        customerId: fullLead.customerId,
-        serviceType: fullLead.serviceType,
-        propertyAddress: fullLead.propertyAddress,
-        driveTimeMinutes: fullLead.driveTimeMinutes || 0,
-        notes: fullLead.notes || '',
+        customerName: "",
+        customerEmail: "",
+        customerPhone: "",
+        propertyAddress: "",
+        serviceType: "Stump Grinding",
+        estimatedValue: "",
+        leadSource: "",
+        notes: "",
+        leadStatus: "New",
       });
-      setFormOpen(true);
+    } catch (error) {
+      console.error("Error creating lead:", error);
     }
   };
 
-  const handleDelete = async (item: Lead) => {
-    await deleteLead({ id: item._id });
-  };
+  const handleEditLead = async () => {
+    if (!selectedLead) return;
 
-  const handleSubmit = async () => {
-    if (!formData.customerId) {
-      alert('Please select a customer');
-      return;
-    }
-
-    if (editingId) {
-      await updateLead({
-        id: editingId,
-        serviceType: formData.serviceType,
+    try {
+      await updateProject({
+        id: selectedLead._id,
+        customerName: formData.customerName,
+        customerEmail: formData.customerEmail,
+        customerPhone: formData.customerPhone,
         propertyAddress: formData.propertyAddress,
-        driveTimeMinutes: formData.driveTimeMinutes || undefined,
+        serviceType: formData.serviceType,
+        leadStatus: formData.leadStatus,
+        leadSource: formData.leadSource || undefined,
+        estimatedValue: formData.estimatedValue ? parseFloat(formData.estimatedValue) : undefined,
         notes: formData.notes || undefined,
       });
-    } else {
-      await createLead({
-        customerId: formData.customerId,
-        serviceType: formData.serviceType,
-        propertyAddress: formData.propertyAddress,
-        driveTimeMinutes: formData.driveTimeMinutes || undefined,
-        notes: formData.notes || undefined,
+
+      setEditDialogOpen(false);
+      setSelectedLead(null);
+    } catch (error) {
+      console.error("Error updating lead:", error);
+    }
+  };
+
+  const handleDeleteLead = async (id: Id<"projects">) => {
+    if (confirm("Are you sure you want to delete this lead?")) {
+      try {
+        await deleteProject({ id });
+      } catch (error) {
+        console.error("Error deleting lead:", error);
+      }
+    }
+  };
+
+  const handleConvertToProposal = async (lead: any) => {
+    try {
+      await updateProject({
+        id: lead._id,
+        status: "Proposal",
       });
-    }
-    setFormOpen(false);
-  };
-
-  const handleConvertToProposal = async (item: Lead) => {
-    const confirmed = window.confirm(
-      'Convert this lead to a proposal? You can add pricing details next.'
-    );
-    if (confirmed) {
-      await convertToProposal({ id: item._id });
+    } catch (error) {
+      console.error("Error converting to proposal:", error);
     }
   };
 
-  const selectedCustomer = customers?.find(c => c._id === formData.customerId);
+  const openEditDialog = (lead: any) => {
+    setSelectedLead(lead);
+    setFormData({
+      customerName: lead.customerName || "",
+      customerEmail: lead.customerEmail || "",
+      customerPhone: lead.customerPhone || "",
+      propertyAddress: lead.propertyAddress || "",
+      serviceType: lead.serviceType || "Stump Grinding",
+      estimatedValue: lead.estimatedValue?.toString() || "",
+      leadSource: lead.leadSource || "",
+      notes: lead.notes || "",
+      leadStatus: lead.leadStatus || "New",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const stats = {
+    total: leads.length,
+    new: leads.filter((l) => l.leadStatus === "New").length,
+    qualified: leads.filter((l) => l.leadStatus === "Qualified").length,
+    scheduled: leads.filter((l) => l.leadStatus === "Site Visit Scheduled").length,
+  };
 
   return (
-    <>
-      <CRUDDirectory
-        title="Leads"
-        items={leadItems}
-        loading={leads === undefined}
-        onAdd={handleAdd}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        searchPlaceholder="Search leads..."
-        emptyMessage="No leads yet. Add your first lead to get started!"
-        statusColors={{
-          lead: '#FF9500',
-        }}
-        customActions={[
-          {
-            label: 'Convert to Proposal',
-            onClick: handleConvertToProposal,
-            color: 'primary',
-          },
-        ]}
-      />
-
-      {/* Add/Edit Form Dialog */}
-      <Dialog
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            backgroundColor: '#1C1C1E',
-            border: '1px solid #2C2C2E',
-          },
-        }}
-      >
-        <DialogTitle>
-          {editingId ? 'Edit Lead' : 'Add New Lead'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Grid container spacing={2}>
-              {/* Customer Selection */}
-              <Grid item xs={12}>
-                <Autocomplete
-                  options={customers || []}
-                  getOptionLabel={(option) => option.name}
-                  value={selectedCustomer || null}
-                  onChange={(_, newValue) => {
-                    setFormData({
-                      ...formData,
-                      customerId: newValue?._id || '',
-                      propertyAddress: newValue?.propertyAddress || formData.propertyAddress,
-                    });
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Customer"
-                      required
-                      helperText={selectedCustomer ? `${selectedCustomer.email || ''} ${selectedCustomer.phone || ''}` : ''}
-                    />
-                  )}
-                  disabled={!!editingId}
-                  loading={customers === undefined}
-                />
-              </Grid>
-
-              {/* Service Type */}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Service Type"
-                  value={formData.serviceType}
-                  onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
-                  required
-                >
-                  {SERVICE_TYPES.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-
-              {/* Drive Time */}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Drive Time (minutes)"
-                  value={formData.driveTimeMinutes}
-                  onChange={(e) => setFormData({ ...formData, driveTimeMinutes: parseInt(e.target.value) || 0 })}
-                  helperText="Estimated one-way drive time"
-                />
-              </Grid>
-
-              {/* Property Address */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Property Address"
-                  value={formData.propertyAddress}
-                  onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
-                  required
-                  multiline
-                  rows={2}
-                  helperText={selectedCustomer?.propertyAddress ? `Customer default: ${selectedCustomer.propertyAddress}` : ''}
-                />
-              </Grid>
-
-              {/* Notes */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  multiline
-                  rows={3}
-                  placeholder="Initial conversation notes, special requests, etc."
-                />
-              </Grid>
-
-              {/* Lead Info */}
-              <Grid item xs={12}>
-                <Box sx={{
-                  p: 2,
-                  backgroundColor: '#000000',
-                  borderRadius: 1,
-                  border: '1px solid #2C2C2E',
-                }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                    LEAD WORKFLOW
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    • Capture initial customer interest<br />
-                    • Schedule site visit or remote assessment<br />
-                    • Convert to Proposal when ready to price
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Stack spacing={3}>
+        {/* Header */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Box>
+            <Typography variant="h3" gutterBottom>
+              Lead Pipeline
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Manage incoming leads and qualify for proposals
+            </Typography>
           </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setAddDialogOpen(true)}
+            size="large"
+          >
+            New Lead
+          </Button>
+        </Box>
+
+        {/* Stats Cards */}
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">
+                  Total Leads
+                </Typography>
+                <Typography variant="h4">{stats.total}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">
+                  New
+                </Typography>
+                <Typography variant="h4" color="info.main">
+                  {stats.new}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">
+                  Qualified
+                </Typography>
+                <Typography variant="h4" color="warning.main">
+                  {stats.qualified}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">
+                  Site Visits Scheduled
+                </Typography>
+                <Typography variant="h4" color="success.main">
+                  {stats.scheduled}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Filter */}
+        <Paper sx={{ p: 2 }}>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Filter by Status</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Filter by Status"
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+            >
+              <MenuItem value="All">All Leads</MenuItem>
+              <MenuItem value="New">New</MenuItem>
+              <MenuItem value="Contacted">Contacted</MenuItem>
+              <MenuItem value="Qualified">Qualified</MenuItem>
+              <MenuItem value="Site Visit Scheduled">Site Visit Scheduled</MenuItem>
+              <MenuItem value="Lost">Lost</MenuItem>
+            </Select>
+          </FormControl>
+        </Paper>
+
+        {/* Leads Table */}
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Customer</TableCell>
+                <TableCell>Contact</TableCell>
+                <TableCell>Property Address</TableCell>
+                <TableCell>Service Type</TableCell>
+                <TableCell>Est. Value</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Source</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredLeads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} align="center">
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                      No leads found. Click "New Lead" to add one.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredLeads.map((lead) => (
+                  <TableRow key={lead._id} hover>
+                    <TableCell>
+                      <Typography variant="body1" fontWeight="medium">
+                        {lead.customerName}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Stack spacing={0.5}>
+                        {lead.customerPhone && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <PhoneIcon fontSize="small" color="action" />
+                            <Typography variant="body2">{lead.customerPhone}</Typography>
+                          </Box>
+                        )}
+                        {lead.customerEmail && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <EmailIcon fontSize="small" color="action" />
+                            <Typography variant="body2">{lead.customerEmail}</Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <LocationIcon fontSize="small" color="action" />
+                        <Typography variant="body2">{lead.propertyAddress}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>{lead.serviceType}</TableCell>
+                    <TableCell>
+                      {lead.estimatedValue
+                        ? new Intl.NumberFormat("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                            minimumFractionDigits: 0,
+                          }).format(lead.estimatedValue)
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={lead.leadStatus || "New"}
+                        color={STATUS_COLORS[lead.leadStatus as LeadStatus] || "default"}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{lead.leadSource || "-"}</TableCell>
+                    <TableCell align="right">
+                      <Stack direction="row" spacing={1} justifyContent="flex-end">
+                        <IconButton
+                          size="small"
+                          onClick={() => openEditDialog(lead)}
+                          title="Edit Lead"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => handleConvertToProposal(lead)}
+                          title="Convert to Proposal"
+                        >
+                          <ArrowForwardIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteLead(lead._id)}
+                          title="Delete Lead"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Stack>
+
+      {/* Add Lead Dialog */}
+      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Add New Lead</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <TextField
+              label="Customer Name"
+              value={formData.customerName}
+              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={formData.customerEmail}
+              onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Phone"
+              value={formData.customerPhone}
+              onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Property Address"
+              value={formData.propertyAddress}
+              onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
+              fullWidth
+              required
+              multiline
+              rows={2}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Service Type</InputLabel>
+              <Select
+                value={formData.serviceType}
+                label="Service Type"
+                onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
+              >
+                <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
+                <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
+                <MenuItem value="Land Clearing">Land Clearing</MenuItem>
+                <MenuItem value="Tree Removal">Tree Removal</MenuItem>
+                <MenuItem value="Tree Trimming">Tree Trimming</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Estimated Value"
+              type="number"
+              value={formData.estimatedValue}
+              onChange={(e) => setFormData({ ...formData, estimatedValue: e.target.value })}
+              fullWidth
+              InputProps={{ startAdornment: "$" }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Lead Status</InputLabel>
+              <Select
+                value={formData.leadStatus}
+                label="Lead Status"
+                onChange={(e) => setFormData({ ...formData, leadStatus: e.target.value as LeadStatus })}
+              >
+                <MenuItem value="New">New</MenuItem>
+                <MenuItem value="Contacted">Contacted</MenuItem>
+                <MenuItem value="Qualified">Qualified</MenuItem>
+                <MenuItem value="Site Visit Scheduled">Site Visit Scheduled</MenuItem>
+                <MenuItem value="Lost">Lost</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Lead Source"
+              value={formData.leadSource}
+              onChange={(e) => setFormData({ ...formData, leadSource: e.target.value })}
+              fullWidth
+              placeholder="e.g., Website, Referral, Google Ads"
+            />
+            <TextField
+              label="Notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              fullWidth
+              multiline
+              rows={3}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setFormOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            disabled={!formData.customerId || !formData.propertyAddress}
-          >
-            {editingId ? 'Save Changes' : 'Add Lead'}
+          <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleAddLead} variant="contained">
+            Add Lead
           </Button>
         </DialogActions>
       </Dialog>
-    </>
-  );
-}
 
-export default function LeadsPage() {
-  return (
-    <ConvexAuthGuard>
-      <LeadsPageContent />
-    </ConvexAuthGuard>
+      {/* Edit Lead Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Edit Lead</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <TextField
+              label="Customer Name"
+              value={formData.customerName}
+              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={formData.customerEmail}
+              onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Phone"
+              value={formData.customerPhone}
+              onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Property Address"
+              value={formData.propertyAddress}
+              onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
+              fullWidth
+              required
+              multiline
+              rows={2}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Service Type</InputLabel>
+              <Select
+                value={formData.serviceType}
+                label="Service Type"
+                onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
+              >
+                <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
+                <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
+                <MenuItem value="Land Clearing">Land Clearing</MenuItem>
+                <MenuItem value="Tree Removal">Tree Removal</MenuItem>
+                <MenuItem value="Tree Trimming">Tree Trimming</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Estimated Value"
+              type="number"
+              value={formData.estimatedValue}
+              onChange={(e) => setFormData({ ...formData, estimatedValue: e.target.value })}
+              fullWidth
+              InputProps={{ startAdornment: "$" }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Lead Status</InputLabel>
+              <Select
+                value={formData.leadStatus}
+                label="Lead Status"
+                onChange={(e) => setFormData({ ...formData, leadStatus: e.target.value as LeadStatus })}
+              >
+                <MenuItem value="New">New</MenuItem>
+                <MenuItem value="Contacted">Contacted</MenuItem>
+                <MenuItem value="Qualified">Qualified</MenuItem>
+                <MenuItem value="Site Visit Scheduled">Site Visit Scheduled</MenuItem>
+                <MenuItem value="Lost">Lost</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Lead Source"
+              value={formData.leadSource}
+              onChange={(e) => setFormData({ ...formData, leadSource: e.target.value })}
+              fullWidth
+              placeholder="e.g., Website, Referral, Google Ads"
+            />
+            <TextField
+              label="Notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              fullWidth
+              multiline
+              rows={3}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleEditLead} variant="contained">
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 }
