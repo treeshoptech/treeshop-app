@@ -9,6 +9,7 @@
  */
 
 import type * as customers from "../customers.js";
+import type * as employees from "../employees.js";
 import type * as equipment from "../equipment.js";
 import type * as leads from "../leads.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -23,6 +24,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   customers: typeof customers;
+  employees: typeof employees;
   equipment: typeof equipment;
   leads: typeof leads;
   "lib/auth": typeof lib_auth;

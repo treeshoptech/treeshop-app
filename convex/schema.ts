@@ -85,18 +85,44 @@ export default defineSchema({
   employees: defineTable({
     organizationId: v.id("organizations"),
     clerkUserId: v.optional(v.string()), // Link to Clerk user if they have account
-    name: v.string(),
-    position: v.string(), // "Entry Ground Crew", "Experienced Climber", "Crew Leader", "Certified Arborist", "Specialized Operator"
-    baseHourlyRate: v.number(),
-    burdenMultiplier: v.number(), // 1.6x, 1.7x, 1.8x, 1.9x, 2.0x
-    trueCostPerHour: v.number(), // baseHourlyRate × burdenMultiplier
+    // Personal Information
+    firstName: v.string(),
+    lastName: v.string(),
+    preferredName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    phoneSecondary: v.optional(v.string()),
+    dateOfBirth: v.optional(v.number()),
+    address: v.optional(v.string()),
+    // Emergency Contact
+    emergencyContactName: v.optional(v.string()),
+    emergencyContactPhone: v.optional(v.string()),
+    // Employment Details
     hireDate: v.number(),
-    status: v.string(), // "Active", "Inactive"
+    employeeId: v.optional(v.string()),
+    employmentType: v.string(), // "Full-Time", "Part-Time", "Seasonal", "Contract"
+    employmentStatus: v.string(), // "Active", "Inactive", "On Leave", "Terminated"
+    homeBranch: v.optional(v.string()),
+    reportsTo: v.optional(v.string()),
+    // Career Track System
+    primaryTrack: v.string(), // ATC, TRS, FOR, LCL, MUL, STG, ESR, LSC, EQO, MNT, SAL, PMC, ADM, FIN, SAF, TEC
+    tier: v.number(), // 1-5
+    yearsExperience: v.optional(v.number()),
+    // Add-ons (stackable premiums)
+    leadership: v.optional(v.string()), // L, S, M, D, C
+    equipmentCerts: v.array(v.string()), // E1, E2, E3, E4
+    driverLicenses: v.array(v.string()), // D1, D2, D3, DH
+    certifications: v.array(v.string()), // ISA, CRA, TRA, OSH, PES, CPR
+    // Compensation
+    baseHourlyRate: v.number(),
+    // Other
+    notes: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_organization", ["organizationId"])
     .index("by_org_clerk_user", ["organizationId", "clerkUserId"])
-    .index("by_org_status", ["organizationId", "status"]),
+    .index("by_org_status", ["organizationId", "employmentStatus"])
+    .index("by_org_track", ["organizationId", "primaryTrack"]),
 
   // Loadouts
   loadouts: defineTable({
