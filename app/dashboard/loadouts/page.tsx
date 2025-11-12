@@ -1,24 +1,24 @@
 "use client";
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ConvexAuthGuard } from "@/app/components/ConvexAuthGuard";
 import { Id } from "@/convex/_generated/dataModel";
 import {
   Box, Card, CardContent, Typography, Button, IconButton, Grid, Chip,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Fab,
-  Tabs, Tab, Divider, List, ListItem, ListItemText, Avatar, Paper,
-  FormControl, InputLabel, Select, OutlinedInput, Checkbox, Alert, InputAdornment,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Collapse, Menu,
+  Collapse, Menu, MenuItem, Divider, Avatar, Stack, useMediaQuery, useTheme,
+  Fab, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  FormControl, InputLabel, Select, OutlinedInput, Checkbox, ListItemText,
+  Tabs, Tab, InputAdornment, Paper, List, ListItem,
 } from '@mui/material';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as CopyIcon,
-  Search as SearchIcon, Close as CloseIcon, People as PeopleIcon, Construction as EquipmentIcon,
-  AttachMoney as MoneyIcon, TrendingUp as ProductionIcon, Security as SafetyIcon,
-  Schedule as ScheduleIcon, CheckCircle as CheckIcon, Warning as WarningIcon,
-  PlayArrow as ActiveIcon, Pause as InactiveIcon, ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon, MoreVert as MoreVertIcon,
+  ExpandMore as ExpandMoreIcon, MoreVert as MoreVertIcon, People as PeopleIcon,
+  Construction as EquipmentIcon, AttachMoney as MoneyIcon, TrendingUp as ProductionIcon,
+  Speed as SpeedIcon, CheckCircle as ActiveIcon, Pause as InactiveIcon,
+  LocalShipping as TruckIcon, Timer as TimerIcon, Assessment as KpiIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
 const SERVICE_TYPES = [
@@ -34,629 +34,1244 @@ export default function LoadoutsPage() {
   );
 }
 
+/**
+ * COMPREHENSIVE KPI TRACKING FOR LOADOUTS
+ *
+ * When combining Equipment + Employees, we track:
+ *
+ * 1. COST METRICS:
+ *    - Total Equipment Cost/Hour (sum of all equipment hourly costs)
+ *    - Total Labor Cost/Hour (sum of all employee true costs with burden)
+ *    - Overhead/Admin Cost (additional % or fixed amount)
+ *    - Total Cost/Hour (Equipment + Labor + Overhead)
+ *
+ * 2. REVENUE METRICS:
+ *    - Billing Rate at 30% margin
+ *    - Billing Rate at 40% margin
+ *    - Billing Rate at 50% margin
+ *    - Billing Rate at 60% margin
+ *    - Billing Rate at 70% margin
+ *    - Target Margin (default for this loadout)
+ *    - Target Billing Rate (at target margin)
+ *
+ * 3. PROFITABILITY METRICS:
+ *    - Profit/Hour at Target Margin
+ *    - Profit % (Target Margin)
+ *    - Break-even Hours (fixed costs / profit per hour)
+ *    - Revenue to Cover Daily Costs (8hrs × cost)
+ *
+ * 4. PRODUCTION METRICS:
+ *    - Production Rate (PpH - Points per Hour)
+ *    - Service-specific unit (e.g., trees/day, inch-acres/hr, stumps/hr)
+ *    - Efficiency Rating (actual vs. expected production)
+ *    - Average Job Duration (based on historical data)
+ *
+ * 5. UTILIZATION METRICS:
+ *    - Total Jobs Completed (historical)
+ *    - Total Hours Worked (historical)
+ *    - Total Revenue Generated (historical)
+ *    - Average Revenue per Job
+ *    - Utilization Rate (billable hours / total hours)
+ *
+ * 6. TEAM COMPOSITION:
+ *    - Number of Employees
+ *    - Crew Roles (breakdown by position)
+ *    - Average Crew Experience (years)
+ *    - Certifications Count (ISA, CRA, etc.)
+ *
+ * 7. EQUIPMENT COMPOSITION:
+ *    - Number of Equipment Pieces
+ *    - Equipment Categories (trucks, carriers, attachments)
+ *    - Total Equipment Value (purchase prices)
+ *    - Newest Equipment Age (years)
+ *    - Total Horsepower (if applicable)
+ *
+ * 8. SAFETY METRICS:
+ *    - Days Since Last Incident
+ *    - Total Incident Count (historical)
+ *    - Safety Rating (0-100 score)
+ *    - Required PPE List
+ *
+ * 9. CAPACITY METRICS:
+ *    - Max Crew Size
+ *    - Equipment Transport Requirements
+ *    - Trailer/Truck Capacity Needed
+ *    - Setup Time (minutes)
+ *
+ * 10. FINANCIAL TARGETS:
+ *     - Daily Revenue Target (8 hrs × billing rate)
+ *     - Weekly Revenue Target (40 hrs × billing rate)
+ *     - Monthly Revenue Target (~160 hrs × billing rate)
+ *     - Annual Revenue Potential (2000 hrs × billing rate)
+ */
+
+interface LoadoutKPIs {
+  // Cost Metrics
+  totalEquipmentCost: number;
+  totalLaborCost: number;
+  overheadCost: number;
+  totalCostPerHour: number;
+
+  // Revenue Metrics
+  billingRates: {
+    margin30: number;
+    margin40: number;
+    margin50: number;
+    margin60: number;
+    margin70: number;
+  };
+  targetMargin: number;
+  targetBillingRate: number;
+
+  // Profitability
+  profitPerHour: number;
+  profitPercent: number;
+  dailyRevenue: number; // 8 hours
+  weeklyRevenue: number; // 40 hours
+  monthlyRevenue: number; // 160 hours
+  annualRevenuePotential: number; // 2000 hours
+
+  // Production
+  productionRate: number;
+  productionUnit: string;
+
+  // Team
+  employeeCount: number;
+  crewRoles: string[];
+  avgExperience: number;
+  certificationCount: number;
+
+  // Equipment
+  equipmentCount: number;
+  equipmentCategories: string[];
+  totalEquipmentValue: number;
+  totalHorsepower: number;
+
+  // Utilization (from historical data)
+  totalJobsCompleted: number;
+  totalHoursWorked: number;
+  totalRevenueGenerated: number;
+  avgRevenuePerJob: number;
+  utilizationRate: number;
+
+  // Safety
+  daysSinceIncident: number;
+  safetyRating: number;
+
+  // Capacity
+  setupTimeMinutes: number;
+  transportRequirements: string;
+}
+
+function calculateLoadoutKPIs(loadout: any): LoadoutKPIs {
+  const cost = loadout.totalCostPerHour || 0;
+  const targetMargin = loadout.targetMargin || 50;
+  const targetBillingRate = cost / (1 - targetMargin / 100);
+
+  return {
+    // Cost Metrics
+    totalEquipmentCost: loadout.totalEquipmentCost || 0,
+    totalLaborCost: loadout.totalLaborCost || 0,
+    overheadCost: loadout.overheadCost || 0,
+    totalCostPerHour: cost,
+
+    // Revenue Metrics
+    billingRates: {
+      margin30: cost / 0.70,
+      margin40: cost / 0.60,
+      margin50: cost / 0.50,
+      margin60: cost / 0.40,
+      margin70: cost / 0.30,
+    },
+    targetMargin,
+    targetBillingRate,
+
+    // Profitability
+    profitPerHour: targetBillingRate - cost,
+    profitPercent: targetMargin,
+    dailyRevenue: targetBillingRate * 8,
+    weeklyRevenue: targetBillingRate * 40,
+    monthlyRevenue: targetBillingRate * 160,
+    annualRevenuePotential: targetBillingRate * 2000,
+
+    // Production
+    productionRate: loadout.productionRate || 0,
+    productionUnit: getProductionUnit(loadout.serviceType),
+
+    // Team
+    employeeCount: loadout.employeeCount || 0,
+    crewRoles: loadout.crewRoles || [],
+    avgExperience: loadout.avgExperience || 0,
+    certificationCount: loadout.certificationCount || 0,
+
+    // Equipment
+    equipmentCount: loadout.equipmentCount || 0,
+    equipmentCategories: loadout.equipmentCategories || [],
+    totalEquipmentValue: loadout.totalEquipmentValue || 0,
+    totalHorsepower: loadout.totalHorsepower || 0,
+
+    // Utilization
+    totalJobsCompleted: loadout.totalJobsCompleted || 0,
+    totalHoursWorked: loadout.totalHoursWorked || 0,
+    totalRevenueGenerated: loadout.totalRevenueGenerated || 0,
+    avgRevenuePerJob: loadout.totalJobsCompleted > 0
+      ? loadout.totalRevenueGenerated / loadout.totalJobsCompleted
+      : 0,
+    utilizationRate: loadout.utilizationRate || 0,
+
+    // Safety
+    daysSinceIncident: loadout.daysSinceIncident || 0,
+    safetyRating: loadout.safetyRating || 100,
+
+    // Capacity
+    setupTimeMinutes: loadout.setupTimeMinutes || 30,
+    transportRequirements: loadout.transportRequirements || 'Standard truck + trailer',
+  };
+}
+
+function getProductionUnit(serviceType: string): string {
+  switch (serviceType) {
+    case 'Tree Removal': return 'trees/day';
+    case 'Tree Trimming': return 'trees/day';
+    case 'Stump Grinding': return 'points/hr';
+    case 'Forestry Mulching': return 'IA/hr';
+    case 'Land Clearing': return 'days/acre';
+    default: return 'units/hr';
+  }
+}
+
 function LoadoutsPageContent() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [serviceFilter, setServiceFilter] = useState<string>('All');
-  const [statusFilter, setStatusFilter] = useState<string>('All');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingLoadout, setEditingLoadout] = useState<any>(null);
-  const [formTab, setFormTab] = useState(0);
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedLoadout, setSelectedLoadout] = useState<any>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formTab, setFormTab] = useState(0);
 
-  // Hardcoded loadouts for demo (will connect to Convex later)
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Query equipment and employees from Convex
+  const equipment = useQuery(api.equipment.list);
+  const employees = useQuery(api.employees.list);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    serviceType: 'Tree Removal',
+    status: 'Active',
+    description: '',
+    selectedEquipment: [] as string[],
+    selectedEmployees: [] as string[],
+    productionRate: 0,
+    targetMargin: 50,
+    overheadCost: 0,
+  });
+
+  // Demo loadouts with comprehensive KPIs
   const loadouts = [
     {
       _id: '1',
       name: '2-Man Climbing Crew',
       serviceType: 'Tree Removal',
       status: 'Active',
-      equipmentCount: 4,
-      employeeCount: 2,
+      description: 'Professional tree removal crew with bucket truck',
+
+      // Cost breakdown
+      totalEquipmentCost: 143, // Bucket truck + chipper + support
+      totalLaborCost: 100, // 2 climbers at $50/hr true cost each
+      overheadCost: 0,
       totalCostPerHour: 243,
+
+      // Financial
       targetMargin: 35,
-      billingRate: 373.85,
-      profitPerHour: 130.85,
-      productionRate: 5, // trees per day
+
+      // Team
+      employeeCount: 2,
+      crewRoles: ['Lead Climber', 'Ground Crew'],
+      avgExperience: 7.5,
+      certificationCount: 4,
+
+      // Equipment
+      equipmentCount: 4,
+      equipmentCategories: ['Bucket Truck', 'Chipper', 'Chainsaw', 'Rigging'],
+      totalEquipmentValue: 185000,
+      totalHorsepower: 450,
+
+      // Production
+      productionRate: 5,
+
+      // Historical
+      totalJobsCompleted: 234,
+      totalHoursWorked: 1872,
+      totalRevenueGenerated: 699480,
+      utilizationRate: 0.85,
+
+      // Safety
+      daysSinceIncident: 456,
+      safetyRating: 98,
+
+      // Capacity
+      setupTimeMinutes: 20,
+      transportRequirements: 'Bucket truck + chip trailer',
     },
     {
       _id: '2',
       name: 'Forestry Mulching Unit',
       serviceType: 'Forestry Mulching',
       status: 'Active',
-      equipmentCount: 3,
-      employeeCount: 2,
+      description: 'High-production mulching with CAT skid steer',
+
+      totalEquipmentCost: 167,
+      totalLaborCost: 119,
+      overheadCost: 0,
       totalCostPerHour: 286,
       targetMargin: 50,
-      billingRate: 572,
-      profitPerHour: 286,
-      productionRate: 1.5, // inch-acres per hour
+
+      employeeCount: 2,
+      crewRoles: ['Operator', 'Spotter/Support'],
+      avgExperience: 5,
+      certificationCount: 2,
+
+      equipmentCount: 3,
+      equipmentCategories: ['Skid Steer', 'Mulcher Head', 'F450'],
+      totalEquipmentValue: 195000,
+      totalHorsepower: 380,
+
+      productionRate: 1.5,
+
+      totalJobsCompleted: 89,
+      totalHoursWorked: 712,
+      totalRevenueGenerated: 407264,
+      utilizationRate: 0.78,
+
+      daysSinceIncident: 823,
+      safetyRating: 100,
+
+      setupTimeMinutes: 15,
+      transportRequirements: 'Lowboy trailer + pickup',
     },
     {
       _id: '3',
       name: 'Stump Grinding Service',
       serviceType: 'Stump Grinding',
       status: 'Active',
-      equipmentCount: 2,
-      employeeCount: 1,
+      description: '1-person stump grinding operation',
+
+      totalEquipmentCost: 65,
+      totalLaborCost: 60,
+      overheadCost: 0,
       totalCostPerHour: 125,
       targetMargin: 40,
-      billingRate: 208.33,
-      profitPerHour: 83.33,
-      productionRate: 400, // stump score per hour
+
+      employeeCount: 1,
+      crewRoles: ['Grinder Operator'],
+      avgExperience: 4,
+      certificationCount: 1,
+
+      equipmentCount: 2,
+      equipmentCategories: ['Stump Grinder', 'Pickup Truck'],
+      totalEquipmentValue: 48000,
+      totalHorsepower: 85,
+
+      productionRate: 400,
+
+      totalJobsCompleted: 567,
+      totalHoursWorked: 1134,
+      totalRevenueGenerated: 236082,
+      utilizationRate: 0.92,
+
+      daysSinceIncident: 1024,
+      safetyRating: 100,
+
+      setupTimeMinutes: 10,
+      transportRequirements: 'Pickup with trailer hitch',
     },
   ];
 
-  const [formData, setFormData] = useState({
-    name: '',
-    serviceType: 'Tree Removal',
-    status: 'Active',
-    description: '',
-    // Labor
-    employees: [] as any[],
-    // Equipment
-    equipment: [] as any[],
-    // Financial
-    targetMargin: 35,
-    minimumMargin: 30,
-    // Production
-    productionRate: 0,
-    productionUnit: 'trees/day',
-    // Safety
-    minimumCrewSize: 2,
-    requiredPPE: [] as string[],
-    requiredSafetyEquipment: [] as string[],
-    // Scheduling
-    minimumBookingHours: 4,
-    travelBufferMinutes: 30,
-    setupTimeMinutes: 15,
-    cleanupTimeMinutes: 15,
-  });
+  const handleExpandClick = (id: string) => {
+    setExpandedCard(expandedCard === id ? null : id);
+  };
 
-  const [employeeDialog, setEmployeeDialog] = useState(false);
-  const [equipmentDialog, setEquipmentDialog] = useState(false);
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, loadout: any) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedLoadout(loadout);
+  };
 
-  // Mock data for employees and equipment
-  const availableEmployees = [
-    { _id: 'e1', code: 'TRS4+L+E2+ISA', name: 'John Doe', baseRate: 65, tier: 4, trueCost: 110.50 },
-    { _id: 'e2', code: 'TRS2+E1', name: 'Jane Smith', baseRate: 35, tier: 2, trueCost: 59.50 },
-    { _id: 'e3', code: 'MUL4+E4', name: 'Mike Johnson', baseRate: 45, tier: 4, trueCost: 76.50 },
-  ];
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedLoadout(null);
+  };
 
-  const availableEquipment = [
-    { _id: 'eq1', name: 'Ford F450 Chip Truck', type: 'Truck', costPerHour: 25 },
-    { _id: 'eq2', name: '12" Bandit Chipper', type: 'Chipper', costPerHour: 35 },
-    { _id: 'eq3', name: 'CAT 265 Mulcher', type: 'Mulcher', costPerHour: 114.73 },
-    { _id: 'eq4', name: 'Vermeer SC60TX Stump Grinder', type: 'Stump Grinder', costPerHour: 45 },
-  ];
+  const handleEdit = () => {
+    // TODO: Open edit dialog
+    handleMenuClose();
+  };
 
-  const handleOpenDialog = (loadout?: any) => {
-    if (loadout) {
-      setEditingLoadout(loadout);
-      // Load loadout data into form
-    } else {
-      setEditingLoadout(null);
-      setFormData({
-        name: '',
-        serviceType: 'Tree Removal',
-        status: 'Active',
-        description: '',
-        employees: [],
-        equipment: [],
-        targetMargin: 35,
-        minimumMargin: 30,
-        productionRate: 0,
-        productionUnit: 'trees/day',
-        minimumCrewSize: 2,
-        requiredPPE: [],
-        requiredSafetyEquipment: [],
-        minimumBookingHours: 4,
-        travelBufferMinutes: 30,
-        setupTimeMinutes: 15,
-        cleanupTimeMinutes: 15,
-      });
+  const handleDuplicate = () => {
+    // TODO: Duplicate loadout
+    handleMenuClose();
+  };
+
+  const handleDelete = () => {
+    // TODO: Delete loadout
+    if (confirm(`Delete ${selectedLoadout?.name}?`)) {
+      handleMenuClose();
     }
-    setDialogOpen(true);
-    setFormTab(0);
   };
-
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setEditingLoadout(null);
-  };
-
-  const handleSave = () => {
-    console.log('Saving loadout:', formData);
-    // TODO: Save to Convex
-    handleCloseDialog();
-  };
-
-  const addEmployee = (employee: any) => {
-    setFormData({
-      ...formData,
-      employees: [...formData.employees, {
-        employeeId: employee._id,
-        name: employee.name,
-        code: employee.code,
-        trueCost: employee.trueCost,
-        role: 'Crew Member',
-      }]
-    });
-    setEmployeeDialog(false);
-  };
-
-  const removeEmployee = (index: number) => {
-    setFormData({
-      ...formData,
-      employees: formData.employees.filter((_, i) => i !== index)
-    });
-  };
-
-  const addEquipment = (equipment: any) => {
-    setFormData({
-      ...formData,
-      equipment: [...formData.equipment, {
-        equipmentId: equipment._id,
-        name: equipment.name,
-        type: equipment.type,
-        costPerHour: equipment.costPerHour,
-      }]
-    });
-    setEquipmentDialog(false);
-  };
-
-  const removeEquipment = (index: number) => {
-    setFormData({
-      ...formData,
-      equipment: formData.equipment.filter((_, i) => i !== index)
-    });
-  };
-
-  // Calculate totals
-  const totalLaborCost = formData.employees.reduce((sum, emp) => sum + emp.trueCost, 0);
-  const totalEquipmentCost = formData.equipment.reduce((sum, eq) => sum + eq.costPerHour, 0);
-  const totalCostPerHour = totalLaborCost + totalEquipmentCost;
-  const billingRate = totalCostPerHour / (1 - formData.targetMargin / 100);
-  const profitPerHour = billingRate - totalCostPerHour;
-  const actualMarginPercent = (profitPerHour / billingRate) * 100;
-
-  const marginColor = actualMarginPercent >= 35 ? '#34C759' : actualMarginPercent >= 30 ? '#FF9500' : '#FF3B30';
-
-  const filteredLoadouts = loadouts.filter(loadout => {
-    const matchesSearch = loadout.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesService = serviceFilter === 'All' || loadout.serviceType === serviceFilter;
-    const matchesStatus = statusFilter === 'All' || loadout.status === statusFilter;
-    return matchesSearch && matchesService && matchesStatus;
-  });
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#000000', color: '#ffffff', p: 3 }}>
+    <Box sx={{ pb: 10 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: '#ffffff' }}>
-            Loadouts
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#8e8e93', mt: 0.5 }}>
-            {filteredLoadouts.length} loadout{filteredLoadouts.length !== 1 ? 's' : ''} configured
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{
-            bgcolor: '#007AFF',
-            color: '#ffffff',
-            textTransform: 'none',
-            px: 3,
-            '&:hover': { bgcolor: '#0051D5' },
-          }}
-        >
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Typography variant="h4" sx={{ fontWeight: 600 }}>Loadouts</Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
           New Loadout
         </Button>
       </Box>
 
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3, bgcolor: '#1c1c1e', border: '1px solid #2c2c2e' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              placeholder="Search loadouts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: '#8e8e93' }} />,
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: '#ffffff',
-                  bgcolor: '#000000',
-                  '& fieldset': { borderColor: '#2c2c2e' },
-                  '&:hover fieldset': { borderColor: '#007AFF' },
-                },
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              select
-              label="Service Type"
-              value={serviceFilter}
-              onChange={(e) => setServiceFilter(e.target.value)}
-              sx={textFieldStyle}
-            >
-              <MenuItem value="All">All Services</MenuItem>
-              {SERVICE_TYPES.map(type => (
-                <MenuItem key={type} value={type}>{type}</MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              select
-              label="Status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              sx={textFieldStyle}
-            >
-              <MenuItem value="All">All Statuses</MenuItem>
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="Inactive">Inactive</MenuItem>
-            </TextField>
-          </Grid>
-        </Grid>
-      </Paper>
+      {/* Loadout Cards - Mobile Optimized */}
+      <Grid container spacing={2}>
+        {loadouts.map((loadout) => {
+          const kpis = calculateLoadoutKPIs(loadout);
+          const isExpanded = expandedCard === loadout._id;
 
-      {/* Loadout Table */}
-      <TableContainer component={Paper} sx={{ bgcolor: '#1c1c1e', border: '1px solid #2c2c2e' }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: '#2c2c2e' }}>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }}>
-                Loadout Name
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }}>
-                Service Type
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="center">
-                Crew
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="center">
-                Equipment
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
-                Cost/Hr
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="center">
-                Margin
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
-                Billing Rate
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
-                Profit/Hr
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
-                Production
-              </TableCell>
-              <TableCell sx={{ color: '#8e8e93', fontWeight: 600, borderBottom: '1px solid #2c2c2e' }} align="right">
-                Actions
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredLoadouts.map((loadout) => (
-              <>
-                {/* Collapsed Row */}
-                <TableRow
-                  key={loadout._id}
-                  sx={{
-                    '&:hover': { bgcolor: '#2c2c2e' },
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => setExpandedRow(expandedRow === loadout._id ? null : loadout._id)}
-                >
-                  <TableCell sx={{ color: '#ffffff', borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <IconButton size="small" sx={{ color: '#8e8e93' }}>
-                        {expandedRow === loadout._id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                      </IconButton>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {loadout.name}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    <Chip
-                      label={loadout.serviceType}
-                      size="small"
-                      sx={{
-                        bgcolor: '#2c2c2e',
-                        color: '#007AFF',
-                        fontSize: '0.75rem',
-                        height: 24,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell align="center" sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-                      <PeopleIcon sx={{ color: '#007AFF', fontSize: 16 }} />
-                      <Typography variant="body2" sx={{ color: '#ffffff' }}>
-                        {loadout.employeeCount}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell align="center" sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-                      <EquipmentIcon sx={{ color: '#007AFF', fontSize: 16 }} />
-                      <Typography variant="body2" sx={{ color: '#ffffff' }}>
-                        {loadout.equipmentCount}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell align="right" sx={{ color: '#ffffff', borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    ${loadout.totalCostPerHour.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="center" sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    <Chip
-                      label={`${loadout.targetMargin}%`}
-                      size="small"
-                      sx={{
-                        bgcolor: loadout.targetMargin >= 35 ? '#34C759' : loadout.targetMargin >= 30 ? '#FF9500' : '#FF3B30',
-                        color: '#ffffff',
-                        fontWeight: 600,
-                        height: 22,
-                        fontSize: '0.75rem',
-                        minWidth: 45,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell align="right" sx={{ color: '#007AFF', fontWeight: 600, borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    ${loadout.billingRate.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ color: '#34C759', fontWeight: 600, borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    +${loadout.profitPerHour.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ color: '#ffffff', borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                      {loadout.productionRate} {loadout.serviceType === 'Forestry Mulching' ? 'IA/hr' : loadout.serviceType === 'Stump Grinding' ? 'pts/hr' : 'trees/day'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right" sx={{ borderBottom: expandedRow === loadout._id ? 'none' : '1px solid #2c2c2e', py: 1.5 }}>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAnchorEl(e.currentTarget);
-                        setSelectedLoadout(loadout);
-                      }}
-                      sx={{ color: '#8e8e93' }}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+          return (
+            <Grid item xs={12} key={loadout._id}>
+              <Card sx={{
+                bgcolor: '#1C1C1E',
+                border: '1px solid #2C2C2E',
+                transition: 'all 0.3s',
+                '&:hover': { borderColor: '#007AFF' },
+              }}>
+                {/* Collapsed View - Always Visible */}
+                <CardContent sx={{ pb: 1 }} onClick={() => handleExpandClick(loadout._id)}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                    {/* Icon/Avatar */}
+                    <Avatar sx={{
+                      bgcolor: loadout.status === 'Active' ? '#34C759' : '#8E8E93',
+                      width: 48,
+                      height: 48,
+                    }}>
+                      {loadout.serviceType === 'Tree Removal' ? <PeopleIcon /> :
+                       loadout.serviceType === 'Forestry Mulching' ? <EquipmentIcon /> :
+                       loadout.serviceType === 'Stump Grinding' ? <EquipmentIcon /> : <EquipmentIcon />}
+                    </Avatar>
 
-                {/* Expanded Row */}
-                <TableRow>
-                  <TableCell colSpan={10} sx={{ py: 0, borderBottom: '1px solid #2c2c2e', bgcolor: '#000000' }}>
-                    <Collapse in={expandedRow === loadout._id} timeout="auto" unmountOnExit>
-                      <Box sx={{ py: 2, px: 3 }}>
-                        <Grid container spacing={3}>
-                          {/* Labor Breakdown */}
-                          <Grid item xs={12} md={6}>
-                            <Paper sx={{ p: 2, bgcolor: '#1c1c1e', border: '1px solid #2c2c2e' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                <PeopleIcon sx={{ color: '#007AFF' }} />
-                                <Typography variant="subtitle2" sx={{ color: '#ffffff', fontWeight: 600 }}>
-                                  Labor Breakdown
-                                </Typography>
-                              </Box>
-                              <List dense>
-                                <ListItem sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary="Lead Climber (TRS4+L+E2+ISA)"
-                                    secondary="$110.50/hr (with 1.7x burden)"
-                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
-                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
-                                  />
-                                </ListItem>
-                                <ListItem sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary="Ground Tech (TRS2+E1)"
-                                    secondary="$59.50/hr (with 1.7x burden)"
-                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
-                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
-                                  />
-                                </ListItem>
-                                <Divider sx={{ my: 1, borderColor: '#2c2c2e' }} />
-                                <ListItem sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary="Total Labor Cost"
-                                    primaryTypographyProps={{ color: '#ffffff', fontWeight: 600, fontSize: '0.9rem' }}
-                                  />
-                                  <Typography variant="body2" sx={{ color: '#34C759', fontWeight: 600 }}>
-                                    $170.00/hr
-                                  </Typography>
-                                </ListItem>
-                              </List>
-                            </Paper>
-                          </Grid>
+                    {/* Main Content */}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      {/* Title Row */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                            {loadout.name}
+                          </Typography>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            <Chip
+                              label={loadout.serviceType}
+                              size="small"
+                              sx={{ bgcolor: '#007AFF', color: '#FFF', height: 24 }}
+                            />
+                            <Chip
+                              icon={loadout.status === 'Active' ? <ActiveIcon /> : <InactiveIcon />}
+                              label={loadout.status}
+                              size="small"
+                              sx={{
+                                bgcolor: loadout.status === 'Active' ? '#34C75930' : '#8E8E9330',
+                                color: loadout.status === 'Active' ? '#34C759' : '#8E8E93',
+                                height: 24,
+                              }}
+                            />
+                          </Stack>
+                        </Box>
 
-                          {/* Equipment Breakdown */}
-                          <Grid item xs={12} md={6}>
-                            <Paper sx={{ p: 2, bgcolor: '#1c1c1e', border: '1px solid #2c2c2e' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                <EquipmentIcon sx={{ color: '#007AFF' }} />
-                                <Typography variant="subtitle2" sx={{ color: '#ffffff', fontWeight: 600 }}>
-                                  Equipment Breakdown
-                                </Typography>
-                              </Box>
-                              <List dense>
-                                <ListItem sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary="Ford F450 Chip Truck"
-                                    secondary="$25.00/hr"
-                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
-                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
-                                  />
-                                </ListItem>
-                                <ListItem sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary='12" Bandit Chipper'
-                                    secondary="$35.00/hr"
-                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
-                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
-                                  />
-                                </ListItem>
-                                <ListItem sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary="Climbing Gear & Chainsaw"
-                                    secondary="$13.00/hr"
-                                    primaryTypographyProps={{ color: '#ffffff', fontSize: '0.85rem' }}
-                                    secondaryTypographyProps={{ color: '#8e8e93', fontSize: '0.75rem' }}
-                                  />
-                                </ListItem>
-                                <Divider sx={{ my: 1, borderColor: '#2c2c2e' }} />
-                                <ListItem sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary="Total Equipment Cost"
-                                    primaryTypographyProps={{ color: '#ffffff', fontWeight: 600, fontSize: '0.9rem' }}
-                                  />
-                                  <Typography variant="body2" sx={{ color: '#34C759', fontWeight: 600 }}>
-                                    $73.00/hr
-                                  </Typography>
-                                </ListItem>
-                              </List>
-                            </Paper>
-                          </Grid>
-
-                          {/* Financial Summary */}
-                          <Grid item xs={12}>
-                            <Paper sx={{ p: 2, bgcolor: '#2c2c2e', border: '2px solid #007AFF' }}>
-                              <Grid container spacing={2}>
-                                <Grid item xs={12} sm={6} md={3}>
-                                  <Typography variant="body2" sx={{ color: '#8e8e93', mb: 0.5 }}>
-                                    Total Cost
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ color: '#ffffff', fontWeight: 600 }}>
-                                    ${loadout.totalCostPerHour.toFixed(2)}/hr
-                                  </Typography>
-                                </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
-                                  <Typography variant="body2" sx={{ color: '#8e8e93', mb: 0.5 }}>
-                                    Billing Rate
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ color: '#007AFF', fontWeight: 600 }}>
-                                    ${loadout.billingRate.toFixed(2)}/hr
-                                  </Typography>
-                                </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
-                                  <Typography variant="body2" sx={{ color: '#8e8e93', mb: 0.5 }}>
-                                    Profit per Hour
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ color: '#34C759', fontWeight: 600 }}>
-                                    +${loadout.profitPerHour.toFixed(2)}
-                                  </Typography>
-                                </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
-                                  <Typography variant="body2" sx={{ color: '#8e8e93', mb: 0.5 }}>
-                                    Profit Margin
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ color: loadout.targetMargin >= 35 ? '#34C759' : loadout.targetMargin >= 30 ? '#FF9500' : '#FF3B30', fontWeight: 600 }}>
-                                    {loadout.targetMargin}%
-                                  </Typography>
-                                </Grid>
-                              </Grid>
-                            </Paper>
-                          </Grid>
-                        </Grid>
+                        {/* Action Menu Button */}
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, loadout)}
+                          sx={{ color: '#8E8E93' }}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
                       </Box>
-                    </Collapse>
-                  </TableCell>
-                </TableRow>
-              </>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+
+                      {/* Key Metrics - Always Visible */}
+                      <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <Box sx={{ flex: '1 1 120px' }}>
+                          <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
+                            Cost/Hour
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                            ${kpis.totalCostPerHour.toFixed(0)}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ flex: '1 1 120px' }}>
+                          <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
+                            Billing Rate
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#34C759', fontSize: '1.1rem' }}>
+                            ${kpis.targetBillingRate.toFixed(0)}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ flex: '1 1 120px' }}>
+                          <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
+                            Profit/Hour
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500', fontSize: '1.1rem' }}>
+                            ${kpis.profitPerHour.toFixed(0)}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ flex: '1 1 80px' }}>
+                          <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
+                            Margin
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                            {kpis.targetMargin}%
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Expand Indicator */}
+                      <Box sx={{ textAlign: 'center', mt: 2 }}>
+                        <IconButton size="small" sx={{ color: '#8E8E93' }}>
+                          <ExpandMoreIcon sx={{
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.3s',
+                          }} />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </Box>
+                </CardContent>
+
+                {/* Expanded View - Collapsible */}
+                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                  <Divider sx={{ borderColor: '#2C2C2E' }} />
+                  <CardContent>
+                    {/* Description */}
+                    {loadout.description && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        {loadout.description}
+                      </Typography>
+                    )}
+
+                    {/* Team & Equipment Composition */}
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2, bgcolor: '#2C2C2E' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <PeopleIcon sx={{ color: '#007AFF' }} />
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Team Composition</Typography>
+                          </Box>
+                          <Stack spacing={1.5}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Crew Size</Typography>
+                              <Typography variant="body2">{kpis.employeeCount} members</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Avg Experience</Typography>
+                              <Typography variant="body2">{kpis.avgExperience} years</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Certifications</Typography>
+                              <Typography variant="body2">{kpis.certificationCount} total</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Labor Cost</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                ${kpis.totalLaborCost.toFixed(0)}/hr
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2, bgcolor: '#2C2C2E' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <EquipmentIcon sx={{ color: '#FF9500' }} />
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Equipment</Typography>
+                          </Box>
+                          <Stack spacing={1.5}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Equipment Count</Typography>
+                              <Typography variant="body2">{kpis.equipmentCount} pieces</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Total Value</Typography>
+                              <Typography variant="body2">
+                                ${(kpis.totalEquipmentValue / 1000).toFixed(0)}k
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Total HP</Typography>
+                              <Typography variant="body2">{kpis.totalHorsepower} HP</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Equipment Cost</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                ${kpis.totalEquipmentCost.toFixed(0)}/hr
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    </Grid>
+
+                    {/* Revenue Targets */}
+                    <Paper sx={{ p: 2, bgcolor: '#34C75920', border: '1px solid #34C759', mb: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <MoneyIcon sx={{ color: '#34C759' }} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#34C759' }}>
+                          Revenue Targets
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Daily (8hrs)</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            ${kpis.dailyRevenue.toFixed(0)}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Weekly (40hrs)</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            ${kpis.weeklyRevenue.toFixed(0)}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Monthly (160hrs)</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            ${(kpis.monthlyRevenue / 1000).toFixed(1)}k
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Annual Potential</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            ${(kpis.annualRevenuePotential / 1000).toFixed(0)}k
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>
+
+                    {/* Margin Breakdown */}
+                    <Paper sx={{ p: 2, bgcolor: '#2C2C2E', mb: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <ProductionIcon sx={{ color: '#007AFF' }} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          Billing Rates at Different Margins
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        <Grid item xs={6} sm={2.4}>
+                          <Typography variant="caption" color="text.secondary">30% Margin</Typography>
+                          <Typography variant="body2">${kpis.billingRates.margin30.toFixed(0)}/hr</Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={2.4}>
+                          <Typography variant="caption" color="text.secondary">40% Margin</Typography>
+                          <Typography variant="body2">${kpis.billingRates.margin40.toFixed(0)}/hr</Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={2.4}>
+                          <Typography variant="caption" sx={{ color: '#34C759' }}>50% Margin</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
+                            ${kpis.billingRates.margin50.toFixed(0)}/hr
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={2.4}>
+                          <Typography variant="caption" color="text.secondary">60% Margin</Typography>
+                          <Typography variant="body2">${kpis.billingRates.margin60.toFixed(0)}/hr</Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={2.4}>
+                          <Typography variant="caption" color="text.secondary">70% Margin</Typography>
+                          <Typography variant="body2">${kpis.billingRates.margin70.toFixed(0)}/hr</Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>
+
+                    {/* Historical Performance */}
+                    <Paper sx={{ p: 2, bgcolor: '#2C2C2E', mb: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <KpiIcon sx={{ color: '#FF9500' }} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          Historical Performance
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Jobs Completed</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {kpis.totalJobsCompleted}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Total Hours</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {kpis.totalHoursWorked.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Revenue Generated</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
+                            ${(kpis.totalRevenueGenerated / 1000).toFixed(0)}k
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Avg Revenue/Job</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            ${kpis.avgRevenuePerJob.toFixed(0)}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>
+
+                    {/* Production & Safety */}
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2, bgcolor: '#2C2C2E' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <SpeedIcon sx={{ color: '#007AFF' }} />
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Production</Typography>
+                          </Box>
+                          <Stack spacing={1.5}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Production Rate</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {kpis.productionRate} {kpis.productionUnit}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Utilization Rate</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {(kpis.utilizationRate * 100).toFixed(0)}%
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Setup Time</Typography>
+                              <Typography variant="body2">{kpis.setupTimeMinutes} min</Typography>
+                            </Box>
+                          </Stack>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2, bgcolor: '#34C75920', border: '1px solid #34C759' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <ActiveIcon sx={{ color: '#34C759' }} />
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#34C759' }}>
+                              Safety Record
+                            </Typography>
+                          </Box>
+                          <Stack spacing={1.5}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Days Since Incident</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
+                                {kpis.daysSinceIncident}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">Safety Rating</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
+                                {kpis.safetyRating}/100
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    </Grid>
+
+                    {/* Transport Requirements */}
+                    <Paper sx={{ p: 2, bgcolor: '#2C2C2E', mt: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <TruckIcon sx={{ color: '#8E8E93' }} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Transport Requirements</Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        {kpis.transportRequirements}
+                      </Typography>
+                    </Paper>
+                  </CardContent>
+                </Collapse>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
 
       {/* Action Menu */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
-        onClose={() => setAnchorEl(null)}
+        onClose={handleMenuClose}
         PaperProps={{
           sx: {
-            bgcolor: '#1c1c1e',
-            border: '1px solid #2c2c2e',
+            bgcolor: '#1C1C1E',
+            border: '1px solid #2C2C2E',
             minWidth: 180,
           }
         }}
       >
-        <MenuItem
-          onClick={() => {
-            handleOpenDialog(selectedLoadout);
-            setAnchorEl(null);
-          }}
-          sx={{
-            color: '#ffffff',
-            '&:hover': { bgcolor: '#2c2c2e' },
-          }}
-        >
-          <EditIcon sx={{ mr: 1, fontSize: 18 }} />
+        <MenuItem onClick={handleEdit}>
+          <EditIcon sx={{ mr: 1, fontSize: 20 }} />
           Edit Loadout
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            console.log('Clone loadout:', selectedLoadout);
-            // TODO: Implement clone logic
-            setAnchorEl(null);
-          }}
-          sx={{
-            color: '#ffffff',
-            '&:hover': { bgcolor: '#2c2c2e' },
-          }}
-        >
-          <CopyIcon sx={{ mr: 1, fontSize: 18 }} />
-          Clone Loadout
+        <MenuItem onClick={handleDuplicate}>
+          <CopyIcon sx={{ mr: 1, fontSize: 20 }} />
+          Duplicate
         </MenuItem>
-        <Divider sx={{ borderColor: '#2c2c2e' }} />
-        <MenuItem
-          onClick={() => {
-            console.log('Delete loadout:', selectedLoadout);
-            // TODO: Implement delete logic with confirmation
-            setAnchorEl(null);
-          }}
-          sx={{
-            color: '#FF3B30',
-            '&:hover': { bgcolor: '#2c2c2e' },
-          }}
-        >
-          <DeleteIcon sx={{ mr: 1, fontSize: 18 }} />
-          Delete Loadout
+        <Divider sx={{ borderColor: '#2C2C2E' }} />
+        <MenuItem onClick={handleDelete} sx={{ color: '#FF3B30' }}>
+          <DeleteIcon sx={{ mr: 1, fontSize: 20 }} />
+          Delete
         </MenuItem>
       </Menu>
 
-      {/* Loadout Builder Dialog - Continued in next message due to length */}
+      {/* FAB for mobile - Hidden since top button works */}
+      <Fab
+        color="primary"
+        sx={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          display: 'none', // Disabled - use top button instead
+        }}
+        onClick={() => setDialogOpen(true)}
+      >
+        <AddIcon />
+      </Fab>
+
+      {/* New Loadout Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: '#1C1C1E',
+            border: '1px solid #2C2C2E',
+          }
+        }}
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Create New Loadout</Typography>
+            <IconButton size="small" onClick={() => setDialogOpen(false)} sx={{ color: '#8E8E93' }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+
+        <Tabs
+          value={formTab}
+          onChange={(_, v) => setFormTab(v)}
+          sx={{
+            borderBottom: 1,
+            borderColor: '#2C2C2E',
+            px: 3,
+            '& .MuiTab-root': {
+              color: '#8E8E93',
+              fontWeight: 500,
+              textTransform: 'none',
+              fontSize: '0.95rem',
+            },
+            '& .Mui-selected': {
+              color: '#007AFF !important',
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#007AFF',
+            }
+          }}
+        >
+          <Tab label="Basic Info" />
+          <Tab label="Equipment" />
+          <Tab label="Crew" />
+          <Tab label="Financial" />
+        </Tabs>
+
+        <DialogContent sx={{ minHeight: 500, p: 4 }}>
+          {/* Tab 0: Basic Info */}
+          {formTab === 0 && (
+            <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+                Set up the basic information for this loadout configuration.
+              </Typography>
+              <Stack spacing={3}>
+                <TextField
+                  fullWidth
+                  label="Loadout Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., 2-Man Climbing Crew"
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: '#0A0A0A',
+                    }
+                  }}
+                />
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Service Type</InputLabel>
+                      <Select
+                        value={formData.serviceType}
+                        onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
+                        label="Service Type"
+                        sx={{
+                          bgcolor: '#0A0A0A',
+                        }}
+                      >
+                        {SERVICE_TYPES.map(type => (
+                          <MenuItem key={type} value={type}>{type}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Status</InputLabel>
+                      <Select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        label="Status"
+                        sx={{
+                          bgcolor: '#0A0A0A',
+                        }}
+                      >
+                        <MenuItem value="Active">
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <ActiveIcon sx={{ fontSize: 18, color: '#34C759' }} />
+                            Active
+                          </Box>
+                        </MenuItem>
+                        <MenuItem value="Inactive">
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <InactiveIcon sx={{ fontSize: 18, color: '#8E8E93' }} />
+                            Inactive
+                          </Box>
+                        </MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Description (optional)"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description of this loadout's purpose and capabilities..."
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: '#0A0A0A',
+                    }
+                  }}
+                />
+              </Stack>
+            </Box>
+          )}
+
+          {/* Tab 1: Equipment */}
+          {formTab === 1 && (
+            <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+                Select equipment for this loadout. Costs will be calculated automatically.
+              </Typography>
+              <FormControl fullWidth>
+                <InputLabel>Select Equipment</InputLabel>
+                <Select
+                  multiple
+                  value={formData.selectedEquipment}
+                  onChange={(e) => setFormData({ ...formData, selectedEquipment: e.target.value as string[] })}
+                  input={<OutlinedInput label="Select Equipment" />}
+                  renderValue={(selected) => `${selected.length} piece(s) selected`}
+                  sx={{ bgcolor: '#0A0A0A' }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#1C1C1E',
+                        maxHeight: 400,
+                      }
+                    }
+                  }}
+                >
+                  {equipment?.map((eq) => {
+                    const costPerHour = ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
+                    return (
+                      <MenuItem key={eq._id} value={eq._id}>
+                        <Checkbox checked={formData.selectedEquipment.indexOf(eq._id) > -1} />
+                        <ListItemText
+                          primary={eq.nickname || `${eq.year} ${eq.make} ${eq.model}`}
+                          secondary={`${eq.equipmentSubcategory} • $${costPerHour.toFixed(0)}/hr`}
+                          primaryTypographyProps={{ fontWeight: 500 }}
+                          secondaryTypographyProps={{ color: '#8E8E93' }}
+                        />
+                      </MenuItem>
+                    );
+                  }) || []}
+                </Select>
+              </FormControl>
+
+              {formData.selectedEquipment.length > 0 && (
+                <Paper sx={{ mt: 4, p: 3, bgcolor: '#0A0A0A', border: '1px solid #2C2C2E' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                    <EquipmentIcon sx={{ color: '#FF9500' }} />
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      Selected Equipment ({formData.selectedEquipment.length})
+                    </Typography>
+                  </Box>
+                  <Stack spacing={2}>
+                    {formData.selectedEquipment.map(eqId => {
+                      const eq = equipment?.find(e => e._id === eqId);
+                      if (!eq) return null;
+                      const costPerHour = ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
+                      return (
+                        <Box key={eqId} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, bgcolor: '#1C1C1E', borderRadius: 1 }}>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {eq.nickname || `${eq.year} ${eq.make} ${eq.model}`}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {eq.equipmentSubcategory}
+                            </Typography>
+                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500' }}>
+                            ${costPerHour.toFixed(0)}/hr
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Paper>
+              )}
+            </Box>
+          )}
+
+          {/* Tab 2: Crew */}
+          {formTab === 2 && (
+            <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+                Select crew members for this loadout. Labor costs include burden multiplier (1.7x).
+              </Typography>
+              <FormControl fullWidth>
+                <InputLabel>Select Crew Members</InputLabel>
+                <Select
+                  multiple
+                  value={formData.selectedEmployees}
+                  onChange={(e) => setFormData({ ...formData, selectedEmployees: e.target.value as string[] })}
+                  input={<OutlinedInput label="Select Crew Members" />}
+                  renderValue={(selected) => `${selected.length} member(s) selected`}
+                  sx={{ bgcolor: '#0A0A0A' }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#1C1C1E',
+                        maxHeight: 400,
+                      }
+                    }
+                  }}
+                >
+                  {employees?.map((emp) => {
+                    const trueCost = emp.baseHourlyRate * 1.7;
+                    return (
+                      <MenuItem key={emp._id} value={emp._id}>
+                        <Checkbox checked={formData.selectedEmployees.indexOf(emp._id) > -1} />
+                        <ListItemText
+                          primary={`${emp.firstName} ${emp.lastName}`}
+                          secondary={`${emp.primaryTrack} Tier ${emp.tier} • $${trueCost.toFixed(0)}/hr`}
+                          primaryTypographyProps={{ fontWeight: 500 }}
+                          secondaryTypographyProps={{ color: '#8E8E93' }}
+                        />
+                      </MenuItem>
+                    );
+                  }) || []}
+                </Select>
+              </FormControl>
+
+              {formData.selectedEmployees.length > 0 && (
+                <Paper sx={{ mt: 4, p: 3, bgcolor: '#0A0A0A', border: '1px solid #2C2C2E' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                    <PeopleIcon sx={{ color: '#007AFF' }} />
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      Selected Crew ({formData.selectedEmployees.length})
+                    </Typography>
+                  </Box>
+                  <Stack spacing={2}>
+                    {formData.selectedEmployees.map(empId => {
+                      const emp = employees?.find(e => e._id === empId);
+                      if (!emp) return null;
+                      const trueCost = emp.baseHourlyRate * 1.7;
+                      return (
+                        <Box key={empId} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, bgcolor: '#1C1C1E', borderRadius: 1 }}>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {emp.firstName} {emp.lastName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {emp.primaryTrack} Tier {emp.tier}
+                            </Typography>
+                          </Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#007AFF' }}>
+                            ${trueCost.toFixed(0)}/hr
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Paper>
+              )}
+            </Box>
+          )}
+
+          {/* Tab 3: Financial */}
+          {formTab === 3 && (
+            <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+                Set production rates and financial targets for this loadout.
+              </Typography>
+              <Stack spacing={3}>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Production Rate"
+                      value={formData.productionRate}
+                      onChange={(e) => setFormData({ ...formData, productionRate: parseFloat(e.target.value) })}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">{getProductionUnit(formData.serviceType)}</InputAdornment>
+                      }}
+                      helperText="Expected productivity for this loadout"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: '#0A0A0A',
+                        }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Target Margin"
+                      value={formData.targetMargin}
+                      onChange={(e) => setFormData({ ...formData, targetMargin: parseFloat(e.target.value) })}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">%</InputAdornment>
+                      }}
+                      helperText="Desired profit margin (typically 40-60%)"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: '#0A0A0A',
+                        }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Overhead/Admin Cost (optional)"
+                      value={formData.overheadCost}
+                      onChange={(e) => setFormData({ ...formData, overheadCost: parseFloat(e.target.value) })}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        endAdornment: <InputAdornment position="end">/hr</InputAdornment>
+                      }}
+                      helperText="Additional overhead beyond equipment + labor"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: '#0A0A0A',
+                        }
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </Stack>
+
+              {/* Live Cost Preview */}
+              {(formData.selectedEquipment.length > 0 || formData.selectedEmployees.length > 0) && (
+                <Paper sx={{ mt: 3, p: 3, bgcolor: '#2C2C2E', border: '2px solid #007AFF' }}>
+                  <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#007AFF' }}>
+                    Cost Preview
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Equipment Cost</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        ${formData.selectedEquipment.reduce((sum, eqId) => {
+                          const eq = equipment?.find(e => e._id === eqId);
+                          if (!eq) return sum;
+                          return sum + ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
+                        }, 0).toFixed(0)}/hr
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Labor Cost</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        ${formData.selectedEmployees.reduce((sum, empId) => {
+                          const emp = employees?.find(e => e._id === empId);
+                          return sum + (emp ? emp.baseHourlyRate * 1.7 : 0);
+                        }, 0).toFixed(0)}/hr
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Total Cost</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500' }}>
+                        ${(
+                          formData.selectedEquipment.reduce((sum, eqId) => {
+                            const eq = equipment?.find(e => e._id === eqId);
+                            if (!eq) return sum;
+                            return sum + ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
+                          }, 0) +
+                          formData.selectedEmployees.reduce((sum, empId) => {
+                            const emp = employees?.find(e => e._id === empId);
+                            return sum + (emp ? emp.baseHourlyRate * 1.7 : 0);
+                          }, 0) +
+                          formData.overheadCost
+                        ).toFixed(0)}/hr
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Billing Rate ({formData.targetMargin}%)</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#34C759' }}>
+                        ${(
+                          (formData.selectedEquipment.reduce((sum, eqId) => {
+                            const eq = equipment?.find(e => e._id === eqId);
+                            if (!eq) return sum;
+                            return sum + ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
+                          }, 0) +
+                          formData.selectedEmployees.reduce((sum, empId) => {
+                            const emp = employees?.find(e => e._id === empId);
+                            return sum + (emp ? emp.baseHourlyRate * 1.7 : 0);
+                          }, 0) +
+                          formData.overheadCost) / (1 - formData.targetMargin / 100)
+                        ).toFixed(0)}/hr
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, borderTop: '1px solid #2C2C2E' }}>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              // TODO: Save to Convex
+              alert('Loadout creation coming soon! Will save to database.');
+              setDialogOpen(false);
+            }}
+            disabled={!formData.name || formData.selectedEquipment.length === 0 || formData.selectedEmployees.length === 0}
+          >
+            Create Loadout
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
-
-const textFieldStyle = {
-  '& .MuiOutlinedInput-root': {
-    color: '#ffffff',
-    bgcolor: '#000000',
-    '& fieldset': { borderColor: '#2c2c2e' },
-    '&:hover fieldset': { borderColor: '#007AFF' },
-    '&.Mui-focused fieldset': { borderColor: '#007AFF' },
-  },
-  '& .MuiInputLabel-root': { color: '#8e8e93' },
-  '& .MuiInputLabel-root.Mui-focused': { color: '#007AFF' },
-  '& .MuiFormHelperText-root': { color: '#8e8e93' },
-};

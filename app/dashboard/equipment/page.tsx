@@ -16,9 +16,7 @@ import {
   Assignment as AssignmentIcon, Speed as SpeedIcon, Settings as SettingsIcon,
   Description as DocsIcon, TrendingUp as AnalyticsIcon, Construction as ConstructionIcon,
 } from '@mui/icons-material';
-
-const EQUIPMENT_TYPES = ['Carrier', 'Attachment', 'Support Equipment', 'Tool'];
-const EQUIPMENT_SUBTYPES = ['Forestry Mulcher', 'Skid Steer', 'Excavator', 'Stump Grinder', 'Bucket Truck', 'Chipper', 'Crane', 'Truck', 'Trailer', 'Other'];
+import { EQUIPMENT_TAXONOMY, getEquipmentCategories, getEquipmentSubcategories } from '@/lib/equipment-taxonomy';
 const EQUIPMENT_STATUS = [
   { value: 'Available', color: '#34C759' },
   { value: 'In Use', color: '#007AFF' },
@@ -51,7 +49,7 @@ function EquipmentPageContent() {
   const [formData, setFormData] = useState({
     // Identity
     nickname: '', make: '', model: '', serialNumber: '', vin: '', year: new Date().getFullYear(),
-    equipmentType: 'Carrier', equipmentSubtype: 'Truck',
+    equipmentCategory: 'Trucks & Vehicles', equipmentSubcategory: 'Heavy Duty Pickup',
     // Acquisition
     purchasePrice: 0, purchaseDate: Date.now(), dealer: '', purchaseOrderNumber: '',
     loanTermMonths: 60, financeRate: 0.05, depreciationMethod: 'Straight Line',
@@ -102,7 +100,7 @@ function EquipmentPageContent() {
     setEditingId(null);
     setFormData({
       nickname: '', make: '', model: '', serialNumber: '', vin: '', year: new Date().getFullYear(),
-      equipmentType: 'Carrier', equipmentSubtype: 'Truck',
+      equipmentCategory: 'Trucks & Vehicles', equipmentSubcategory: 'Heavy Duty Pickup',
       purchasePrice: 0, purchaseDate: Date.now(), dealer: '', purchaseOrderNumber: '',
       loanTermMonths: 60, financeRate: 0.05, depreciationMethod: 'Straight Line',
       usefulLifeYears: 5, salvageValue: 0, insurancePolicyNumber: '', insuranceCost: 0,
@@ -125,7 +123,7 @@ function EquipmentPageContent() {
       setFormData({
         nickname: eq.nickname || '', make: eq.make, model: eq.model,
         serialNumber: eq.serialNumber || '', vin: eq.vin || '', year: eq.year,
-        equipmentType: eq.equipmentType || 'Carrier', equipmentSubtype: eq.equipmentSubtype || 'Truck',
+        equipmentCategory: eq.equipmentCategory || 'Trucks & Vehicles', equipmentSubcategory: eq.equipmentSubcategory || 'Heavy Duty Pickup',
         purchasePrice: eq.purchasePrice, purchaseDate: eq.purchaseDate || Date.now(),
         dealer: eq.dealer || '', purchaseOrderNumber: eq.purchaseOrderNumber || '',
         loanTermMonths: eq.loanTermMonths || 60, financeRate: eq.financeRate || 0.05,
@@ -172,7 +170,17 @@ function EquipmentPageContent() {
   };
 
   const getStatusColor = (status: string) => EQUIPMENT_STATUS.find(s => s.value === status)?.color || '#8E8E93';
-  const getCategoryIcon = (subtype: string) => subtype?.toLowerCase().includes('truck') ? <TruckIcon /> : <BuildIcon />;
+
+  const getCategoryIcon = (category: string, subcategory: string) => {
+    const cat = category?.toLowerCase() || '';
+    const sub = subcategory?.toLowerCase() || '';
+
+    if (cat.includes('truck') || cat.includes('vehicle') || sub.includes('truck')) return <TruckIcon />;
+    if (cat.includes('aerial') || sub.includes('lift') || sub.includes('bucket')) return <SettingsIcon />;
+    if (cat.includes('chainsaw') || cat.includes('handheld')) return <BuildIcon />;
+    if (cat.includes('attachment') || cat.includes('grapple') || cat.includes('bucket')) return <ConstructionIcon />;
+    return <BuildIcon />;
+  };
 
   return (
     <>
@@ -205,11 +213,11 @@ function EquipmentPageContent() {
                   <CardContent sx={{ pb: 1 }}>
                     <Box sx={{ display: 'flex', mb: 2 }}>
                       <Avatar sx={{ bgcolor: getStatusColor(eq.status), mr: 2, width: 56, height: 56 }}>
-                        {getCategoryIcon(eq.equipmentSubtype)}
+                        {getCategoryIcon(eq.equipmentCategory, eq.equipmentSubcategory)}
                       </Avatar>
                       <Box sx={{ flexGrow: 1 }}>
                         <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.5 }}>{displayName}</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{eq.equipmentSubtype}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{eq.equipmentSubcategory}</Typography>
                         <Chip label={eq.status} size="small" sx={{ bgcolor: getStatusColor(eq.status), color: '#FFF', fontWeight: 500, height: 20, fontSize: '0.7rem' }} />
                       </Box>
                     </Box>
@@ -248,10 +256,40 @@ function EquipmentPageContent() {
             <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}><AssignmentIcon sx={{ mr: 1, color: '#007AFF' }} /><Typography variant="h6" sx={{ fontWeight: 600 }}>Basic Information</Typography></Box>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}><TextField fullWidth label="Equipment Nickname" value={formData.nickname} onChange={(e) => setFormData({ ...formData, nickname: e.target.value })} placeholder="e.g. 'Big Red', 'Mulcher #1'" /></Grid>
-                <Grid item xs={12} sm={6}><TextField fullWidth select label="Equipment Type" value={formData.equipmentType} onChange={(e) => setFormData({ ...formData, equipmentType: e.target.value })}>{EQUIPMENT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}</TextField></Grid>
-                <Grid item xs={12} sm={6}><TextField fullWidth select label="Equipment Subtype" value={formData.equipmentSubtype} onChange={(e) => setFormData({ ...formData, equipmentSubtype: e.target.value })}>{EQUIPMENT_SUBTYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}</TextField></Grid>
+                <Grid item xs={12} sm={6}><TextField fullWidth label="Equipment Nickname" value={formData.nickname} onChange={(e) => setFormData({ ...formData, nickname: e.target.value })} placeholder="e.g. 'Big Red', 'Mulcher #1'" helperText="Optional: Give this equipment a memorable name" /></Grid>
                 <Grid item xs={12} sm={6}><TextField fullWidth select label="Status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>{EQUIPMENT_STATUS.map(s => <MenuItem key={s.value} value={s.value}>{s.value}</MenuItem>)}</TextField></Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Equipment Category"
+                    value={formData.equipmentCategory}
+                    onChange={(e) => {
+                      const newCategory = e.target.value;
+                      const subcats = getEquipmentSubcategories(newCategory);
+                      setFormData({
+                        ...formData,
+                        equipmentCategory: newCategory,
+                        equipmentSubcategory: subcats[0] || ''
+                      });
+                    }}
+                    helperText="Primary equipment type"
+                  >
+                    {getEquipmentCategories().map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Equipment Subcategory"
+                    value={formData.equipmentSubcategory}
+                    onChange={(e) => setFormData({ ...formData, equipmentSubcategory: e.target.value })}
+                    helperText="Specific equipment type"
+                  >
+                    {getEquipmentSubcategories(formData.equipmentCategory).map(sub => <MenuItem key={sub} value={sub}>{sub}</MenuItem>)}
+                  </TextField>
+                </Grid>
               </Grid>
             </Paper>
 
