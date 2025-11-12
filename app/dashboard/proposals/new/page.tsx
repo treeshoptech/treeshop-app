@@ -149,7 +149,7 @@ export default function NewProposalPage() {
       <Stack spacing={3}>
         {/* Header */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <IconButton onClick={() => router.push("/proposals")}>
+          <IconButton onClick={() => router.push("/dashboard/proposals")}>
             <ArrowBackIcon />
           </IconButton>
           <Box>
