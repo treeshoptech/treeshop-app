@@ -72,7 +72,7 @@ export default async function Home() {
                 lineHeight: 1.1,
               }}
             >
-              TreeShop Terminal
+              TreeShopOS
             </Typography>
             <Typography
               variant="h3"
@@ -176,7 +176,7 @@ export default async function Home() {
       <Box sx={{ py: 12 }}>
         <Container maxWidth="md">
           <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 6 }}>
-            TreeShop Terminal Changes That
+            TreeShopOS Changes That
           </Typography>
 
           <Stack spacing={6} sx={{ mt: 6 }}>
@@ -359,7 +359,7 @@ export default async function Home() {
       <Box sx={{ py: 6, bgcolor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
         <Container maxWidth="sm">
           <Typography variant="body2" align="center" color="text.secondary">
-            TreeShop Terminal © 2025
+            TreeShopOS © 2025
             <br />
             Built for operators who know there's a better way.
           </Typography>
