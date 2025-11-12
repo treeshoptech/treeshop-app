@@ -8,12 +8,14 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   FormControl,
+  FormControlLabel,
   Grid,
   IconButton,
   InputLabel,
@@ -127,7 +129,7 @@ export default function LineItemsLibraryPage() {
         tags: template.tags || [],
         notes: template.notes || "",
       });
-      setAfissPresets(template.afissPresets || []);
+      setSelectedAfissFactors(template.afissFactorIds || []);
     } else {
       setEditingId(null);
       setFormData({
@@ -143,7 +145,7 @@ export default function LineItemsLibraryPage() {
         tags: [],
         notes: "",
       });
-      setAfissPresets([]);
+      setSelectedAfissFactors([]);
     }
     setFormOpen(true);
   };
@@ -154,12 +156,12 @@ export default function LineItemsLibraryPage() {
         await updateTemplate({
           id: editingId,
           ...formData,
-          afissPresets: afissPresets.length > 0 ? afissPresets : undefined,
+          afissFactorIds: selectedAfissFactors.length > 0 ? selectedAfissFactors : undefined,
         });
       } else {
         await createTemplate({
           ...formData,
-          afissPresets: afissPresets.length > 0 ? afissPresets : undefined,
+          afissFactorIds: selectedAfissFactors.length > 0 ? selectedAfissFactors : undefined,
         });
       }
       setFormOpen(false);
@@ -178,20 +180,12 @@ export default function LineItemsLibraryPage() {
     }
   };
 
-  const handleAddAfissPreset = () => {
-    if (newAfissPreset.name && newAfissPreset.factor && newAfissPreset.impact) {
-      setAfissPresets([...afissPresets, newAfissPreset]);
-      setNewAfissPreset({
-        name: "",
-        category: "Access",
-        factor: "",
-        impact: 0,
-      });
+  const handleToggleAfissFactor = (factorId: string) => {
+    if (selectedAfissFactors.includes(factorId)) {
+      setSelectedAfissFactors(selectedAfissFactors.filter(id => id !== factorId));
+    } else {
+      setSelectedAfissFactors([...selectedAfissFactors, factorId]);
     }
-  };
-
-  const handleRemoveAfissPreset = (index: number) => {
-    setAfissPresets(afissPresets.filter((_, i) => i !== index));
   };
 
   const stats = {
@@ -319,9 +313,9 @@ export default function LineItemsLibraryPage() {
                       {((template.defaultMargin || 0) * 100).toFixed(0)}%
                     </TableCell>
                     <TableCell>
-                      {template.afissPresets && template.afissPresets.length > 0 ? (
+                      {template.afissFactorIds && template.afissFactorIds.length > 0 ? (
                         <Chip
-                          label={`${template.afissPresets.length} presets`}
+                          label={`${template.afissFactorIds.length} factors`}
                           size="small"
                           color="primary"
                         />
@@ -484,76 +478,120 @@ export default function LineItemsLibraryPage() {
               </Grid>
             </Grid>
 
-            {/* AFISS Presets */}
-            <Typography variant="h6">AFISS Complexity Presets</Typography>
+            {/* AFISS Complexity Factors */}
+            <Typography variant="h6">AFISS Complexity Factors</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Select factors that commonly apply to this service type
+            </Typography>
             <Paper sx={{ p: 2, bgcolor: "background.default" }}>
-              <Stack spacing={2}>
-                {afissPresets.map((preset, index) => (
-                  <Box
-                    key={index}
-                    sx={{ display: "flex", alignItems: "center", gap: 2 }}
-                  >
-                    <Chip label={preset.category} size="small" />
-                    <Typography flex={1}>
-                      {preset.name}: {preset.factor} (+{preset.impact}%)
+              {afissFactors && (
+                <Stack spacing={3}>
+                  {/* Access Factors */}
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      ACCESS
                     </Typography>
-                    <IconButton size="small" onClick={() => handleRemoveAfissPreset(index)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                ))}
-
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <FormControl size="small" sx={{ minWidth: 120 }}>
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                      value={newAfissPreset.category}
-                      label="Category"
-                      onChange={(e) =>
-                        setNewAfissPreset({ ...newAfissPreset, category: e.target.value })
-                      }
-                    >
-                      {AFISS_CATEGORIES.map((cat) => (
-                        <MenuItem key={cat} value={cat}>
-                          {cat}
-                        </MenuItem>
+                    <Stack spacing={1}>
+                      {afissFactors.access.map((factor) => (
+                        <FormControlLabel
+                          key={factor.id}
+                          control={
+                            <Checkbox
+                              checked={selectedAfissFactors.includes(factor.id)}
+                              onChange={() => handleToggleAfissFactor(factor.id)}
+                            />
+                          }
+                          label={factor.name}
+                        />
                       ))}
-                    </Select>
-                  </FormControl>
-                  <TextField
-                    size="small"
-                    label="Preset Name"
-                    value={newAfissPreset.name}
-                    onChange={(e) =>
-                      setNewAfissPreset({ ...newAfissPreset, name: e.target.value })
-                    }
-                  />
-                  <TextField
-                    size="small"
-                    label="Factor"
-                    value={newAfissPreset.factor}
-                    onChange={(e) =>
-                      setNewAfissPreset({ ...newAfissPreset, factor: e.target.value })
-                    }
-                  />
-                  <TextField
-                    size="small"
-                    type="number"
-                    label="Impact %"
-                    value={newAfissPreset.impact}
-                    onChange={(e) =>
-                      setNewAfissPreset({
-                        ...newAfissPreset,
-                        impact: parseFloat(e.target.value),
-                      })
-                    }
-                    sx={{ width: 100 }}
-                  />
-                  <Button onClick={handleAddAfissPreset} variant="outlined" size="small">
-                    Add
-                  </Button>
-                </Box>
-              </Stack>
+                    </Stack>
+                  </Box>
+
+                  {/* Facilities Factors */}
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      FACILITIES
+                    </Typography>
+                    <Stack spacing={1}>
+                      {afissFactors.facilities.map((factor) => (
+                        <FormControlLabel
+                          key={factor.id}
+                          control={
+                            <Checkbox
+                              checked={selectedAfissFactors.includes(factor.id)}
+                              onChange={() => handleToggleAfissFactor(factor.id)}
+                            />
+                          }
+                          label={factor.name}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  {/* Irregularities Factors */}
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      IRREGULARITIES
+                    </Typography>
+                    <Stack spacing={1}>
+                      {afissFactors.irregularities.map((factor) => (
+                        <FormControlLabel
+                          key={factor.id}
+                          control={
+                            <Checkbox
+                              checked={selectedAfissFactors.includes(factor.id)}
+                              onChange={() => handleToggleAfissFactor(factor.id)}
+                            />
+                          }
+                          label={factor.name}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  {/* Site Conditions Factors */}
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      SITE CONDITIONS
+                    </Typography>
+                    <Stack spacing={1}>
+                      {afissFactors.siteConditions.map((factor) => (
+                        <FormControlLabel
+                          key={factor.id}
+                          control={
+                            <Checkbox
+                              checked={selectedAfissFactors.includes(factor.id)}
+                              onChange={() => handleToggleAfissFactor(factor.id)}
+                            />
+                          }
+                          label={factor.name}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  {/* Safety Factors */}
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      SAFETY
+                    </Typography>
+                    <Stack spacing={1}>
+                      {afissFactors.safety.map((factor) => (
+                        <FormControlLabel
+                          key={factor.id}
+                          control={
+                            <Checkbox
+                              checked={selectedAfissFactors.includes(factor.id)}
+                              onChange={() => handleToggleAfissFactor(factor.id)}
+                            />
+                          }
+                          label={factor.name}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+                </Stack>
+              )}
             </Paper>
 
             <TextField
