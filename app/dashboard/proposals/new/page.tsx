@@ -8,7 +8,12 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   Container,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Divider,
   FormControl,
   IconButton,
@@ -34,6 +39,7 @@ import {
   Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
+  LibraryBooks as LibraryIcon,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import {
@@ -54,6 +60,7 @@ export default function NewProposalPage() {
   const [lineItems, setLineItems] = useState<any[]>([]);
   const [showCalculator, setShowCalculator] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceType>("Stump Grinding");
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
 
   // Form data
   const [customerName, setCustomerName] = useState("");
@@ -65,9 +72,13 @@ export default function NewProposalPage() {
   // Fetch loadouts for calculators
   const loadouts = useQuery(api.loadouts.list);
 
+  // Fetch line item templates
+  const lineItemTemplates = useQuery(api.lineItemTemplates.list);
+
   // Mutations
   const createProject = useMutation(api.projects.create);
   const createLineItem = useMutation(api.lineItems.create);
+  const incrementTemplateUsage = useMutation(api.lineItemTemplates.incrementUsage);
 
   const handleLineItemCreate = (lineItemData: any) => {
     setLineItems([...lineItems, { ...lineItemData, id: crypto.randomUUID() }]);
@@ -76,6 +87,33 @@ export default function NewProposalPage() {
 
   const handleRemoveLineItem = (id: string) => {
     setLineItems(lineItems.filter((item) => item.id !== id));
+  };
+
+  const handleUseTemplate = async (template: any) => {
+    // Convert template to line item format
+    const lineItem = {
+      id: crypto.randomUUID(),
+      serviceType: template.serviceType || template.category,
+      description: template.description,
+      defaultUnit: template.defaultUnit,
+      defaultUnitPrice: template.defaultUnitPrice,
+      defaultQuantity: template.defaultQuantity || 1,
+      totalPrice: template.defaultUnitPrice * (template.defaultQuantity || 1),
+      totalCost: (template.costPerUnit || 0) * (template.defaultQuantity || 1),
+      profit: (template.defaultUnitPrice - (template.costPerUnit || 0)) * (template.defaultQuantity || 1),
+      marginPercent: template.defaultMargin || 0,
+      totalEstimatedHours: (template.defaultQuantity || 1) / 1, // Placeholder
+      afissFactors: template.afissPresets || [],
+    };
+
+    setLineItems([...lineItems, lineItem]);
+
+    // Increment usage count
+    if (template._id) {
+      await incrementTemplateUsage({ id: template._id });
+    }
+
+    setShowTemplateLibrary(false);
   };
 
   const handleNext = () => {
@@ -295,28 +333,37 @@ export default function NewProposalPage() {
                 <Typography variant="h6" gutterBottom>
                   Add Line Item
                 </Typography>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <FormControl sx={{ minWidth: 200 }}>
-                    <InputLabel>Service Type</InputLabel>
-                    <Select
-                      value={selectedService}
-                      label="Service Type"
-                      onChange={(e) => setSelectedService(e.target.value as ServiceType)}
+                <Stack spacing={3}>
+                  <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+                    <FormControl sx={{ minWidth: 200 }}>
+                      <InputLabel>Service Type</InputLabel>
+                      <Select
+                        value={selectedService}
+                        label="Service Type"
+                        onChange={(e) => setSelectedService(e.target.value as ServiceType)}
+                      >
+                        <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
+                        <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
+                        <MenuItem value="Land Clearing">Land Clearing</MenuItem>
+                        <MenuItem value="Tree Removal">Tree Removal</MenuItem>
+                        <MenuItem value="Tree Trimming">Tree Trimming</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={() => setShowCalculator(true)}
                     >
-                      <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
-                      <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
-                      <MenuItem value="Land Clearing">Land Clearing</MenuItem>
-                      <MenuItem value="Tree Removal">Tree Removal</MenuItem>
-                      <MenuItem value="Tree Trimming">Tree Trimming</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setShowCalculator(true)}
-                  >
-                    Open Calculator
-                  </Button>
+                      Open Calculator
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<LibraryIcon />}
+                      onClick={() => setShowTemplateLibrary(true)}
+                    >
+                      Use Template
+                    </Button>
+                  </Stack>
                 </Stack>
               </Paper>
             ) : (
@@ -449,6 +496,92 @@ export default function NewProposalPage() {
           </Stack>
         )}
       </Stack>
+
+      {/* Template Library Dialog */}
+      <Dialog
+        open={showTemplateLibrary}
+        onClose={() => setShowTemplateLibrary(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Select Line Item Template</DialogTitle>
+        <DialogContent>
+          {lineItemTemplates && lineItemTemplates.length > 0 ? (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Unit</TableCell>
+                    <TableCell align="right">Price</TableCell>
+                    <TableCell>AFISS</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {lineItemTemplates.map((template) => (
+                    <TableRow key={template._id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {template.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {template.description}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={template.category} size="small" />
+                      </TableCell>
+                      <TableCell>{template.defaultUnit}</TableCell>
+                      <TableCell align="right">
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(template.defaultUnitPrice)}
+                      </TableCell>
+                      <TableCell>
+                        {template.afissPresets && template.afissPresets.length > 0 ? (
+                          <Chip
+                            label={`${template.afissPresets.length} presets`}
+                            size="small"
+                            color="primary"
+                          />
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            None
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => handleUseTemplate(template)}
+                        >
+                          Use
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Box sx={{ py: 4, textAlign: "center" }}>
+              <Typography variant="body1" color="text.secondary" gutterBottom>
+                No line item templates found.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Create templates in Settings → Line Items Library
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowTemplateLibrary(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
