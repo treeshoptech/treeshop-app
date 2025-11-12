@@ -11,6 +11,7 @@
 import type * as afissFactors from "../afissFactors.js";
 import type * as analytics from "../analytics.js";
 import type * as customers from "../customers.js";
+import type * as dashboard from "../dashboard.js";
 import type * as employees from "../employees.js";
 import type * as equipment from "../equipment.js";
 import type * as invoices from "../invoices.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   afissFactors: typeof afissFactors;
   analytics: typeof analytics;
   customers: typeof customers;
+  dashboard: typeof dashboard;
   employees: typeof employees;
   equipment: typeof equipment;
   invoices: typeof invoices;
