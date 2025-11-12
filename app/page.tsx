@@ -29,10 +29,10 @@ export default async function Home() {
         <Toolbar>
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
             <Image
-              src="/logo.png"
-              alt="TreeShop Terminal"
-              width={180}
-              height={60}
+              src="/treeshop-logo.png"
+              alt="TreeShop"
+              width={220}
+              height={80}
               style={{ objectFit: 'contain' }}
               priority
             />
