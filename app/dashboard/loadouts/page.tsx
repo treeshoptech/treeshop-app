@@ -267,126 +267,8 @@ function LoadoutsPageContent() {
     overheadCost: 0,
   });
 
-  // Demo loadouts with comprehensive KPIs
-  const loadouts = [
-    {
-      _id: '1',
-      name: '2-Man Climbing Crew',
-      serviceType: 'Tree Removal',
-      status: 'Active',
-      description: 'Professional tree removal crew with bucket truck',
-
-      // Cost breakdown
-      totalEquipmentCost: 143, // Bucket truck + chipper + support
-      totalLaborCost: 100, // 2 climbers at $50/hr true cost each
-      overheadCost: 0,
-      totalCostPerHour: 243,
-
-      // Financial
-      targetMargin: 35,
-
-      // Team
-      employeeCount: 2,
-      crewRoles: ['Lead Climber', 'Ground Crew'],
-      avgExperience: 7.5,
-      certificationCount: 4,
-
-      // Equipment
-      equipmentCount: 4,
-      equipmentCategories: ['Bucket Truck', 'Chipper', 'Chainsaw', 'Rigging'],
-      totalEquipmentValue: 185000,
-      totalHorsepower: 450,
-
-      // Production
-      productionRate: 5,
-
-      // Historical
-      totalJobsCompleted: 234,
-      totalHoursWorked: 1872,
-      totalRevenueGenerated: 699480,
-      utilizationRate: 0.85,
-
-      // Safety
-      daysSinceIncident: 456,
-      safetyRating: 98,
-
-      // Capacity
-      setupTimeMinutes: 20,
-      transportRequirements: 'Bucket truck + chip trailer',
-    },
-    {
-      _id: '2',
-      name: 'Forestry Mulching Unit',
-      serviceType: 'Forestry Mulching',
-      status: 'Active',
-      description: 'High-production mulching with CAT skid steer',
-
-      totalEquipmentCost: 167,
-      totalLaborCost: 119,
-      overheadCost: 0,
-      totalCostPerHour: 286,
-      targetMargin: 50,
-
-      employeeCount: 2,
-      crewRoles: ['Operator', 'Spotter/Support'],
-      avgExperience: 5,
-      certificationCount: 2,
-
-      equipmentCount: 3,
-      equipmentCategories: ['Skid Steer', 'Mulcher Head', 'F450'],
-      totalEquipmentValue: 195000,
-      totalHorsepower: 380,
-
-      productionRate: 1.5,
-
-      totalJobsCompleted: 89,
-      totalHoursWorked: 712,
-      totalRevenueGenerated: 407264,
-      utilizationRate: 0.78,
-
-      daysSinceIncident: 823,
-      safetyRating: 100,
-
-      setupTimeMinutes: 15,
-      transportRequirements: 'Lowboy trailer + pickup',
-    },
-    {
-      _id: '3',
-      name: 'Stump Grinding Service',
-      serviceType: 'Stump Grinding',
-      status: 'Active',
-      description: '1-person stump grinding operation',
-
-      totalEquipmentCost: 65,
-      totalLaborCost: 60,
-      overheadCost: 0,
-      totalCostPerHour: 125,
-      targetMargin: 40,
-
-      employeeCount: 1,
-      crewRoles: ['Grinder Operator'],
-      avgExperience: 4,
-      certificationCount: 1,
-
-      equipmentCount: 2,
-      equipmentCategories: ['Stump Grinder', 'Pickup Truck'],
-      totalEquipmentValue: 48000,
-      totalHorsepower: 85,
-
-      productionRate: 400,
-
-      totalJobsCompleted: 567,
-      totalHoursWorked: 1134,
-      totalRevenueGenerated: 236082,
-      utilizationRate: 0.92,
-
-      daysSinceIncident: 1024,
-      safetyRating: 100,
-
-      setupTimeMinutes: 10,
-      transportRequirements: 'Pickup with trailer hitch',
-    },
-  ];
+  // Query loadouts from Convex (will be empty until user creates some)
+  const loadouts = useQuery(api.loadouts.list) || [];
 
   const handleExpandClick = (id: string) => {
     setExpandedCard(expandedCard === id ? null : id);
@@ -430,9 +312,24 @@ function LoadoutsPageContent() {
         </Button>
       </Box>
 
-      {/* Loadout Cards - Mobile Optimized */}
-      <Grid container spacing={2}>
-        {loadouts.map((loadout) => {
+      {/* Empty State */}
+      {loadouts.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 12 }}>
+          <EquipmentIcon sx={{ fontSize: 64, color: '#8E8E93', mb: 3 }} />
+          <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+            No Loadouts Yet
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
+            Create your first loadout by combining equipment and crew members.
+            Loadouts help you track costs, calculate billing rates, and manage your operations efficiently.
+          </Typography>
+          <Button variant="contained" size="large" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
+            Create Your First Loadout
+          </Button>
+        </Box>
+      ) : (
+        <Grid container spacing={2}>
+          {loadouts.map((loadout) => {
           const kpis = calculateLoadoutKPIs(loadout);
           const isExpanded = expandedCard === loadout._id;
 
