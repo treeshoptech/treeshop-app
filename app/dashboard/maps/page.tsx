@@ -5,11 +5,9 @@ import { Box, useMediaQuery, useTheme, Typography } from '@mui/material';
 import { GoogleMap, useLoadScript, DrawingManager, Polygon, Marker, Circle, Polyline } from '@react-google-maps/api';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { MapToolbar } from '@/app/components/maps/MapToolbar';
-import { MapSidebar } from '@/app/components/maps/MapSidebar';
-import { MeasurementCard } from '@/app/components/maps/MeasurementCard';
+import { MapControls } from '@/app/components/maps/MapControls';
+import { MeasurementLabels } from '@/app/components/maps/MeasurementLabels';
 import { SaveDrawingDialog } from '@/app/components/maps/SaveDrawingDialog';
-import { MobileDrawingTools } from '@/app/components/maps/MobileDrawingTools';
 
 type DrawingMode = 'polygon' | 'circle' | 'polyline' | 'marker' | null;
 
@@ -40,7 +38,6 @@ export default function MapsPage() {
   const [measurements, setMeasurements] = useState<any>(null);
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Convex queries
   const savedDrawings = useQuery(api.maps.getSavedDrawings);
@@ -288,45 +285,8 @@ export default function MapsPage() {
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Top Toolbar */}
-      <MapToolbar
-        drawingMode={drawingMode}
-        onDrawingModeChange={setDrawingMode}
-        onSave={() => setSaveDialogOpen(true)}
-        onClear={handleClearDrawing}
-        onGPSClick={() => {
-          if (gpsLocation && mapRef.current) {
-            mapRef.current.panTo(gpsLocation);
-            mapRef.current.setZoom(18);
-          }
-        }}
-        hasDrawing={!!currentDrawing}
-        gpsLocation={gpsLocation}
-        isMobile={isMobile}
-      />
-
-      <Box sx={{ flex: 1, display: 'flex', position: 'relative' }}>
-        {/* Desktop Sidebar */}
-        {!isMobile && (
-          <MapSidebar
-            layers={layers}
-            onLayersChange={setLayers}
-            drawingMode={drawingMode}
-            onDrawingModeChange={setDrawingMode}
-            savedDrawings={savedDrawings || []}
-            onDrawingSelect={(drawing) => {
-              setCurrentDrawing(drawing.drawingData);
-              setMeasurements(drawing.measurements);
-              // Pan to drawing
-              if (mapRef.current && drawing.drawingData.coordinates?.[0]) {
-                mapRef.current.panTo(drawing.drawingData.coordinates[0]);
-              }
-            }}
-          />
-        )}
-
-        {/* Map Container */}
-        <Box sx={{ flex: 1, position: 'relative' }}>
+      {/* Map Container - Full Screen */}
+      <Box sx={{ flex: 1, position: 'relative' }}>
             <GoogleMap
               mapContainerStyle={{ width: '100%', height: '100%' }}
               center={mapCenter}
@@ -458,32 +418,63 @@ export default function MapsPage() {
                     />
                   );
                 }
+                if (drawing.drawingData.type === 'circle' && drawing.drawingData.center && drawing.drawingData.radius) {
+                  return (
+                    <Circle
+                      key={drawing._id}
+                      center={drawing.drawingData.center}
+                      radius={drawing.drawingData.radius}
+                      options={{
+                        fillColor: '#9c27b0',
+                        fillOpacity: 0.2,
+                        strokeWeight: 2,
+                        strokeColor: '#9c27b0'
+                      }}
+                    />
+                  );
+                }
+                if (drawing.drawingData.type === 'polyline' && drawing.drawingData.coordinates) {
+                  return (
+                    <Polyline
+                      key={drawing._id}
+                      path={drawing.drawingData.coordinates}
+                      options={{
+                        strokeColor: '#9c27b0',
+                        strokeWeight: 3
+                      }}
+                    />
+                  );
+                }
                 return null;
               })}
+
+              {/* Measurement Labels Overlay */}
+              <MeasurementLabels
+                drawings={savedDrawings || []}
+                currentDrawing={currentDrawing}
+                currentMeasurements={measurements}
+              />
             </GoogleMap>
 
-          {/* Measurement Card Overlay */}
-          {measurements && (
-            <MeasurementCard
-              measurements={measurements}
-              drawingType={currentDrawing?.type || ''}
-              onClose={() => setMeasurements(null)}
-            />
-          )}
+          {/* Map Controls */}
+          <MapControls
+            drawingMode={drawingMode}
+            onDrawingModeChange={setDrawingMode}
+            onSave={() => setSaveDialogOpen(true)}
+            onClear={handleClearDrawing}
+            onGPSClick={() => {
+              if (gpsLocation && mapRef.current) {
+                mapRef.current.panTo(gpsLocation);
+                mapRef.current.setZoom(18);
+              }
+            }}
+            hasDrawing={!!currentDrawing}
+            gpsLocation={gpsLocation}
+            layers={layers}
+            onLayersChange={setLayers}
+          />
         </Box>
       </Box>
-
-      {/* Mobile Bottom Drawer */}
-      {isMobile && (
-        <MobileDrawingTools
-          open={mobileDrawerOpen}
-          onToggle={() => setMobileDrawerOpen(!mobileDrawerOpen)}
-          drawingMode={drawingMode}
-          onDrawingModeChange={setDrawingMode}
-          layers={layers}
-          onLayersChange={setLayers}
-        />
-      )}
 
       {/* Save Drawing Dialog */}
       <SaveDrawingDialog
