@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  // Add empty turbopack config to silence webpack/turbopack conflict
+  turbopack: {},
 };
 
 // PWA configuration
