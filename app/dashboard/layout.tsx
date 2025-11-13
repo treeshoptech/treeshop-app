@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -10,8 +10,9 @@ import {
 } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { RightSideNav } from './RightSideNav';
+import { useUserRole } from '@/app/hooks/useUserRole';
 
 export default function DashboardLayout({
   children,
@@ -20,6 +21,29 @@ export default function DashboardLayout({
 }) {
   const [rightNavOpen, setRightNavOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const { isAdmin, isEmployee, loading } = useUserRole();
+
+  // Route protection: redirect employees away from admin pages
+  useEffect(() => {
+    if (loading) return; // Don't redirect while loading
+
+    // If employee (not admin), enforce restricted paths
+    if (isEmployee && !isAdmin) {
+      const employeeAllowedPaths = [
+        '/dashboard/time',
+        '/dashboard/time/history',
+        '/dashboard/work-orders',
+      ];
+
+      const isAllowed = employeeAllowedPaths.some(path => pathname.startsWith(path));
+
+      if (!isAllowed) {
+        // Redirect to employee time clock page
+        router.push('/dashboard/time');
+      }
+    }
+  }, [isEmployee, isAdmin, pathname, loading, router]);
 
   return (
     <>

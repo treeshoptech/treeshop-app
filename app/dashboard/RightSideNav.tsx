@@ -28,9 +28,13 @@ import {
   Map as MapIcon,
   Nature as TreeInventoryIcon,
   Dashboard as DashboardIcon,
+  AccessTime as TimeClockIcon,
+  History as TimeHistoryIcon,
+  CheckCircle as ApproveIcon,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { UserButton, OrganizationSwitcher } from '@clerk/nextjs';
+import { useUserRole } from '@/app/hooks/useUserRole';
 
 interface RightSideNavProps {
   open: boolean;
@@ -99,6 +103,21 @@ const menuSections = [
     ],
   },
   {
+    title: 'Time Management',
+    items: [
+      {
+        title: 'Approve Time',
+        icon: <ApproveIcon />,
+        path: '/dashboard/time/approve',
+      },
+      {
+        title: 'Time Reports',
+        icon: <TimeHistoryIcon />,
+        path: '/dashboard/time/reports',
+      },
+    ],
+  },
+  {
     title: 'Tools',
     items: [
       {
@@ -138,11 +157,44 @@ const menuSections = [
 export function RightSideNav({ open, onClose }: RightSideNavProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { isAdmin, isEmployee, loading } = useUserRole();
 
   const handleNavigate = (path: string) => {
     router.push(path);
     onClose();
   };
+
+  // Employee-only menu sections
+  const employeeMenuSections = [
+    {
+      title: 'My Time',
+      items: [
+        {
+          title: 'Clock In/Out',
+          icon: <TimeClockIcon />,
+          path: '/dashboard/time',
+        },
+        {
+          title: 'Time History',
+          icon: <TimeHistoryIcon />,
+          path: '/dashboard/time/history',
+        },
+      ],
+    },
+    {
+      title: 'My Work',
+      items: [
+        {
+          title: 'My Work Orders',
+          icon: <WorkOrderIcon />,
+          path: '/dashboard/work-orders',
+        },
+      ],
+    },
+  ];
+
+  // Determine which menu to show
+  const displaySections = isAdmin ? menuSections : isEmployee ? employeeMenuSections : [];
 
   return (
     <Drawer
@@ -181,7 +233,7 @@ export function RightSideNav({ open, onClose }: RightSideNavProps) {
 
       {/* Scrollable Menu Items */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-        {menuSections.map((section) => (
+        {displaySections.map((section) => (
           <List
             key={section.title}
             subheader={

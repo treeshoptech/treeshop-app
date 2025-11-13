@@ -16,7 +16,9 @@ import {
   Search as SearchIcon, Close as CloseIcon, Badge as BadgeIcon, School as SchoolIcon,
   DirectionsCar as CarIcon, Build as EquipmentIcon, EmojiEvents as AwardIcon,
   TrendingUp as ProgressIcon, Assignment as AssignmentIcon, AttachMoney as MoneyIcon,
+  Link as LinkIcon, LinkOff as LinkOffIcon,
 } from '@mui/icons-material';
+import { LinkAccountModal } from '@/app/components/employees/LinkAccountModal';
 
 const CAREER_TRACKS = {
   'Field Operations': ['ATC', 'TRS', 'FOR', 'LCL', 'MUL', 'STG', 'ESR', 'LSC'],
@@ -97,6 +99,9 @@ function EmployeesPageContent() {
   const [formTab, setFormTab] = useState(0);
   const [detailTab, setDetailTab] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkingEmployeeId, setLinkingEmployeeId] = useState<Id<"employees"> | null>(null);
+  const [linkingEmployeeName, setLinkingEmployeeName] = useState('');
   const [formData, setFormData] = useState({
     // Personal
     firstName: '', lastName: '', preferredName: '', email: '', phone: '', phoneSecondary: '',
@@ -197,6 +202,12 @@ function EmployeesPageContent() {
     }
   };
 
+  const handleLinkAccount = (id: Id<"employees">, name: string) => {
+    setLinkingEmployeeId(id);
+    setLinkingEmployeeName(name);
+    setLinkModalOpen(true);
+  };
+
   const handleSubmit = async () => {
     if (!formData.firstName || !formData.lastName || !formData.baseHourlyRate) {
       alert('Please fill required fields (Name and Base Rate)');
@@ -247,7 +258,14 @@ function EmployeesPageContent() {
                       <Box sx={{ flexGrow: 1 }}>
                         <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.5 }}>{fullName}</Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{TRACK_NAMES[emp.primaryTrack as keyof typeof TRACK_NAMES]}</Typography>
-                        <Chip label={emp.employmentStatus} size="small" sx={{ bgcolor: getStatusColor(emp.employmentStatus), color: '#FFF', fontWeight: 500, height: 20, fontSize: '0.7rem' }} />
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          <Chip label={emp.employmentStatus} size="small" sx={{ bgcolor: getStatusColor(emp.employmentStatus), color: '#FFF', fontWeight: 500, height: 20, fontSize: '0.7rem' }} />
+                          {emp.clerkUserId ? (
+                            <Chip icon={<LinkIcon sx={{ fontSize: 14 }} />} label="Linked" size="small" sx={{ bgcolor: '#34C75920', color: '#34C759', fontWeight: 500, height: 20, fontSize: '0.7rem' }} />
+                          ) : (
+                            <Chip icon={<LinkOffIcon sx={{ fontSize: 14 }} />} label="Not Linked" size="small" sx={{ bgcolor: '#8E8E9320', color: '#8E8E93', fontWeight: 500, height: 20, fontSize: '0.7rem' }} />
+                          )}
+                        </Box>
                       </Box>
                     </Box>
                     <Divider sx={{ my: 2 }} />
@@ -269,6 +287,16 @@ function EmployeesPageContent() {
                     </Box>
                   </CardContent>
                   <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+                    {!emp.clerkUserId && (
+                      <Button
+                        size="small"
+                        startIcon={<LinkIcon />}
+                        onClick={(e) => { e.stopPropagation(); handleLinkAccount(emp._id, fullName); }}
+                        sx={{ mr: 'auto', color: '#007AFF' }}
+                      >
+                        Link Account
+                      </Button>
+                    )}
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleEdit(emp._id); }}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDelete(emp._id); }}><DeleteIcon fontSize="small" /></IconButton>
                   </CardActions>
@@ -280,6 +308,20 @@ function EmployeesPageContent() {
       )}
 
       <Fab color="primary" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleAdd}><AddIcon /></Fab>
+
+      {/* LINK ACCOUNT MODAL */}
+      {linkingEmployeeId && (
+        <LinkAccountModal
+          open={linkModalOpen}
+          onClose={() => setLinkModalOpen(false)}
+          employeeId={linkingEmployeeId}
+          employeeName={linkingEmployeeName}
+          onSuccess={() => {
+            setLinkModalOpen(false);
+            // Refresh will happen automatically via Convex reactivity
+          }}
+        />
+      )}
 
       {/* FORM DIALOG */}
       <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { backgroundColor: '#000000', border: '1px solid #2C2C2E' } }}>
