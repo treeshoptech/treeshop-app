@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getOrganization, requireAdmin } from "./lib/auth";
+import { getOrganization, requireAdmin, getUserIdentity } from "./lib/auth";
+import {
+  autoLinkByEmail,
+  linkEmployeeToClerkUser,
+  unlinkEmployee,
+  getEmployeeForCurrentUser,
+} from "./lib/employeeHelpers";
 
 // List all employees for current organization
 export const list = query({
@@ -75,9 +81,19 @@ export const create = mutation({
     await requireAdmin(ctx);
     const org = await getOrganization(ctx);
 
+    // Auto-link to Clerk user if email matches
+    let clerkUserId: string | undefined = undefined;
+    if (args.email) {
+      const autoLinkedUserId = await autoLinkByEmail(ctx, args.email, org._id);
+      if (autoLinkedUserId) {
+        clerkUserId = autoLinkedUserId;
+      }
+    }
+
     return await ctx.db.insert("employees", {
       organizationId: org._id,
       ...args,
+      clerkUserId,
       createdAt: Date.now(),
     });
   },
@@ -160,5 +176,98 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.id);
+  },
+});
+
+// ============================================
+// USER-EMPLOYEE LINKING QUERIES & MUTATIONS
+// ============================================
+
+/**
+ * Get employee by Clerk user ID
+ * Used to find employee record for a specific authenticated user
+ */
+export const getByClerkUserId = query({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    return await ctx.db
+      .query("employees")
+      .withIndex("by_org_clerk_user", (q) =>
+        q.eq("organizationId", org._id).eq("clerkUserId", args.clerkUserId)
+      )
+      .first();
+  },
+});
+
+/**
+ * Get current user's employee record
+ * Returns null if authenticated user is not linked to an employee
+ */
+export const getCurrentUserEmployee = query({
+  handler: async (ctx) => {
+    return await getEmployeeForCurrentUser(ctx);
+  },
+});
+
+/**
+ * Get all employees WITHOUT Clerk user links
+ * Admin only - for managing employee account linking
+ */
+export const getUnlinkedEmployees = query({
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const org = await getOrganization(ctx);
+
+    const allEmployees = await ctx.db
+      .query("employees")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .collect();
+
+    // Filter to only employees without clerkUserId
+    return allEmployees.filter((emp) => !emp.clerkUserId);
+  },
+});
+
+/**
+ * Manually link an employee to a Clerk user
+ * Admin only - for manual user account assignment
+ */
+export const linkToClerkUser = mutation({
+  args: {
+    employeeId: v.id("employees"),
+    clerkUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const org = await getOrganization(ctx);
+
+    await linkEmployeeToClerkUser(
+      ctx,
+      args.employeeId,
+      args.clerkUserId,
+      org._id
+    );
+
+    return { success: true };
+  },
+});
+
+/**
+ * Unlink an employee from their Clerk user account
+ * Admin only - removes the connection between employee and user account
+ */
+export const unlinkFromClerkUser = mutation({
+  args: {
+    employeeId: v.id("employees"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const org = await getOrganization(ctx);
+
+    await unlinkEmployee(ctx, args.employeeId, org._id);
+
+    return { success: true };
   },
 });
