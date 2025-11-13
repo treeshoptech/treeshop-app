@@ -23,11 +23,14 @@ import { api } from "@/convex/_generated/api";
  * - loading: Boolean - still fetching data
  */
 export function useUserRole() {
-  const { membership } = useOrganization();
-  const { user } = useUser();
+  const { membership, isLoaded: orgLoaded } = useOrganization();
+  const { user, isLoaded: userLoaded } = useUser();
 
-  // Get employee record for current user
-  const employee = useQuery(api.employees.getCurrentUserEmployee);
+  // Get employee record for current user (only if user is loaded)
+  const employee = useQuery(
+    api.employees.getCurrentUserEmployee,
+    userLoaded && user ? undefined : "skip"
+  );
 
   // Get Clerk organization role
   const orgRole = membership?.role || "org:member";
@@ -47,7 +50,7 @@ export function useUserRole() {
     employee: employee || null,
 
     // Loading state
-    loading: employee === undefined || !user || !membership,
+    loading: !orgLoaded || !userLoaded || employee === undefined,
 
     // User info
     userId: user?.id,
