@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getOrganization, requireAdmin } from "./lib/auth";
+import { getEmployeeForCurrentUser } from "./lib/employeeHelpers";
 
 // List all work orders for current organization
 export const list = query({
@@ -352,5 +353,128 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.id);
+  },
+});
+
+// ============================================
+// EMPLOYEE PORTAL QUERIES
+// ============================================
+
+/**
+ * Get work orders assigned to the current user's employee record
+ * Returns work orders where user is in crewMemberIds
+ */
+export const getMyWorkOrders = query({
+  handler: async (ctx) => {
+    // Get employee record for current user
+    const employee = await getEmployeeForCurrentUser(ctx);
+
+    if (!employee) {
+      // User is not linked to an employee - return empty array
+      return [];
+    }
+
+    // Get all work orders for this organization
+    const allWorkOrders = await ctx.db
+      .query("workOrders")
+      .withIndex("by_organization", (q) => q.eq("organizationId", employee.organizationId))
+      .collect();
+
+    // Filter to only work orders where this employee is in crewMemberIds
+    const myWorkOrders = allWorkOrders.filter((wo) =>
+      wo.crewMemberIds.includes(employee._id)
+    );
+
+    // Sort by scheduled date (most recent first)
+    myWorkOrders.sort((a, b) => b.scheduledDate - a.scheduledDate);
+
+    return myWorkOrders;
+  },
+});
+
+/**
+ * Get work orders by status for current employee
+ * Useful for filtering: "Scheduled", "In Progress", "Completed"
+ */
+export const getMyWorkOrdersByStatus = query({
+  args: { status: v.string() },
+  handler: async (ctx, args) => {
+    const employee = await getEmployeeForCurrentUser(ctx);
+
+    if (!employee) {
+      return [];
+    }
+
+    // Get work orders by status
+    const workOrdersByStatus = await ctx.db
+      .query("workOrders")
+      .withIndex("by_org_status", (q) =>
+        q.eq("organizationId", employee.organizationId).eq("status", args.status)
+      )
+      .collect();
+
+    // Filter to only those assigned to this employee
+    return workOrdersByStatus.filter((wo) =>
+      wo.crewMemberIds.includes(employee._id)
+    );
+  },
+});
+
+/**
+ * Get work orders scheduled for a specific date for current employee
+ * Used for daily schedule view
+ */
+export const getMyWorkOrdersByDate = query({
+  args: { date: v.number() },
+  handler: async (ctx, args) => {
+    const employee = await getEmployeeForCurrentUser(ctx);
+
+    if (!employee) {
+      return [];
+    }
+
+    // Get work orders by date
+    const workOrdersByDate = await ctx.db
+      .query("workOrders")
+      .withIndex("by_scheduled_date", (q) =>
+        q.eq("organizationId", employee.organizationId).eq("scheduledDate", args.date)
+      )
+      .collect();
+
+    // Filter to only those assigned to this employee
+    return workOrdersByDate.filter((wo) =>
+      wo.crewMemberIds.includes(employee._id)
+    );
+  },
+});
+
+/**
+ * Get work orders in date range for current employee
+ * Used for calendar views (week/month)
+ */
+export const getMyWorkOrdersInRange = query({
+  args: {
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const employee = await getEmployeeForCurrentUser(ctx);
+
+    if (!employee) {
+      return [];
+    }
+
+    // Get all work orders for this org
+    const allWorkOrders = await ctx.db
+      .query("workOrders")
+      .withIndex("by_organization", (q) => q.eq("organizationId", employee.organizationId))
+      .collect();
+
+    // Filter by date range and employee assignment
+    return allWorkOrders.filter((wo) =>
+      wo.crewMemberIds.includes(employee._id) &&
+      wo.scheduledDate >= args.startDate &&
+      wo.scheduledDate <= args.endDate
+    );
   },
 });

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getOrganization } from "./lib/auth";
+import { getEmployeeForCurrentUser } from "./lib/employeeHelpers";
 
 // List all loadouts for current organization
 export const list = query({
@@ -357,5 +358,36 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.id);
+  },
+});
+
+// ============================================
+// EMPLOYEE PORTAL QUERIES
+// ============================================
+
+/**
+ * Get loadouts assigned to the current user's employee record
+ * Returns loadouts where user is in employeeIds
+ */
+export const getMyLoadouts = query({
+  handler: async (ctx) => {
+    // Get employee record for current user
+    const employee = await getEmployeeForCurrentUser(ctx);
+
+    if (!employee) {
+      // User is not linked to an employee - return empty array
+      return [];
+    }
+
+    // Get all loadouts for this organization
+    const allLoadouts = await ctx.db
+      .query("loadouts")
+      .withIndex("by_organization", (q) => q.eq("organizationId", employee.organizationId))
+      .collect();
+
+    // Filter to only loadouts where this employee is in employeeIds
+    return allLoadouts.filter((loadout) =>
+      loadout.employeeIds.includes(employee._id)
+    );
   },
 });
