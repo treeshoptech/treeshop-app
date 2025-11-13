@@ -322,15 +322,21 @@ export default defineSchema({
     .index("by_org_status", ["organizationId", "status"])
     .index("by_loadout", ["loadoutId"]),
 
-  // Work Orders (execution phase with time tracking)
+  // Work Orders (execution phase with time tracking - supports both proposal-based and direct entry)
   workOrders: defineTable({
     organizationId: v.id("organizations"),
-    proposalId: v.id("proposals"),
-    projectId: v.id("projects"),
+
+    // Source & Identity (NEW - for direct work orders)
+    creationType: v.optional(v.string()), // "PROPOSAL" or "DIRECT"
+    projectName: v.optional(v.string()), // For direct work orders
+    workOrderNumber: v.optional(v.string()), // Auto-generated: WO-YYYYMMDD-XXX
+
+    proposalId: v.optional(v.id("proposals")), // Optional for direct work orders
+    projectId: v.optional(v.id("projects")), // Optional for direct work orders
     customerId: v.id("customers"),
 
     // Scheduling
-    scheduledDate: v.number(),
+    scheduledDate: v.optional(v.number()), // Made optional for direct work orders
     scheduledStartTime: v.optional(v.string()), // "08:00"
     actualStartTime: v.optional(v.number()),
     actualEndTime: v.optional(v.number()),
@@ -338,21 +344,44 @@ export default defineSchema({
 
     // Assigned Resources
     primaryLoadoutId: v.optional(v.id("loadouts")),
-    crewMemberIds: v.array(v.id("employees")),
-    equipmentIds: v.array(v.id("equipment")),
+    crewMemberIds: v.optional(v.array(v.id("employees"))), // Made optional
+    equipmentIds: v.optional(v.array(v.id("equipment"))), // Made optional
 
     // Site Conditions
     propertyAddress: v.string(),
+    propertyCoordinates: v.optional(
+      v.object({
+        lat: v.number(),
+        lng: v.number(),
+      })
+    ),
     weather: v.optional(v.string()),
     accessNotes: v.optional(v.string()),
     hazards: v.optional(v.array(v.string())),
     parkingInstructions: v.optional(v.string()),
 
+    // Service Details (NEW - for direct work orders)
+    serviceType: v.optional(v.string()), // "Forestry Mulching", "Land Clearing", etc.
+    estimatedAcres: v.optional(v.number()),
+    actualAcres: v.optional(v.number()),
+
+    // Financial (NEW - for direct work orders)
+    contractAmount: v.optional(v.number()), // What customer is paying
+    estimatedDuration: v.optional(v.number()), // Hours
+    estimatedCost: v.optional(v.number()), // Your cost estimate
+    targetMargin: v.optional(v.number()), // Target profit %
+    loadoutHourlyRate: v.optional(v.number()), // Snapshot at creation
+
+    // TreeShop Score (NEW - for direct work orders)
+    treeShopScore: v.optional(v.number()),
+    afissMultiplier: v.optional(v.number()),
+    selectedAfissFactors: v.optional(v.array(v.string())),
+
     // Safety
-    safetyBriefingCompleted: v.boolean(),
+    safetyBriefingCompleted: v.optional(v.boolean()), // Made optional
     safetyBriefingTime: v.optional(v.number()),
     safetyAttendees: v.optional(v.array(v.id("employees"))),
-    ppeVerified: v.boolean(),
+    ppeVerified: v.optional(v.boolean()), // Made optional
     incidentReports: v.optional(v.array(v.string())),
 
     // Documentation
@@ -370,89 +399,131 @@ export default defineSchema({
       createdBy: v.id("employees"),
     }))),
 
+    // Additional Documentation (NEW)
+    poNumber: v.optional(v.string()), // Customer PO
+    paymentTerms: v.optional(v.string()),
+    specialInstructions: v.optional(v.string()),
+    notes: v.optional(v.string()),
+
     // Materials Used
     fuelGallons: v.optional(v.number()),
     consumablesCost: v.optional(v.number()),
     materialsNotes: v.optional(v.string()),
 
     // Completion Checklist
-    allLineItemsComplete: v.boolean(),
-    finalPhotosUploaded: v.boolean(),
-    customerWalkthroughComplete: v.boolean(),
+    allLineItemsComplete: v.optional(v.boolean()), // Made optional
+    finalPhotosUploaded: v.optional(v.boolean()), // Made optional
+    customerWalkthroughComplete: v.optional(v.boolean()), // Made optional
     customerSignature: v.optional(v.string()),
     customerSignedAt: v.optional(v.number()),
-    debrisRemoved: v.boolean(),
-    siteRestored: v.boolean(),
-    equipmentCleaned: v.boolean(),
+    debrisRemoved: v.optional(v.boolean()), // Made optional
+    siteRestored: v.optional(v.boolean()), // Made optional
+    equipmentCleaned: v.optional(v.boolean()), // Made optional
+    completionNotes: v.optional(v.string()),
+    completionPhotos: v.optional(v.array(v.string())),
 
     // Status
-    status: v.string(), // "PreScheduled", "Scheduled", "In Progress", "Paused", "Completed", "Invoiced", "Cancelled"
+    status: v.string(), // "Created", "PreScheduled", "Scheduled", "InProgress", "Paused", "Completed", "Invoiced", "Cancelled"
 
     createdAt: v.number(),
     updatedAt: v.number(),
+    createdBy: v.optional(v.string()), // User ID who created
   })
     .index("by_organization", ["organizationId"])
     .index("by_proposal", ["proposalId"])
     .index("by_project", ["projectId"])
     .index("by_customer", ["customerId"])
     .index("by_org_status", ["organizationId", "status"])
-    .index("by_scheduled_date", ["organizationId", "scheduledDate"]),
+    .index("by_scheduled_date", ["organizationId", "scheduledDate"])
+    .index("by_creation_type", ["organizationId", "creationType"])
+    .index("by_work_order_number", ["organizationId", "workOrderNumber"]),
 
-  // Time Entries (activity tracking per line item)
+  // Time Entries (activity tracking - supports both line item and direct work order tracking)
   timeEntries: defineTable({
     organizationId: v.id("organizations"),
     workOrderId: v.id("workOrders"),
-    lineItemId: v.id("lineItems"),
+    lineItemId: v.optional(v.id("lineItems")), // Optional for direct work orders
 
     // Employee & Loadout
     employeeId: v.id("employees"),
-    employeeCode: v.string(), // e.g., "STG3+E2"
+    employeeCode: v.optional(v.string()), // e.g., "STG3+E2" - Made optional
     loadoutId: v.optional(v.id("loadouts")),
 
+    // NEW: Activity Type System (for direct work orders)
+    activityTypeId: v.optional(v.id("activityTypes")),
+    activityName: v.optional(v.string()), // Denormalized for reporting speed
+
     // Activity Classification
-    activityCategory: v.string(), // "Production", "Support"
-    activityType: v.string(), // "Grinding", "Transport", "Setup", etc.
+    activityCategory: v.string(), // "PRODUCTION", "TRANSPORT", "SUPPORT"
+    activityType: v.optional(v.string()), // "Grinding", "Transport", "Setup", etc.
     activityDetail: v.optional(v.string()),
     billable: v.boolean(),
+    isProduction: v.optional(v.boolean()), // NEW - track production vs support
 
     // Time Data
     startTime: v.number(),
     endTime: v.optional(v.number()),
     durationMinutes: v.optional(v.number()),
     durationHours: v.optional(v.number()),
+    status: v.optional(v.string()), // NEW - "ACTIVE", "PAUSED", "COMPLETED"
 
-    // Location Tracking
+    // GPS Location Tracking (Enhanced)
     locationStart: v.optional(v.object({
       lat: v.number(),
       lng: v.number(),
+      accuracy: v.optional(v.number()), // NEW - GPS accuracy in meters
     })),
     locationEnd: v.optional(v.object({
       lat: v.number(),
       lng: v.number(),
+      accuracy: v.optional(v.number()),
     })),
+    distanceTraveled: v.optional(v.number()), // NEW - miles or km
+
+    // Equipment (Enhanced)
+    equipmentIds: v.optional(v.array(v.id("equipment"))), // NEW - multiple equipment support
+
+    // NEW: Cost Tracking (calculated and cached)
+    employeeHourlyRate: v.optional(v.number()), // Snapshot at time of entry
+    employeeBurdenMultiplier: v.optional(v.number()), // Usually 1.7
+    laborCost: v.optional(v.number()), // hours × rate × multiplier
+    equipmentCost: v.optional(v.number()), // Sum of equipment costs
+    totalCost: v.optional(v.number()), // labor + equipment
 
     // Documentation
     notes: v.optional(v.string()),
     photos: v.optional(v.array(v.string())),
+    photoUrls: v.optional(v.array(v.string())), // NEW - for cloud storage URLs
+    voiceNoteUrl: v.optional(v.string()), // NEW
+
+    // NEW: Pause/Resume
+    pausedAt: v.optional(v.number()),
+    pauseDurationMinutes: v.optional(v.number()),
 
     // Tracking Metadata
-    recordedBy: v.string(), // "Employee", "Manager", "Auto"
-    recordedMethod: v.string(), // "Mobile App", "Manual Entry", "GPS Auto"
-    timestampRecorded: v.number(),
+    recordedBy: v.optional(v.string()), // "Employee", "Manager", "Auto" - Made optional
+    recordedMethod: v.optional(v.string()), // "Mobile App", "Manual Entry", "GPS Auto" - Made optional
+    timestampRecorded: v.optional(v.number()), // Made optional
 
     // Approval
-    approved: v.boolean(),
+    approved: v.optional(v.boolean()), // Made optional
     approvedBy: v.optional(v.id("employees")),
     approvedDate: v.optional(v.number()),
 
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()), // NEW
   })
     .index("by_organization", ["organizationId"])
     .index("by_work_order", ["workOrderId"])
     .index("by_line_item", ["lineItemId"])
     .index("by_employee", ["employeeId"])
     .index("by_org_employee", ["organizationId", "employeeId"])
-    .index("by_billable", ["organizationId", "billable"]),
+    .index("by_billable", ["organizationId", "billable"])
+    .index("by_activity_type", ["activityTypeId"]) // NEW
+    .index("by_status", ["organizationId", "status"]) // NEW
+    .index("by_production", ["organizationId", "isProduction"]) // NEW
+    .index("by_date", ["organizationId", "startTime"]) // NEW
+    .index("by_employee_date", ["employeeId", "startTime"]), // NEW
 
   // Invoices (final billing)
   invoices: defineTable({
@@ -1200,4 +1271,116 @@ export default defineSchema({
     .index("by_organization", ["organizationId"])
     .index("by_model_type", ["organizationId", "modelType"])
     .index("by_status", ["organizationId", "status"]),
+
+  // ============================================
+  // DIRECT WORK ORDER & TIME TRACKING SYSTEM
+  // ============================================
+
+  // Activity Types - Master list of all trackable activities
+  activityTypes: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Identity
+    name: v.string(), // "Forestry Mulching", "Shop Maintenance", etc.
+    code: v.string(), // "FM", "SHOP_MAINT", etc. (for quick reference)
+    category: v.string(), // "PRODUCTION", "TRANSPORT", "SUPPORT"
+    subcategory: v.optional(v.string()), // "Billable Work", "Shop Operations", etc.
+
+    // Classification
+    isBillableDefault: v.boolean(), // Auto-set billable flag
+    isProductionDefault: v.boolean(), // Auto-set production flag
+    requiresEquipment: v.boolean(), // Must select equipment when clocking in
+    requiresCertification: v.optional(v.string()), // Qualification code required
+
+    // Display
+    icon: v.optional(v.string()), // Icon name or emoji
+    color: v.optional(v.string()), // Hex color for UI
+    description: v.optional(v.string()),
+    sortOrder: v.number(),
+    isActive: v.boolean(),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_category", ["organizationId", "category"])
+    .index("by_code", ["organizationId", "code"])
+    .index("by_active", ["organizationId", "isActive"]),
+
+  // Equipment Time Entries - Track equipment usage and hour meters
+  equipmentTimeEntries: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Links
+    timeEntryId: v.id("timeEntries"),
+    equipmentId: v.id("equipment"),
+    workOrderId: v.id("workOrders"),
+
+    // Hour Meter Tracking
+    startHourMeter: v.optional(v.number()),
+    endHourMeter: v.optional(v.number()),
+    hoursUsed: v.optional(v.number()), // end - start
+
+    // Cost (snapshot from equipment table)
+    equipmentHourlyRate: v.optional(v.number()),
+    equipmentCost: v.optional(v.number()), // hoursUsed × hourlyRate
+
+    // Validation
+    meterPhotoStart: v.optional(v.string()), // URL to photo of start meter
+    meterPhotoEnd: v.optional(v.string()), // URL to photo of end meter
+    varianceWarning: v.optional(v.boolean()), // If meter time differs >10% from clock time
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_time_entry", ["timeEntryId"])
+    .index("by_equipment", ["equipmentId"])
+    .index("by_work_order", ["workOrderId"]),
+
+  // Work Order Summaries - Cached calculations for fast dashboard loading
+  workOrderSummaries: defineTable({
+    organizationId: v.id("organizations"),
+    workOrderId: v.id("workOrders"),
+
+    // Time Totals
+    totalHours: v.number(),
+    billableHours: v.number(),
+    unbillableHours: v.number(),
+    productionHours: v.number(),
+    supportHours: v.number(),
+
+    // Cost Breakdown
+    totalLaborCost: v.number(),
+    totalEquipmentCost: v.number(),
+    totalProjectCost: v.number(),
+
+    // Revenue & Profit
+    contractAmount: v.number(),
+    projectedProfit: v.number(), // contractAmount - totalProjectCost
+    projectedMargin: v.number(), // (profit / contractAmount) × 100
+
+    // Efficiency Metrics
+    acresPerHour: v.optional(v.number()),
+    inchAcresPerHour: v.optional(v.number()),
+    costPerAcre: v.optional(v.number()),
+    revenuePerHour: v.optional(v.number()),
+    billablePercentage: v.number(), // (billable / total) × 100
+    productionPercentage: v.number(), // (production / total) × 100
+
+    // Activity Breakdown (JSON for flexibility)
+    activityBreakdown: v.optional(v.string()), // JSON: {activityName: hours}
+    employeeBreakdown: v.optional(v.string()), // JSON: {employeeName: {hours, cost}}
+    equipmentBreakdown: v.optional(v.string()), // JSON: {equipmentName: {hours, cost}}
+
+    // Status
+    isComplete: v.boolean(),
+    lastUpdated: v.number(),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_work_order", ["workOrderId"])
+    .index("by_updated", ["organizationId", "lastUpdated"]),
 });

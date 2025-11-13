@@ -13,10 +13,23 @@ export async function getUserIdentity(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
+ * Get user identity without throwing error if not authenticated
+ * Returns null if not authenticated (for development mode)
+ */
+export async function getUserIdentityOrNull(ctx: QueryCtx | MutationCtx) {
+  return await ctx.auth.getUserIdentity();
+}
+
+/**
  * Get the current organization ID from the user's Clerk token
  */
 export async function getOrganizationId(ctx: QueryCtx | MutationCtx) {
-  const identity = await getUserIdentity(ctx);
+  const identity = await getUserIdentityOrNull(ctx);
+
+  // If not authenticated, return dev default for development
+  if (!identity) {
+    return "dev_default_org";
+  }
 
   // Debug: Log all available claims
   console.log("Available identity claims:", Object.keys(identity));

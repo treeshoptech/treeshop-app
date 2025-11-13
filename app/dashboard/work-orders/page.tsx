@@ -10,6 +10,10 @@ import {
   CardContent,
   Chip,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   Grid,
   IconButton,
@@ -24,6 +28,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 import {
@@ -31,6 +36,7 @@ import {
   Stop as StopIcon,
   Visibility as VisibilityIcon,
   ArrowForward as ArrowForwardIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
@@ -47,10 +53,29 @@ const STATUS_COLORS: Record<WorkOrderStatus, "default" | "info" | "success" | "p
 export default function WorkOrdersPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | "All">("All");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    customerId: "" as Id<"customers"> | "",
+    propertyAddress: "",
+    contractAmount: "",
+    loadoutId: "" as Id<"loadouts"> | "",
+    poNumber: "",
+    specialInstructions: "",
+    notes: "",
+  });
 
-  // Fetch work orders and projects
+  const [lineItems, setLineItems] = useState<Array<{
+    serviceType: string;
+    acreage?: number;
+    dbhPackage?: number;
+    treeShopScore?: number;
+  }>>([]);
+
+  // Fetch data
   const allProjects = useQuery(api.projects.list);
   const workOrderProjects = allProjects?.filter((p) => p.status === "Work Order") || [];
+  const customers = useQuery(api.customers.list);
+  const loadouts = useQuery(api.loadouts.list);
 
   // Filter by status
   const filteredWorkOrders = statusFilter === "All"
@@ -59,6 +84,45 @@ export default function WorkOrdersPage() {
 
   // Mutations
   const updateProject = useMutation(api.projects.update);
+  const createDirectWorkOrder = useMutation(api.workOrders.createDirect);
+
+  const handleCreateDirectWorkOrder = async () => {
+    try {
+      const workOrderId = await createDirectWorkOrder({
+        customerId: formData.customerId as Id<"customers">,
+        projectName: formData.projectName,
+        propertyAddress: formData.propertyAddress,
+        serviceType: formData.serviceType,
+        contractAmount: parseFloat(formData.contractAmount),
+        estimatedAcres: formData.estimatedAcres ? parseFloat(formData.estimatedAcres) : undefined,
+        loadoutId: formData.loadoutId || undefined,
+        poNumber: formData.poNumber || undefined,
+        specialInstructions: formData.specialInstructions || undefined,
+        notes: formData.notes || undefined,
+      });
+
+      // Reset form and close dialog
+      setFormData({
+        customerId: "",
+        projectName: "",
+        propertyAddress: "",
+        serviceType: "",
+        contractAmount: "",
+        estimatedAcres: "",
+        loadoutId: "",
+        poNumber: "",
+        specialInstructions: "",
+        notes: "",
+      });
+      setDialogOpen(false);
+
+      // Navigate to the new work order (once detail page exists)
+      // router.push(`/dashboard/work-orders/${workOrderId}`);
+    } catch (error) {
+      console.error("Error creating direct work order:", error);
+      alert("Failed to create work order. Please check all required fields.");
+    }
+  };
 
   const handleStartWork = async (workOrder: any) => {
     try {
@@ -105,13 +169,23 @@ export default function WorkOrdersPage() {
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Stack spacing={3}>
         {/* Header */}
-        <Box>
-          <Typography variant="h3" gutterBottom>
-            Work Orders
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Manage field execution and track time
-          </Typography>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+          <Box>
+            <Typography variant="h3" gutterBottom>
+              Work Orders
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Manage field execution and track time
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => router.push("/dashboard/work-orders/new-direct")}
+            sx={{ mt: 1 }}
+          >
+            New Work Order
+          </Button>
         </Box>
 
         {/* Stats Cards */}
@@ -276,6 +350,159 @@ export default function WorkOrdersPage() {
           </Table>
         </TableContainer>
       </Stack>
+
+      {/* New Direct Work Order Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Create Direct Work Order</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            {/* Customer Selection */}
+            <FormControl fullWidth required>
+              <InputLabel>Customer</InputLabel>
+              <Select
+                value={formData.customerId}
+                label="Customer"
+                onChange={(e) => setFormData({ ...formData, customerId: e.target.value as any })}
+              >
+                {customers?.map((customer) => (
+                  <MenuItem key={customer._id} value={customer._id}>
+                    {customer.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Project Name */}
+            <TextField
+              fullWidth
+              required
+              label="Project Name"
+              value={formData.projectName}
+              onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
+              placeholder="e.g., Land Clearing - Oak Street"
+            />
+
+            {/* Property Address */}
+            <TextField
+              fullWidth
+              required
+              label="Property Address"
+              value={formData.propertyAddress}
+              onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
+              placeholder="123 Main St, City, State ZIP"
+            />
+
+            {/* Service Type */}
+            <FormControl fullWidth required>
+              <InputLabel>Service Type</InputLabel>
+              <Select
+                value={formData.serviceType}
+                label="Service Type"
+                onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
+              >
+                <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
+                <MenuItem value="Land Clearing">Land Clearing</MenuItem>
+                <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
+                <MenuItem value="Tree Removal">Tree Removal</MenuItem>
+                <MenuItem value="Brush Clearing">Brush Clearing</MenuItem>
+                <MenuItem value="Excavation">Excavation</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Contract Amount */}
+            <TextField
+              fullWidth
+              required
+              label="Contract Amount"
+              type="number"
+              value={formData.contractAmount}
+              onChange={(e) => setFormData({ ...formData, contractAmount: e.target.value })}
+              InputProps={{
+                startAdornment: "$",
+              }}
+            />
+
+            {/* Estimated Acres */}
+            <TextField
+              fullWidth
+              label="Estimated Acres"
+              type="number"
+              value={formData.estimatedAcres}
+              onChange={(e) => setFormData({ ...formData, estimatedAcres: e.target.value })}
+              inputProps={{ step: "0.1" }}
+            />
+
+            {/* Loadout Selection */}
+            <FormControl fullWidth>
+              <InputLabel>Loadout (Optional)</InputLabel>
+              <Select
+                value={formData.loadoutId}
+                label="Loadout (Optional)"
+                onChange={(e) => setFormData({ ...formData, loadoutId: e.target.value as any })}
+              >
+                <MenuItem value="">None</MenuItem>
+                {loadouts?.map((loadout) => (
+                  <MenuItem key={loadout._id} value={loadout._id}>
+                    {loadout.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* PO Number */}
+            <TextField
+              fullWidth
+              label="PO Number"
+              value={formData.poNumber}
+              onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
+              placeholder="Customer PO or reference number"
+            />
+
+            {/* Special Instructions */}
+            <TextField
+              fullWidth
+              label="Special Instructions"
+              multiline
+              rows={2}
+              value={formData.specialInstructions}
+              onChange={(e) => setFormData({ ...formData, specialInstructions: e.target.value })}
+              placeholder="Gate codes, hazards, special requirements..."
+            />
+
+            {/* Notes */}
+            <TextField
+              fullWidth
+              label="Internal Notes"
+              multiline
+              rows={2}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Internal notes about this work order..."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleCreateDirectWorkOrder}
+            variant="contained"
+            disabled={
+              !formData.customerId ||
+              !formData.projectName ||
+              !formData.propertyAddress ||
+              !formData.serviceType ||
+              !formData.contractAmount
+            }
+          >
+            Create Work Order
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
