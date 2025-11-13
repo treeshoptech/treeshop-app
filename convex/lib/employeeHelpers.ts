@@ -146,37 +146,43 @@ export async function autoLinkByEmail(
 export async function getEmployeeForCurrentUser(
   ctx: QueryCtx | MutationCtx
 ): Promise<any | null> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
+  try {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    // Get Clerk user ID from token
+    const clerkUserId = identity.subject;
+
+    // Get org ID from token
+    const clerkOrgId = (identity as any).org_id;
+    if (!clerkOrgId) {
+      return null;
+    }
+
+    // Find organization
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org_id", (q) => q.eq("clerkOrgId", clerkOrgId))
+      .first();
+
+    if (!org) {
+      return null;
+    }
+
+    // Find employee by Clerk user ID
+    const employee = await ctx.db
+      .query("employees")
+      .withIndex("by_org_clerk_user", (q) =>
+        q.eq("organizationId", org._id).eq("clerkUserId", clerkUserId)
+      )
+      .first();
+
+    return employee;
+  } catch (error) {
+    // Return null on any error - user might not be authenticated yet
+    console.error("Error getting employee for current user:", error);
     return null;
   }
-
-  // Get Clerk user ID from token
-  const clerkUserId = identity.subject;
-
-  // Get org ID from token
-  const clerkOrgId = (identity as any).org_id;
-  if (!clerkOrgId) {
-    return null;
-  }
-
-  // Find organization
-  const org = await ctx.db
-    .query("organizations")
-    .withIndex("by_clerk_org_id", (q) => q.eq("clerkOrgId", clerkOrgId))
-    .first();
-
-  if (!org) {
-    return null;
-  }
-
-  // Find employee by Clerk user ID
-  const employee = await ctx.db
-    .query("employees")
-    .withIndex("by_org_clerk_user", (q) =>
-      q.eq("organizationId", org._id).eq("clerkUserId", clerkUserId)
-    )
-    .first();
-
-  return employee;
 }
