@@ -481,7 +481,7 @@ function LoadoutsPageContent() {
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                               <Typography variant="body2" color="text.secondary">Labor Cost</Typography>
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                ${kpis.totalLaborCost.toFixed(0)}/hr
+                                ${(kpis?.totalLaborCost || 0).toFixed(0)}/hr
                               </Typography>
                             </Box>
                           </Stack>
@@ -502,17 +502,17 @@ function LoadoutsPageContent() {
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                               <Typography variant="body2" color="text.secondary">Total Value</Typography>
                               <Typography variant="body2">
-                                ${(kpis.totalEquipmentValue / 1000).toFixed(0)}k
+                                ${((kpis?.totalEquipmentValue || 0) / 1000).toFixed(0)}k
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                               <Typography variant="body2" color="text.secondary">Total HP</Typography>
-                              <Typography variant="body2">{kpis.totalHorsepower} HP</Typography>
+                              <Typography variant="body2">{kpis?.totalHorsepower || 0} HP</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                               <Typography variant="body2" color="text.secondary">Equipment Cost</Typography>
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                ${kpis.totalEquipmentCost.toFixed(0)}/hr
+                                ${(kpis?.totalEquipmentCost || 0).toFixed(0)}/hr
                               </Typography>
                             </Box>
                           </Stack>
@@ -532,25 +532,25 @@ function LoadoutsPageContent() {
                         <Grid item xs={6} sm={3}>
                           <Typography variant="caption" color="text.secondary">Daily (8hrs)</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${kpis.dailyRevenue.toFixed(0)}
+                            ${(kpis?.dailyRevenue || 0).toFixed(0)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6} sm={3}>
                           <Typography variant="caption" color="text.secondary">Weekly (40hrs)</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${kpis.weeklyRevenue.toFixed(0)}
+                            ${(kpis?.weeklyRevenue || 0).toFixed(0)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6} sm={3}>
                           <Typography variant="caption" color="text.secondary">Monthly (160hrs)</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${(kpis.monthlyRevenue / 1000).toFixed(1)}k
+                            ${((kpis?.monthlyRevenue || 0) / 1000).toFixed(1)}k
                           </Typography>
                         </Grid>
                         <Grid item xs={6} sm={3}>
                           <Typography variant="caption" color="text.secondary">Annual Potential</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${(kpis.annualRevenuePotential / 1000).toFixed(0)}k
+                            ${((kpis?.annualRevenuePotential || 0) / 1000).toFixed(0)}k
                           </Typography>
                         </Grid>
                       </Grid>
@@ -567,25 +567,25 @@ function LoadoutsPageContent() {
                       <Grid container spacing={2}>
                         <Grid item xs={6} sm={2.4}>
                           <Typography variant="caption" color="text.secondary">30% Margin</Typography>
-                          <Typography variant="body2">${kpis.billingRates.margin30.toFixed(0)}/hr</Typography>
+                          <Typography variant="body2">${(kpis?.billingRates?.margin30 || 0).toFixed(0)}/hr</Typography>
                         </Grid>
                         <Grid item xs={6} sm={2.4}>
                           <Typography variant="caption" color="text.secondary">40% Margin</Typography>
-                          <Typography variant="body2">${kpis.billingRates.margin40.toFixed(0)}/hr</Typography>
+                          <Typography variant="body2">${(kpis?.billingRates?.margin40 || 0).toFixed(0)}/hr</Typography>
                         </Grid>
                         <Grid item xs={6} sm={2.4}>
                           <Typography variant="caption" sx={{ color: '#34C759' }}>50% Margin</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
-                            ${kpis.billingRates.margin50.toFixed(0)}/hr
+                            ${(kpis?.billingRates?.margin50 || 0).toFixed(0)}/hr
                           </Typography>
                         </Grid>
                         <Grid item xs={6} sm={2.4}>
                           <Typography variant="caption" color="text.secondary">60% Margin</Typography>
-                          <Typography variant="body2">${kpis.billingRates.margin60.toFixed(0)}/hr</Typography>
+                          <Typography variant="body2">${(kpis?.billingRates?.margin60 || 0).toFixed(0)}/hr</Typography>
                         </Grid>
                         <Grid item xs={6} sm={2.4}>
                           <Typography variant="caption" color="text.secondary">70% Margin</Typography>
-                          <Typography variant="body2">${kpis.billingRates.margin70.toFixed(0)}/hr</Typography>
+                          <Typography variant="body2">${(kpis?.billingRates?.margin70 || 0).toFixed(0)}/hr</Typography>
                         </Grid>
                       </Grid>
                     </Paper>
@@ -614,13 +614,13 @@ function LoadoutsPageContent() {
                         <Grid item xs={6} sm={3}>
                           <Typography variant="caption" color="text.secondary">Revenue Generated</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
-                            ${(kpis.totalRevenueGenerated / 1000).toFixed(0)}k
+                            ${((kpis?.totalRevenueGenerated || 0) / 1000).toFixed(0)}k
                           </Typography>
                         </Grid>
                         <Grid item xs={6} sm={3}>
                           <Typography variant="caption" color="text.secondary">Avg Revenue/Job</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${kpis.avgRevenuePerJob.toFixed(0)}
+                            ${(kpis?.avgRevenuePerJob || 0).toFixed(0)}
                           </Typography>
                         </Grid>
                       </Grid>
@@ -644,7 +644,7 @@ function LoadoutsPageContent() {
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                               <Typography variant="body2" color="text.secondary">Utilization Rate</Typography>
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                {(kpis.utilizationRate * 100).toFixed(0)}%
+                                {((kpis?.utilizationRate || 0) * 100).toFixed(0)}%
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -900,13 +900,13 @@ function LoadoutsPageContent() {
                   }}
                 >
                   {equipment?.map((eq) => {
-                    const costPerHour = ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
+                    const costPerHour = ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours) || 0;
                     return (
                       <MenuItem key={eq._id} value={eq._id}>
                         <Checkbox checked={formData.selectedEquipment.indexOf(eq._id) > -1} />
                         <ListItemText
                           primary={eq.nickname || `${eq.year} ${eq.make} ${eq.model}`}
-                          secondary={`${eq.equipmentSubcategory} • $${costPerHour.toFixed(0)}/hr`}
+                          secondary={`${eq.equipmentSubcategory} • $${(costPerHour || 0).toFixed(0)}/hr`}
                           primaryTypographyProps={{ fontWeight: 500 }}
                           secondaryTypographyProps={{ color: '#8E8E93' }}
                         />
@@ -928,7 +928,7 @@ function LoadoutsPageContent() {
                     {formData.selectedEquipment.map(eqId => {
                       const eq = equipment?.find(e => e._id === eqId);
                       if (!eq) return null;
-                      const costPerHour = ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
+                      const costPerHour = ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours) || 0;
                       return (
                         <Box key={eqId} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, bgcolor: '#1C1C1E', borderRadius: 1 }}>
                           <Box>
@@ -940,7 +940,7 @@ function LoadoutsPageContent() {
                             </Typography>
                           </Box>
                           <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500' }}>
-                            ${costPerHour.toFixed(0)}/hr
+                            ${(costPerHour || 0).toFixed(0)}/hr
                           </Typography>
                         </Box>
                       );
