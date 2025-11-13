@@ -17,6 +17,7 @@ import type * as equipment from "../equipment.js";
 import type * as invoices from "../invoices.js";
 import type * as leads from "../leads.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_employeeHelpers from "../lib/employeeHelpers.js";
 import type * as lineItemTemplates from "../lineItemTemplates.js";
 import type * as lineItems from "../lineItems.js";
 import type * as loadouts from "../loadouts.js";
@@ -26,6 +27,7 @@ import type * as organizations from "../organizations.js";
 import type * as projects from "../projects.js";
 import type * as seedDefaultLineItemTemplates from "../seedDefaultLineItemTemplates.js";
 import type * as timeEntries from "../timeEntries.js";
+import type * as weatherAPI from "../weatherAPI.js";
 import type * as workOrders from "../workOrders.js";
 
 import type {
@@ -44,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   invoices: typeof invoices;
   leads: typeof leads;
   "lib/auth": typeof lib_auth;
+  "lib/employeeHelpers": typeof lib_employeeHelpers;
   lineItemTemplates: typeof lineItemTemplates;
   lineItems: typeof lineItems;
   loadouts: typeof loadouts;
@@ -53,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   projects: typeof projects;
   seedDefaultLineItemTemplates: typeof seedDefaultLineItemTemplates;
   timeEntries: typeof timeEntries;
+  weatherAPI: typeof weatherAPI;
   workOrders: typeof workOrders;
 }>;
 

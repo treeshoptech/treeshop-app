@@ -168,7 +168,7 @@ interface LoadoutKPIs {
 function calculateLoadoutKPIs(loadout: any): LoadoutKPIs {
   const cost = loadout.totalCostPerHour || 0;
   const targetMargin = loadout.targetMargin || 50;
-  const targetBillingRate = cost / (1 - targetMargin / 100);
+  const targetBillingRate = cost > 0 ? cost / (1 - targetMargin / 100) : 0;
 
   return {
     // Cost Metrics
@@ -179,11 +179,11 @@ function calculateLoadoutKPIs(loadout: any): LoadoutKPIs {
 
     // Revenue Metrics
     billingRates: {
-      margin30: cost / 0.70,
-      margin40: cost / 0.60,
-      margin50: cost / 0.50,
-      margin60: cost / 0.40,
-      margin70: cost / 0.30,
+      margin30: cost > 0 ? cost / 0.70 : 0,
+      margin40: cost > 0 ? cost / 0.60 : 0,
+      margin50: cost > 0 ? cost / 0.50 : 0,
+      margin60: cost > 0 ? cost / 0.40 : 0,
+      margin70: cost > 0 ? cost / 0.30 : 0,
     },
     targetMargin,
     targetBillingRate,
