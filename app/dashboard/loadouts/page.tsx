@@ -404,7 +404,7 @@ function LoadoutsPageContent() {
                             Cost/Hour
                           </Typography>
                           <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                            ${kpis.totalCostPerHour.toFixed(0)}
+                            ${(kpis?.totalCostPerHour || 0).toFixed(0)}
                           </Typography>
                         </Box>
                         <Box sx={{ flex: '1 1 120px' }}>
@@ -412,7 +412,7 @@ function LoadoutsPageContent() {
                             Billing Rate
                           </Typography>
                           <Typography variant="h6" sx={{ fontWeight: 600, color: '#34C759', fontSize: '1.1rem' }}>
-                            ${kpis.targetBillingRate.toFixed(0)}
+                            ${(kpis?.targetBillingRate || 0).toFixed(0)}
                           </Typography>
                         </Box>
                         <Box sx={{ flex: '1 1 120px' }}>
@@ -420,7 +420,7 @@ function LoadoutsPageContent() {
                             Profit/Hour
                           </Typography>
                           <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500', fontSize: '1.1rem' }}>
-                            ${kpis.profitPerHour.toFixed(0)}
+                            ${(kpis?.profitPerHour || 0).toFixed(0)}
                           </Typography>
                         </Box>
                         <Box sx={{ flex: '1 1 80px' }}>

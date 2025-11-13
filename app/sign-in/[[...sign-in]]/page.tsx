@@ -8,7 +8,7 @@ export default function SignInPage() {
       alignItems: 'center',
       minHeight: '100vh',
     }}>
-      <SignIn />
+      <SignIn fallbackRedirectUrl="/dashboard" />
     </div>
   );
 }
