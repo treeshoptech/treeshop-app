@@ -41,7 +41,7 @@ export function RevenueCard() {
           {lastMonth > 0 && (
             <Chip
               icon={isPositiveGrowth ? <TrendingUpIcon /> : <TrendingDownIcon />}
-              label={`${isPositiveGrowth ? '+' : ''}${growth.toFixed(1)}%`}
+              label={`${isPositiveGrowth ? '+' : ''}${(growth ?? 0).toFixed(1)}%`}
               size="small"
               sx={{
                 bgcolor: isPositiveGrowth ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',

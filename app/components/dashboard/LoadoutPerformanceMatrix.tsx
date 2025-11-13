@@ -152,7 +152,7 @@ export function LoadoutPerformanceMatrix() {
                       Avg Margin
                     </Typography>
                     <Typography variant="h6" fontWeight={600} color="success.main">
-                      {loadout.avgMargin.toFixed(1)}%
+                      {(loadout.avgMargin ?? 0).toFixed(1)}%
                     </Typography>
                   </Box>
 
@@ -165,10 +165,10 @@ export function LoadoutPerformanceMatrix() {
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Typography variant="h6" fontWeight={600}>
-                        {loadout.actualPPH.toFixed(2)}
+                        {(loadout.actualPPH ?? 0).toFixed(2)}
                       </Typography>
                       <Chip
-                        label={`${loadout.pphPerformance > 0 ? '+' : ''}${loadout.pphPerformance.toFixed(1)}%`}
+                        label={`${loadout.pphPerformance > 0 ? '+' : ''}${(loadout.pphPerformance ?? 0).toFixed(1)}%`}
                         size="small"
                         sx={{
                           fontSize: '10px',
@@ -179,7 +179,7 @@ export function LoadoutPerformanceMatrix() {
                       />
                     </Box>
                     <Typography variant="caption" color="text.secondary">
-                      Est: {loadout.estimatedPPH.toFixed(2)} PPH
+                      Est: {(loadout.estimatedPPH ?? 0).toFixed(2)} PPH
                     </Typography>
                   </Box>
 
@@ -200,7 +200,7 @@ export function LoadoutPerformanceMatrix() {
                       </Tooltip>
                     </Typography>
                     <Typography variant="h6" fontWeight={600}>
-                      {loadout.roi > 0 ? `${loadout.roi.toFixed(2)}x` : 'N/A'}
+                      {loadout.roi > 0 ? `${(loadout.roi ?? 0).toFixed(2)}x` : 'N/A'}
                     </Typography>
                   </Box>
                 </Box>

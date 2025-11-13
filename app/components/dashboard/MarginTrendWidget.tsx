@@ -50,7 +50,7 @@ export function MarginTrendWidget() {
 
           <Box sx={{ textAlign: 'right' }}>
             <Typography variant="h4" sx={{ fontWeight: 700, color: '#34C759' }}>
-              {latestMargin.toFixed(1)}%
+              {(latestMargin ?? 0).toFixed(1)}%
             </Typography>
             <Typography
               variant="caption"
@@ -59,7 +59,7 @@ export function MarginTrendWidget() {
                 fontWeight: 600
               }}
             >
-              {marginChange >= 0 ? '+' : ''}{marginChange.toFixed(1)}% vs last month
+              {marginChange >= 0 ? '+' : ''}{(marginChange ?? 0).toFixed(1)}% vs last month
             </Typography>
           </Box>
         </Box>
@@ -95,7 +95,7 @@ export function MarginTrendWidget() {
                 labelStyle={{ color: '#FFFFFF', fontWeight: 600 }}
                 itemStyle={{ color: '#8E8E93' }}
                 formatter={(value: any, name: string) => {
-                  if (name === 'margin') return [`${value.toFixed(1)}%`, 'Margin'];
+                  if (name === 'margin') return [`${(value ?? 0).toFixed(1)}%`, 'Margin'];
                   return [value, name];
                 }}
               />
@@ -115,7 +115,7 @@ export function MarginTrendWidget() {
             Average Margin (12mo)
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            {avgMargin.toFixed(1)}%
+            {(avgMargin ?? 0).toFixed(1)}%
           </Typography>
         </Box>
       </CardContent>

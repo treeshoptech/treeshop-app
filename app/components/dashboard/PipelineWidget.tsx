@@ -88,7 +88,7 @@ export function PipelineWidget() {
                     </Typography>
                     {stage.conversion !== null && (
                       <Typography variant="caption" sx={{ color: '#8E8E93' }}>
-                        {stage.conversion.toFixed(0)}% conversion
+                        {(stage.conversion ?? 0).toFixed(0)}% conversion
                       </Typography>
                     )}
                   </Box>

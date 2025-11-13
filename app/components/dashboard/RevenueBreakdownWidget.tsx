@@ -62,7 +62,7 @@ export function RevenueBreakdownWidget() {
                       </Typography>
                     </Box>
                     <Typography variant="body2" sx={{ color: '#8E8E93' }}>
-                      {percentage.toFixed(1)}%
+                      {(percentage ?? 0).toFixed(1)}%
                     </Typography>
                   </Box>
 
