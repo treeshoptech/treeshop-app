@@ -615,4 +615,553 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_organization", ["organizationId"]),
+
+  // ============================================
+  // ADVANCED DATA COLLECTION & ML TABLES
+  // ============================================
+
+  // Job Performance Metrics - Actual vs Estimated tracking for ML
+  jobPerformanceMetrics: defineTable({
+    organizationId: v.id("organizations"),
+    workOrderId: v.id("workOrders"),
+    projectId: v.id("projects"),
+    proposalId: v.id("proposals"),
+    customerId: v.id("customers"),
+    loadoutId: v.id("loadouts"),
+
+    // Service Details
+    serviceType: v.string(),
+    treeShopScore: v.number(), // Original score
+    afissMultiplier: v.number(), // Complexity multiplier
+    productionRatePPH: v.number(), // Expected PpH
+
+    // Time Estimates vs Actuals
+    estimatedProductionHours: v.number(),
+    actualProductionHours: v.number(),
+    productionVarianceHours: v.number(), // Actual - Estimated
+    productionVariancePercent: v.number(), // (Actual - Est) / Est * 100
+
+    estimatedTransportHours: v.number(),
+    actualTransportHours: v.number(),
+    transportVarianceHours: v.number(),
+
+    estimatedTotalHours: v.number(),
+    actualTotalHours: v.number(),
+    totalVarianceHours: v.number(),
+    totalVariancePercent: v.number(),
+
+    // Cost Estimates vs Actuals
+    estimatedEquipmentCost: v.number(),
+    actualEquipmentCost: v.number(),
+    equipmentCostVariance: v.number(),
+
+    estimatedLaborCost: v.number(),
+    actualLaborCost: v.number(),
+    laborCostVariance: v.number(),
+
+    estimatedTotalCost: v.number(),
+    actualTotalCost: v.number(),
+    totalCostVariance: v.number(),
+    totalCostVariancePercent: v.number(),
+
+    // Revenue & Profitability
+    quotedPrice: v.number(),
+    finalPrice: v.number(), // May include change orders
+    priceVariance: v.number(),
+
+    targetMargin: v.number(),
+    actualMargin: v.number(),
+    marginVariance: v.number(),
+
+    targetProfit: v.number(),
+    actualProfit: v.number(),
+    profitVariance: v.number(),
+    profitVariancePercent: v.number(),
+
+    // Crew Performance
+    crewMemberIds: v.array(v.id("employees")),
+    crewSize: v.number(),
+    avgCrewTier: v.number(), // Average tier level
+    crewCertificationCount: v.number(), // Total certs across crew
+    crewExperienceYears: v.number(), // Total years of experience
+
+    // Equipment Performance
+    equipmentIds: v.array(v.id("equipment")),
+    equipmentCount: v.number(),
+    equipmentTotalValue: v.number(),
+    equipmentAvgAge: v.number(), // Years
+
+    // Site Conditions (captured at execution)
+    weatherCondition: v.optional(v.string()), // "Clear", "Rain", "Snow", "Wind", "Extreme Heat"
+    temperature: v.optional(v.number()), // Fahrenheit
+    precipitation: v.optional(v.number()), // Inches
+    windSpeed: v.optional(v.number()), // MPH
+    humidity: v.optional(v.number()), // Percentage
+
+    siteAccessDifficulty: v.optional(v.number()), // 1-10 scale
+    siteTerrainType: v.optional(v.string()), // "Flat", "Sloped", "Steep", "Mixed"
+    soilCondition: v.optional(v.string()), // "Dry", "Wet", "Muddy", "Rocky"
+    vegetationDensity: v.optional(v.string()), // "Light", "Medium", "Heavy", "Very Heavy"
+
+    // Obstacles & Hazards (captured)
+    powerLinesPresent: v.boolean(),
+    buildingsNearby: v.boolean(),
+    undergroundUtilities: v.boolean(),
+    publicRoadAccess: v.boolean(),
+    gateWidth: v.optional(v.number()), // Inches
+    drivewayLength: v.optional(v.number()), // Feet
+
+    // Customer Factors
+    customerCommunicationQuality: v.optional(v.number()), // 1-10 scale
+    customerOnSite: v.boolean(),
+    scopeChanges: v.number(), // Count of change orders
+    scopeChangeImpactHours: v.number(),
+
+    // Quality Metrics
+    customerSatisfactionScore: v.optional(v.number()), // 1-10
+    customerReviewRating: v.optional(v.number()), // 1-5 stars
+    reworkRequired: v.boolean(),
+    reworkHours: v.optional(v.number()),
+    complaintsFiled: v.number(),
+
+    // Safety Metrics
+    safetyIncidents: v.number(),
+    nearMisses: v.number(),
+    safetyScore: v.number(), // 1-10, calculated
+
+    // Learning Factors (for ML)
+    accuracyScore: v.number(), // How close estimate was to actual (100 = perfect)
+    efficiencyScore: v.number(), // Actual vs expected production rate
+    profitabilityScore: v.number(), // Actual profit vs target
+    overallPerformanceScore: v.number(), // Composite score
+
+    // ML Feature Flags
+    includeInTraining: v.boolean(), // Use for ML training
+    outlier: v.boolean(), // Flag unusual jobs
+    outlierReason: v.optional(v.string()),
+
+    completedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_work_order", ["workOrderId"])
+    .index("by_service_type", ["organizationId", "serviceType"])
+    .index("by_loadout", ["organizationId", "loadoutId"])
+    .index("by_completed_date", ["organizationId", "completedAt"])
+    .index("by_include_training", ["organizationId", "includeInTraining"])
+    .index("by_performance_score", ["organizationId", "overallPerformanceScore"]),
+
+  // Equipment Utilization Tracking - Detailed equipment usage per job
+  equipmentUtilizationLogs: defineTable({
+    organizationId: v.id("organizations"),
+    equipmentId: v.id("equipment"),
+    workOrderId: v.id("workOrders"),
+    projectId: v.id("projects"),
+
+    // Equipment Details (snapshot at time of use)
+    equipmentNickname: v.string(),
+    equipmentCategory: v.string(),
+    equipmentSubcategory: v.string(),
+    equipmentAge: v.number(), // Years old at time of use
+    equipmentMeterReading: v.number(), // Hours on equipment
+
+    // Usage Details
+    startTime: v.number(),
+    endTime: v.number(),
+    totalHours: v.number(),
+    productiveHours: v.number(), // Actually working vs idle
+    idleHours: v.number(),
+    utilizationRate: v.number(), // Productive / Total
+
+    // Operator
+    operatorId: v.id("employees"),
+    operatorExperience: v.number(), // Years
+    operatorCertifications: v.array(v.string()),
+
+    // Costs
+    hourlyOwnershipCost: v.number(),
+    hourlyOperatingCost: v.number(),
+    totalHourlyCost: v.number(),
+    totalCostThisJob: v.number(),
+
+    // Fuel Consumption
+    fuelGallonsUsed: v.optional(v.number()),
+    fuelCost: v.optional(v.number()),
+    fuelEfficiency: v.optional(v.number()), // Gallons per hour
+
+    // Performance
+    workVolume: v.optional(v.number()), // Inch-acres, stumps, acres, etc.
+    actualProductionRate: v.optional(v.number()), // Actual PpH achieved
+    expectedProductionRate: v.optional(v.number()),
+    efficiencyRatio: v.optional(v.number()), // Actual / Expected
+
+    // Maintenance Impact
+    breakdownOccurred: v.boolean(),
+    breakdownDurationMinutes: v.optional(v.number()),
+    maintenanceRequired: v.boolean(),
+    maintenanceType: v.optional(v.string()),
+
+    // Revenue Attribution
+    revenueGenerated: v.number(), // Portion of job revenue attributed to this equipment
+    profitGenerated: v.number(),
+    roi: v.number(), // Profit / Cost for this job
+
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_equipment", ["equipmentId"])
+    .index("by_work_order", ["workOrderId"])
+    .index("by_org_equipment", ["organizationId", "equipmentId"])
+    .index("by_org_date", ["organizationId", "startTime"]),
+
+  // Employee Productivity Tracking - Individual performance metrics
+  employeeProductivityLogs: defineTable({
+    organizationId: v.id("organizations"),
+    employeeId: v.id("employees"),
+    workOrderId: v.id("workOrders"),
+    projectId: v.id("projects"),
+
+    // Employee Details (snapshot)
+    employeeName: v.string(),
+    employeeTier: v.number(),
+    employeeTrack: v.string(),
+    baseHourlyRate: v.number(),
+    trueCostPerHour: v.number(),
+
+    // Time Tracking
+    clockInTime: v.number(),
+    clockOutTime: v.number(),
+    totalHours: v.number(),
+    productiveHours: v.number(),
+    breakHours: v.number(),
+    travelHours: v.number(),
+
+    // Role on This Job
+    role: v.string(), // "Operator", "Ground Crew", "Climber", "Leader", "Support"
+    wasCrewLead: v.boolean(),
+    equipmentOperated: v.optional(v.array(v.id("equipment"))),
+
+    // Performance Metrics
+    tasksCompleted: v.number(),
+    workQualityScore: v.optional(v.number()), // 1-10, manager/customer rating
+    safetyScore: v.optional(v.number()), // 1-10
+    teamworkScore: v.optional(v.number()), // 1-10, peer rating
+
+    // Output Metrics (service-specific)
+    treesRemoved: v.optional(v.number()),
+    stumpsGround: v.optional(v.number()),
+    acresCleared: v.optional(v.number()),
+    workVolumePoints: v.optional(v.number()),
+
+    // Learning & Development
+    skillsUsed: v.array(v.string()), // Tags for skills demonstrated
+    newSkillsLearned: v.optional(v.array(v.string())),
+    trainingProvided: v.optional(v.array(v.string())), // Training given to others
+    certificationProgress: v.optional(v.array(v.string())),
+
+    // Cost & Revenue Attribution
+    laborCost: v.number(), // True cost × hours
+    revenueGenerated: v.number(), // Attributed revenue
+    profitGenerated: v.number(),
+    profitPerHour: v.number(),
+
+    // Incidents & Issues
+    safetyIncidents: v.number(),
+    equipmentDamage: v.boolean(),
+    customerComplaints: v.number(),
+    positiveCustomerFeedback: v.number(),
+
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_employee", ["employeeId"])
+    .index("by_work_order", ["workOrderId"])
+    .index("by_org_employee", ["organizationId", "employeeId"])
+    .index("by_org_date", ["organizationId", "clockInTime"]),
+
+  // Weather Data Log - Historical weather for ML correlation
+  weatherDataLogs: defineTable({
+    organizationId: v.id("organizations"),
+    workOrderId: v.optional(v.id("workOrders")),
+    projectId: v.optional(v.id("projects")),
+
+    // Location
+    latitude: v.number(),
+    longitude: v.number(),
+    address: v.string(),
+
+    // Date & Time
+    date: v.number(), // Date in YYYYMMDD format
+    timestamp: v.number(),
+    hour: v.number(), // 0-23
+
+    // Weather Conditions
+    condition: v.string(), // "Clear", "Cloudy", "Rain", "Snow", "Thunderstorm", "Fog"
+    conditionCode: v.optional(v.string()), // API-specific code
+    description: v.string(),
+
+    // Temperature
+    temperatureF: v.number(),
+    feelsLikeF: v.number(),
+    dewPointF: v.optional(v.number()),
+
+    // Precipitation
+    precipitationInches: v.number(),
+    precipitationProbability: v.number(), // 0-100%
+    precipitationType: v.optional(v.string()), // "rain", "snow", "sleet"
+
+    // Wind
+    windSpeedMPH: v.number(),
+    windGustMPH: v.optional(v.number()),
+    windDirection: v.optional(v.string()), // "N", "NE", "E", etc.
+    windDirectionDegrees: v.optional(v.number()),
+
+    // Atmospheric
+    humidity: v.number(), // 0-100%
+    pressure: v.optional(v.number()), // inHg
+    visibility: v.optional(v.number()), // Miles
+    cloudCover: v.optional(v.number()), // 0-100%
+    uvIndex: v.optional(v.number()),
+
+    // Extremes
+    isExtremeHeat: v.boolean(), // > 95°F
+    isExtremeCold: v.boolean(), // < 25°F
+    isHighWind: v.boolean(), // > 20 MPH
+    isHeavyRain: v.boolean(), // > 0.5" per hour
+    isSevereWeather: v.boolean(), // Thunderstorm, tornado, etc.
+
+    // Data Source
+    dataSource: v.string(), // "OpenWeather", "WeatherAPI", "NOAA", "Manual"
+    dataQuality: v.string(), // "Actual", "Forecast", "Historical"
+
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_work_order", ["workOrderId"])
+    .index("by_org_date", ["organizationId", "date"])
+    .index("by_location", ["latitude", "longitude", "date"]),
+
+  // Customer Behavior Analytics - Track customer patterns
+  customerBehaviorLogs: defineTable({
+    organizationId: v.id("organizations"),
+    customerId: v.id("customers"),
+
+    // Event Type
+    eventType: v.string(), // "Lead Created", "Proposal Viewed", "Proposal Signed", "Payment Made", "Review Left", "Referral Made", "Service Requested"
+    eventCategory: v.string(), // "Acquisition", "Engagement", "Transaction", "Retention", "Advocacy"
+
+    // Event Details
+    eventTimestamp: v.number(),
+    eventData: v.optional(v.any()), // JSON object with event-specific data
+
+    // Related Records
+    projectId: v.optional(v.id("projects")),
+    proposalId: v.optional(v.id("proposals")),
+    workOrderId: v.optional(v.id("workOrders")),
+    invoiceId: v.optional(v.id("invoices")),
+
+    // Context
+    serviceType: v.optional(v.string()),
+    transactionAmount: v.optional(v.number()),
+    communicationChannel: v.optional(v.string()), // "Phone", "Email", "Text", "In-Person", "Website"
+
+    // Customer State at Event
+    totalProjectsToDate: v.number(),
+    totalRevenueToDate: v.number(),
+    daysSinceLastProject: v.optional(v.number()),
+    customerLifetimeDays: v.number(), // Days since first contact
+
+    // Behavioral Metrics
+    responseTimeHours: v.optional(v.number()), // How quickly customer responded
+    decisionTimeHours: v.optional(v.number()), // Time from proposal to decision
+    engagementScore: v.optional(v.number()), // 1-10
+    satisfactionScore: v.optional(v.number()), // 1-10
+
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_customer", ["customerId"])
+    .index("by_org_customer", ["organizationId", "customerId"])
+    .index("by_event_type", ["organizationId", "eventType"])
+    .index("by_event_date", ["organizationId", "eventTimestamp"]),
+
+  // ML Training Data - Preprocessed data for machine learning
+  mlTrainingData: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Record ID
+    recordType: v.string(), // "JobEstimate", "EquipmentUtilization", "EmployeeProductivity", "CustomerLTV"
+    sourceRecordId: v.string(), // ID of source record (workOrder, jobPerformanceMetrics, etc.)
+
+    // Features (input variables)
+    features: v.object({
+      // Service features
+      serviceType: v.optional(v.string()),
+      treeShopScore: v.optional(v.number()),
+      afissMultiplier: v.optional(v.number()),
+      acreage: v.optional(v.number()),
+      treeCount: v.optional(v.number()),
+      avgTreeDBH: v.optional(v.number()),
+
+      // Site features
+      driveTimeMinutes: v.optional(v.number()),
+      siteAccessDifficulty: v.optional(v.number()),
+      powerLinesPresent: v.optional(v.number()), // 0/1
+      buildingsNearby: v.optional(v.number()),
+      terrainSlope: v.optional(v.number()),
+      vegetationDensity: v.optional(v.number()),
+
+      // Weather features
+      temperature: v.optional(v.number()),
+      precipitation: v.optional(v.number()),
+      windSpeed: v.optional(v.number()),
+      humidity: v.optional(v.number()),
+
+      // Crew features
+      crewSize: v.optional(v.number()),
+      avgCrewTier: v.optional(v.number()),
+      totalCrewExperience: v.optional(v.number()),
+      crewCertCount: v.optional(v.number()),
+
+      // Equipment features
+      equipmentCount: v.optional(v.number()),
+      equipmentTotalValue: v.optional(v.number()),
+      equipmentAvgAge: v.optional(v.number()),
+      primaryEquipmentPPH: v.optional(v.number()),
+
+      // Customer features
+      customerLifetimeDays: v.optional(v.number()),
+      customerTotalProjects: v.optional(v.number()),
+      customerTotalRevenue: v.optional(v.number()),
+      customerAvgSatisfaction: v.optional(v.number()),
+
+      // Temporal features
+      dayOfWeek: v.optional(v.number()), // 0-6
+      monthOfYear: v.optional(v.number()), // 1-12
+      seasonCode: v.optional(v.number()), // 1-4
+    }),
+
+    // Labels (output variables / targets)
+    labels: v.object({
+      actualHours: v.optional(v.number()),
+      actualCost: v.optional(v.number()),
+      actualProfit: v.optional(v.number()),
+      actualMargin: v.optional(v.number()),
+      estimateAccuracy: v.optional(v.number()),
+      customerSatisfaction: v.optional(v.number()),
+      profitability: v.optional(v.number()),
+      efficiency: v.optional(v.number()),
+    }),
+
+    // Metadata
+    dataQuality: v.string(), // "High", "Medium", "Low"
+    completeness: v.number(), // 0-100% of features populated
+    validated: v.boolean(),
+    datasetSplit: v.optional(v.string()), // "train", "validation", "test"
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_record_type", ["organizationId", "recordType"])
+    .index("by_quality", ["organizationId", "dataQuality"])
+    .index("by_validated", ["organizationId", "validated"]),
+
+  // ML Model Predictions - Store predictions for comparison
+  mlPredictions: defineTable({
+    organizationId: v.id("organizations"),
+
+    // What we're predicting
+    predictionType: v.string(), // "JobHours", "JobCost", "JobProfit", "CustomerLTV", "EquipmentUtilization"
+    targetRecordType: v.string(), // "Project", "Proposal", "Customer", "Equipment"
+    targetRecordId: v.string(),
+
+    // Model Info
+    modelVersion: v.string(),
+    modelAlgorithm: v.optional(v.string()), // "Linear Regression", "Random Forest", "Neural Network"
+    trainingDataCount: v.optional(v.number()),
+    modelAccuracy: v.optional(v.number()), // R² or accuracy metric
+
+    // Input Features Used
+    inputFeatures: v.any(), // JSON snapshot of features
+
+    // Predictions
+    predictedValue: v.number(),
+    confidenceScore: v.number(), // 0-100%
+    predictionRange: v.optional(v.object({
+      low: v.number(),
+      high: v.number(),
+    })),
+
+    // Comparison (filled in after actual results)
+    actualValue: v.optional(v.number()),
+    predictionError: v.optional(v.number()), // Actual - Predicted
+    predictionErrorPercent: v.optional(v.number()),
+    predictionAccurate: v.optional(v.boolean()), // Within acceptable range
+
+    // Contributing Factors
+    topFeatures: v.optional(v.array(v.object({
+      feature: v.string(),
+      importance: v.number(),
+      value: v.number(),
+    }))),
+
+    predictionMadeAt: v.number(),
+    actualRecordedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_prediction_type", ["organizationId", "predictionType"])
+    .index("by_target_record", ["targetRecordType", "targetRecordId"])
+    .index("by_org_date", ["organizationId", "predictionMadeAt"]),
+
+  // Model Performance Tracking - Track model accuracy over time
+  mlModelPerformance: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Model Info
+    modelVersion: v.string(),
+    modelType: v.string(), // "JobEstimation", "CustomerLTV", "ResourceOptimization"
+    algorithm: v.string(),
+
+    // Training Info
+    trainingDatasetSize: v.number(),
+    trainingStartDate: v.number(),
+    trainingEndDate: v.number(),
+    trainingDurationMinutes: v.number(),
+
+    // Performance Metrics
+    accuracy: v.number(), // R² for regression, accuracy for classification
+    maeError: v.optional(v.number()), // Mean Absolute Error
+    rmseError: v.optional(v.number()), // Root Mean Squared Error
+    mapeError: v.optional(v.number()), // Mean Absolute Percentage Error
+
+    // Validation Results
+    validationAccuracy: v.number(),
+    testAccuracy: v.optional(v.number()),
+    crossValidationScores: v.optional(v.array(v.number())),
+
+    // Feature Importance
+    topFeatures: v.array(v.object({
+      feature: v.string(),
+      importance: v.number(),
+    })),
+
+    // Real-World Performance (after deployment)
+    predictionCount: v.number(), // How many predictions made
+    actualResultsCount: v.number(), // How many actuals recorded
+    realWorldAccuracy: v.optional(v.number()), // Accuracy on actual vs predicted
+    avgPredictionError: v.optional(v.number()),
+
+    // Status
+    status: v.string(), // "Training", "Deployed", "Deprecated"
+    deployedAt: v.optional(v.number()),
+    deprecatedAt: v.optional(v.number()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_model_type", ["organizationId", "modelType"])
+    .index("by_status", ["organizationId", "status"]),
 });

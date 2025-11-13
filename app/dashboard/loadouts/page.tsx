@@ -20,6 +20,8 @@ import {
   LocalShipping as TruckIcon, Timer as TimerIcon, Assessment as KpiIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
+import { calculateEquipmentCost } from '@/lib/equipment-cost';
+import { calculateEmployeeCompensation } from '@/lib/employee-compensation';
 
 const SERVICE_TYPES = [
   'Tree Removal', 'Tree Trimming', 'Stump Grinding', 'Forestry Mulching',
@@ -253,6 +255,9 @@ function LoadoutsPageContent() {
   // Query equipment and employees from Convex
   const equipment = useQuery(api.equipment.list);
   const employees = useQuery(api.employees.list);
+
+  // Mutation for creating loadouts
+  const createLoadout = useMutation(api.loadouts.create);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -1089,68 +1094,78 @@ function LoadoutsPageContent() {
               </Stack>
 
               {/* Live Cost Preview */}
-              {(formData.selectedEquipment.length > 0 || formData.selectedEmployees.length > 0) && (
-                <Paper sx={{ mt: 3, p: 3, bgcolor: '#2C2C2E', border: '2px solid #007AFF' }}>
-                  <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#007AFF' }}>
-                    Cost Preview
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary">Equipment Cost</Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        ${formData.selectedEquipment.reduce((sum, eqId) => {
-                          const eq = equipment?.find(e => e._id === eqId);
-                          if (!eq) return sum;
-                          return sum + ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
-                        }, 0).toFixed(0)}/hr
-                      </Typography>
+              {(formData.selectedEquipment.length > 0 || formData.selectedEmployees.length > 0) && (() => {
+                // Calculate equipment cost once
+                const equipmentCost = formData.selectedEquipment.reduce((sum, eqId) => {
+                  const eq = equipment?.find(e => e._id === eqId);
+                  if (!eq) return sum;
+                  const cost = calculateEquipmentCost({
+                    purchasePrice: eq.purchasePrice,
+                    usefulLifeYears: eq.usefulLifeYears,
+                    financeRate: eq.financeRate || 0,
+                    insuranceCost: eq.insuranceCost || 0,
+                    registrationCost: eq.registrationCost || 0,
+                    fuelConsumptionGPH: eq.fuelConsumptionGPH || 0,
+                    fuelPricePerGallon: eq.fuelPricePerGallon || 0,
+                    maintenanceCostAnnual: eq.maintenanceCostAnnual || 0,
+                    repairCostAnnual: eq.repairCostAnnual || 0,
+                    annualHours: eq.annualHours,
+                  });
+                  return sum + cost.totalPerHour;
+                }, 0);
+
+                // Calculate labor cost once
+                const laborCost = formData.selectedEmployees.reduce((sum, empId) => {
+                  const emp = employees?.find(e => e._id === empId);
+                  if (!emp) return sum;
+                  const cost = calculateEmployeeCompensation({
+                    baseHourlyRate: emp.baseHourlyRate,
+                    tier: emp.tier || 1,
+                    leadership: emp.leadership,
+                    equipmentCerts: emp.equipmentCerts || [],
+                    driverLicenses: emp.driverLicenses || [],
+                    certifications: emp.certifications || [],
+                  });
+                  return sum + cost.trueCost;
+                }, 0);
+
+                const totalCost = equipmentCost + laborCost + formData.overheadCost;
+                const billingRate = totalCost / (1 - formData.targetMargin / 100);
+
+                return (
+                  <Paper sx={{ mt: 3, p: 3, bgcolor: '#2C2C2E', border: '2px solid #007AFF' }}>
+                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#007AFF' }}>
+                      Cost Preview
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6} sm={3}>
+                        <Typography variant="caption" color="text.secondary">Equipment Cost</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          ${equipmentCost.toFixed(0)}/hr
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Typography variant="caption" color="text.secondary">Labor Cost</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          ${laborCost.toFixed(0)}/hr
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Typography variant="caption" color="text.secondary">Total Cost</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500' }}>
+                          ${totalCost.toFixed(0)}/hr
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Typography variant="caption" color="text.secondary">Billing Rate ({formData.targetMargin}%)</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#34C759' }}>
+                          ${billingRate.toFixed(0)}/hr
+                        </Typography>
+                      </Grid>
                     </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary">Labor Cost</Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        ${formData.selectedEmployees.reduce((sum, empId) => {
-                          const emp = employees?.find(e => e._id === empId);
-                          return sum + (emp ? emp.baseHourlyRate * 1.7 : 0);
-                        }, 0).toFixed(0)}/hr
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary">Total Cost</Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500' }}>
-                        ${(
-                          formData.selectedEquipment.reduce((sum, eqId) => {
-                            const eq = equipment?.find(e => e._id === eqId);
-                            if (!eq) return sum;
-                            return sum + ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
-                          }, 0) +
-                          formData.selectedEmployees.reduce((sum, empId) => {
-                            const emp = employees?.find(e => e._id === empId);
-                            return sum + (emp ? emp.baseHourlyRate * 1.7 : 0);
-                          }, 0) +
-                          formData.overheadCost
-                        ).toFixed(0)}/hr
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Typography variant="caption" color="text.secondary">Billing Rate ({formData.targetMargin}%)</Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#34C759' }}>
-                        ${(
-                          (formData.selectedEquipment.reduce((sum, eqId) => {
-                            const eq = equipment?.find(e => e._id === eqId);
-                            if (!eq) return sum;
-                            return sum + ((eq.purchasePrice / eq.usefulLifeYears + (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours + (eq.maintenanceCostAnnual || 0)) / eq.annualHours);
-                          }, 0) +
-                          formData.selectedEmployees.reduce((sum, empId) => {
-                            const emp = employees?.find(e => e._id === empId);
-                            return sum + (emp ? emp.baseHourlyRate * 1.7 : 0);
-                          }, 0) +
-                          formData.overheadCost) / (1 - formData.targetMargin / 100)
-                        ).toFixed(0)}/hr
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Paper>
-              )}
+                  </Paper>
+                );
+              })()}
             </Box>
           )}
         </DialogContent>
@@ -1159,10 +1174,35 @@ function LoadoutsPageContent() {
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={() => {
-              // TODO: Save to Convex
-              alert('Loadout creation coming soon! Will save to database.');
-              setDialogOpen(false);
+            onClick={async () => {
+              try {
+                await createLoadout({
+                  name: formData.name,
+                  serviceType: formData.serviceType,
+                  equipmentIds: formData.selectedEquipment as Id<"equipment">[],
+                  employeeIds: formData.selectedEmployees as Id<"employees">[],
+                  productionRate: formData.productionRate,
+                  status: formData.status,
+                });
+
+                // Reset form and close dialog
+                setFormData({
+                  name: '',
+                  serviceType: 'Tree Removal',
+                  status: 'Active',
+                  description: '',
+                  selectedEquipment: [],
+                  selectedEmployees: [],
+                  productionRate: 0,
+                  targetMargin: 50,
+                  overheadCost: 0,
+                });
+                setFormTab(0);
+                setDialogOpen(false);
+              } catch (error) {
+                console.error('Failed to create loadout:', error);
+                alert('Failed to create loadout. Please try again.');
+              }
             }}
             disabled={!formData.name || formData.selectedEquipment.length === 0 || formData.selectedEmployees.length === 0}
           >

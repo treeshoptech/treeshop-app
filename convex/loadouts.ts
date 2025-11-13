@@ -40,19 +40,143 @@ export const create = mutation({
     serviceType: v.string(),
     equipmentIds: v.array(v.id("equipment")),
     employeeIds: v.array(v.id("employees")),
-    productionRatePPH: v.number(),
-    overheadCostPerHour: v.optional(v.number()),
-    notes: v.optional(v.string()),
+    productionRate: v.number(), // Changed from productionRatePPH to match schema
+    status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const org = await getOrganization(ctx);
 
+    // Fetch all equipment to calculate costs
+    const equipmentList = await Promise.all(
+      args.equipmentIds.map((id) => ctx.db.get(id))
+    );
+
+    // Calculate total equipment cost per hour using complete formula
+    let totalEquipmentCost = 0;
+    for (const eq of equipmentList) {
+      if (eq) {
+        const ownershipPerYear =
+          eq.purchasePrice / eq.usefulLifeYears +
+          eq.purchasePrice * (eq.financeRate || 0) +
+          (eq.insuranceCost || 0) +
+          (eq.registrationCost || 0);
+        const ownershipPerHour = ownershipPerYear / eq.annualHours;
+
+        const operatingPerYear =
+          (eq.fuelConsumptionGPH || 0) * (eq.fuelPricePerGallon || 0) * eq.annualHours +
+          (eq.maintenanceCostAnnual || 0) +
+          (eq.repairCostAnnual || 0);
+        const operatingPerHour = operatingPerYear / eq.annualHours;
+
+        totalEquipmentCost += ownershipPerHour + operatingPerHour;
+      }
+    }
+
+    // Fetch all employees to calculate labor costs
+    const employeeList = await Promise.all(
+      args.employeeIds.map((id) => ctx.db.get(id))
+    );
+
+    // Calculate total labor cost per hour using complete formula
+    let totalLaborCost = 0;
+    for (const emp of employeeList) {
+      if (emp) {
+        // Tier multipliers
+        const tierMultipliers = [1.0, 1.6, 1.8, 2.0, 2.2];
+        const tierMultiplier = tierMultipliers[emp.tier - 1] || 1.0;
+        const baseTiered = emp.baseHourlyRate * tierMultiplier;
+
+        // Leadership premium
+        const leadershipPremiums: Record<string, number> = {
+          L: 2,
+          S: 3,
+          M: 5,
+          D: 6,
+          C: 7,
+        };
+        const leadershipPremium = emp.leadership
+          ? leadershipPremiums[emp.leadership] || 0
+          : 0;
+
+        // Equipment certifications premium
+        const equipmentPremiums: Record<string, number> = {
+          E1: 0.5,
+          E2: 2,
+          E3: 4,
+          E4: 7,
+        };
+        const equipmentPremium = (emp.equipmentCerts || []).reduce(
+          (sum: number, code: string) => sum + (equipmentPremiums[code] || 0),
+          0
+        );
+
+        // Driver licenses premium
+        const driverPremiums: Record<string, number> = {
+          D1: 0.5,
+          D2: 2,
+          D3: 3,
+          DH: 1,
+        };
+        const driverPremium = (emp.driverLicenses || []).reduce(
+          (sum: number, code: string) => sum + (driverPremiums[code] || 0),
+          0
+        );
+
+        // Professional certifications premium
+        const certPremiums: Record<string, number> = {
+          ISA: 4,
+          CRA: 3,
+          TRA: 2,
+          OSH: 1,
+          PES: 2,
+          CPR: 0.5,
+        };
+        const certPremium = (emp.certifications || []).reduce(
+          (sum: number, code: string) => sum + (certPremiums[code] || 0),
+          0
+        );
+
+        // Total hourly with all premiums
+        const totalHourly =
+          baseTiered +
+          leadershipPremium +
+          equipmentPremium +
+          driverPremium +
+          certPremium;
+
+        // Apply burden multiplier (1.7x)
+        const trueCost = totalHourly * 1.7;
+
+        totalLaborCost += trueCost;
+      }
+    }
+
+    // Calculate total cost per hour
+    const totalCostPerHour = totalEquipmentCost + totalLaborCost;
+
+    // Calculate billing rates at different margins
+    // Formula: Cost ÷ (1 - Margin%) = Billing Rate
+    const billingRates = {
+      margin30: totalCostPerHour / 0.7, // 30% margin
+      margin40: totalCostPerHour / 0.6, // 40% margin
+      margin50: totalCostPerHour / 0.5, // 50% margin
+      margin60: totalCostPerHour / 0.4, // 60% margin
+      margin70: totalCostPerHour / 0.3, // 70% margin
+    };
+
     const loadoutId = await ctx.db.insert("loadouts", {
       organizationId: org._id,
-      ...args,
-      overheadCostPerHour: args.overheadCostPerHour || 0,
+      name: args.name,
+      serviceType: args.serviceType,
+      equipmentIds: args.equipmentIds,
+      employeeIds: args.employeeIds,
+      productionRate: args.productionRate,
+      totalEquipmentCost,
+      totalLaborCost,
+      totalCostPerHour,
+      billingRates,
+      status: args.status || "Active",
       createdAt: Date.now(),
-      updatedAt: Date.now(),
     });
 
     return loadoutId;
@@ -67,9 +191,8 @@ export const update = mutation({
     serviceType: v.optional(v.string()),
     equipmentIds: v.optional(v.array(v.id("equipment"))),
     employeeIds: v.optional(v.array(v.id("employees"))),
-    productionRatePPH: v.optional(v.number()),
-    overheadCostPerHour: v.optional(v.number()),
-    notes: v.optional(v.string()),
+    productionRate: v.optional(v.number()),
+    status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const org = await getOrganization(ctx);
@@ -85,9 +208,132 @@ export const update = mutation({
       throw new Error("Loadout not found");
     }
 
+    // If equipment or employees changed, recalculate costs
+    let calculatedFields = {};
+    if (updates.equipmentIds || updates.employeeIds) {
+      const equipmentIds = updates.equipmentIds || loadout.equipmentIds;
+      const employeeIds = updates.employeeIds || loadout.employeeIds;
+
+      // Fetch all equipment
+      const equipmentList = await Promise.all(
+        equipmentIds.map((eqId) => ctx.db.get(eqId))
+      );
+
+      // Calculate total equipment cost
+      let totalEquipmentCost = 0;
+      for (const eq of equipmentList) {
+        if (eq) {
+          const ownershipPerYear =
+            eq.purchasePrice / eq.usefulLifeYears +
+            eq.purchasePrice * (eq.financeRate || 0) +
+            (eq.insuranceCost || 0) +
+            (eq.registrationCost || 0);
+          const ownershipPerHour = ownershipPerYear / eq.annualHours;
+
+          const operatingPerYear =
+            (eq.fuelConsumptionGPH || 0) *
+              (eq.fuelPricePerGallon || 0) *
+              eq.annualHours +
+            (eq.maintenanceCostAnnual || 0) +
+            (eq.repairCostAnnual || 0);
+          const operatingPerHour = operatingPerYear / eq.annualHours;
+
+          totalEquipmentCost += ownershipPerHour + operatingPerHour;
+        }
+      }
+
+      // Fetch all employees
+      const employeeList = await Promise.all(
+        employeeIds.map((empId) => ctx.db.get(empId))
+      );
+
+      // Calculate total labor cost
+      let totalLaborCost = 0;
+      for (const emp of employeeList) {
+        if (emp) {
+          const tierMultipliers = [1.0, 1.6, 1.8, 2.0, 2.2];
+          const tierMultiplier = tierMultipliers[emp.tier - 1] || 1.0;
+          const baseTiered = emp.baseHourlyRate * tierMultiplier;
+
+          const leadershipPremiums: Record<string, number> = {
+            L: 2,
+            S: 3,
+            M: 5,
+            D: 6,
+            C: 7,
+          };
+          const leadershipPremium = emp.leadership
+            ? leadershipPremiums[emp.leadership] || 0
+            : 0;
+
+          const equipmentPremiums: Record<string, number> = {
+            E1: 0.5,
+            E2: 2,
+            E3: 4,
+            E4: 7,
+          };
+          const equipmentPremium = (emp.equipmentCerts || []).reduce(
+            (sum: number, code: string) => sum + (equipmentPremiums[code] || 0),
+            0
+          );
+
+          const driverPremiums: Record<string, number> = {
+            D1: 0.5,
+            D2: 2,
+            D3: 3,
+            DH: 1,
+          };
+          const driverPremium = (emp.driverLicenses || []).reduce(
+            (sum: number, code: string) => sum + (driverPremiums[code] || 0),
+            0
+          );
+
+          const certPremiums: Record<string, number> = {
+            ISA: 4,
+            CRA: 3,
+            TRA: 2,
+            OSH: 1,
+            PES: 2,
+            CPR: 0.5,
+          };
+          const certPremium = (emp.certifications || []).reduce(
+            (sum: number, code: string) => sum + (certPremiums[code] || 0),
+            0
+          );
+
+          const totalHourly =
+            baseTiered +
+            leadershipPremium +
+            equipmentPremium +
+            driverPremium +
+            certPremium;
+
+          const trueCost = totalHourly * 1.7;
+          totalLaborCost += trueCost;
+        }
+      }
+
+      const totalCostPerHour = totalEquipmentCost + totalLaborCost;
+
+      const billingRates = {
+        margin30: totalCostPerHour / 0.7,
+        margin40: totalCostPerHour / 0.6,
+        margin50: totalCostPerHour / 0.5,
+        margin60: totalCostPerHour / 0.4,
+        margin70: totalCostPerHour / 0.3,
+      };
+
+      calculatedFields = {
+        totalEquipmentCost,
+        totalLaborCost,
+        totalCostPerHour,
+        billingRates,
+      };
+    }
+
     await ctx.db.patch(id, {
       ...updates,
-      updatedAt: Date.now(),
+      ...calculatedFields,
     });
 
     return id;

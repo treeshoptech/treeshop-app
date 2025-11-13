@@ -9,12 +9,14 @@ import {
   Box, Card, CardContent, CardActions, Typography, Button, IconButton, Grid, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Fab,
   InputAdornment, Tabs, Tab, Divider, List, ListItem, ListItemText, Avatar, Alert, Paper,
+  Collapse, Menu,
 } from '@mui/material';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, LocalShipping as TruckIcon,
   Build as BuildIcon, Search as SearchIcon, Close as CloseIcon, AttachMoney as MoneyIcon,
   Assignment as AssignmentIcon, Speed as SpeedIcon, Settings as SettingsIcon,
   Description as DocsIcon, TrendingUp as AnalyticsIcon, Construction as ConstructionIcon,
+  ExpandMore as ExpandMoreIcon, MoreVert as MoreVertIcon, ContentCopy,
 } from '@mui/icons-material';
 import { EQUIPMENT_TAXONOMY, getEquipmentCategories, getEquipmentSubcategories } from '@/lib/equipment-taxonomy';
 const EQUIPMENT_STATUS = [
@@ -33,6 +35,23 @@ function TabPanel(props: TabPanelProps) {
   return <div role="tabpanel" hidden={value !== index} {...other}>{value === index && <Box sx={{ py: 2 }}>{children}</Box>}</div>;
 }
 
+// Safe date conversion helpers to prevent Invalid Date errors
+const formatDateForInput = (timestamp: number | undefined): string => {
+  if (!timestamp || isNaN(timestamp)) {
+    return new Date().toISOString().split('T')[0]; // Default to today
+  }
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) {
+    return new Date().toISOString().split('T')[0];
+  }
+  return date.toISOString().split('T')[0];
+};
+
+const parseDateFromInput = (dateString: string): number => {
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? Date.now() : date.getTime();
+};
+
 function EquipmentPageContent() {
   const equipment = useQuery(api.equipment.list);
   const createEquipment = useMutation(api.equipment.create);
@@ -46,6 +65,8 @@ function EquipmentPageContent() {
   const [formTab, setFormTab] = useState(0);
   const [detailTab, setDetailTab] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<{ [key: string]: HTMLElement | null }>({});
   const [formData, setFormData] = useState({
     // Identity
     nickname: '', make: '', model: '', serialNumber: '', vin: '', year: new Date().getFullYear(),
@@ -59,7 +80,7 @@ function EquipmentPageContent() {
     maintenanceCostAnnual: 0, repairCostAnnual: 0, registrationCost: 0,
     // Operations
     engineHP: 0, operatingWeight: 0, cuttingWidth: 0, maxCuttingDiameter: 0,
-    fuelTankCapacity: 0, productivityRate: 0, annualHours: 2000,
+    fuelTankCapacity: 0, productivityRate: 0, annualHours: 1200,
     // Status
     currentMeterReading: 0, status: 'Available', currentLocation: '', assignedOperator: '',
     // Maintenance
@@ -107,7 +128,7 @@ function EquipmentPageContent() {
       fuelType: 'Diesel', fuelConsumptionGPH: 0, fuelPricePerGallon: 3.75,
       maintenanceCostAnnual: 0, repairCostAnnual: 0, registrationCost: 0,
       engineHP: 0, operatingWeight: 0, cuttingWidth: 0, maxCuttingDiameter: 0,
-      fuelTankCapacity: 0, productivityRate: 0, annualHours: 2000,
+      fuelTankCapacity: 0, productivityRate: 0, annualHours: 1200,
       currentMeterReading: 0, status: 'Available', currentLocation: '', assignedOperator: '',
       serviceInterval: 250, lastServiceDate: Date.now(), lastServiceHours: 0,
       licensePlate: '', notes: '',
@@ -202,40 +223,157 @@ function EquipmentPageContent() {
           {!searchQuery && <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>Add Equipment</Button>}
         </Box>
       ) : (
-        <Grid container spacing={2}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {filteredEquipment.map((eq) => {
             const costs = calculateCosts(eq);
             const displayName = eq.nickname || `${eq.year} ${eq.make} ${eq.model}`;
+            const isExpanded = expandedCard === eq._id;
+            const anchorEl = menuAnchorEl[eq._id];
+
             return (
-              <Grid item xs={12} sm={6} md={4} key={eq._id}>
-                <Card sx={{ cursor: 'pointer', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}
-                  onClick={() => { setSelectedId(eq._id); setDetailOpen(true); setDetailTab(0); }}>
-                  <CardContent sx={{ pb: 1 }}>
-                    <Box sx={{ display: 'flex', mb: 2 }}>
-                      <Avatar sx={{ bgcolor: getStatusColor(eq.status), mr: 2, width: 56, height: 56 }}>
-                        {getCategoryIcon(eq.equipmentCategory, eq.equipmentSubcategory)}
-                      </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.5 }}>{displayName}</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{eq.equipmentSubcategory}</Typography>
-                        <Chip label={eq.status} size="small" sx={{ bgcolor: getStatusColor(eq.status), color: '#FFF', fontWeight: 500, height: 20, fontSize: '0.7rem' }} />
+              <Card key={eq._id} sx={{ width: '100%' }}>
+                <CardContent>
+                  {/* Main Row: Avatar - Content - Menu */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                    {/* Avatar */}
+                    <Avatar sx={{ bgcolor: getStatusColor(eq.status), width: 56, height: 56 }}>
+                      {getCategoryIcon(eq.equipmentCategory, eq.equipmentSubcategory)}
+                    </Avatar>
+
+                    {/* Content */}
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          {displayName}
+                        </Typography>
+                        <Chip
+                          label={eq.status}
+                          size="small"
+                          sx={{
+                            bgcolor: getStatusColor(eq.status),
+                            color: '#FFF',
+                            fontWeight: 500,
+                            height: 20,
+                            fontSize: '0.7rem'
+                          }}
+                        />
                       </Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {eq.equipmentSubcategory}
+                      </Typography>
+
+                      {/* Key Metrics Row */}
+                      <Grid container spacing={3}>
+                        {eq.licensePlate && (
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary">License Plate</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {eq.licensePlate}
+                            </Typography>
+                          </Grid>
+                        )}
+                        {eq.currentMeterReading > 0 && (
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary">Hours</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {eq.currentMeterReading.toLocaleString()}
+                            </Typography>
+                          </Grid>
+                        )}
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Hourly Cost</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#007AFF' }}>
+                            ${costs.totalPerHour.toFixed(2)}/hr
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Annual Cost</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            ${costs.totalPerYear.toLocaleString()}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+
+                      {/* Collapsible Details */}
+                      <Collapse in={isExpanded}>
+                        <Divider sx={{ my: 2 }} />
+                        <Grid container spacing={3}>
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary">Ownership Cost</Typography>
+                            <Typography variant="body2">${costs.ownershipPerHour.toFixed(2)}/hr</Typography>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary">Operating Cost</Typography>
+                            <Typography variant="body2">${costs.operatingPerHour.toFixed(2)}/hr</Typography>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary">Purchase Price</Typography>
+                            <Typography variant="body2">${eq.purchasePrice.toLocaleString()}</Typography>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary">Useful Life</Typography>
+                            <Typography variant="body2">{eq.usefulLifeYears} years</Typography>
+                          </Grid>
+                          {eq.assignedOperator && (
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="caption" color="text.secondary">Assigned Operator</Typography>
+                              <Typography variant="body2">{eq.assignedOperator}</Typography>
+                            </Grid>
+                          )}
+                          {eq.currentLocation && (
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="caption" color="text.secondary">Location</Typography>
+                              <Typography variant="body2">{eq.currentLocation}</Typography>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Collapse>
+
+                      {/* Expand/Collapse Button */}
+                      <Button
+                        size="small"
+                        onClick={() => setExpandedCard(isExpanded ? null : eq._id)}
+                        sx={{ mt: 1 }}
+                        endIcon={<ExpandMoreIcon sx={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />}
+                      >
+                        {isExpanded ? 'Show Less' : 'Show More'}
+                      </Button>
                     </Box>
-                    <Divider sx={{ my: 2 }} />
-                    {eq.licensePlate && <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography variant="body2" color="text.secondary">Plate</Typography><Typography variant="body2" sx={{ fontWeight: 500 }}>{eq.licensePlate}</Typography></Box>}
-                    {eq.currentMeterReading > 0 && <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography variant="body2" color="text.secondary">Hours</Typography><Typography variant="body2" sx={{ fontWeight: 500 }}>{eq.currentMeterReading.toLocaleString()}</Typography></Box>}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography variant="body2" color="text.secondary">Hourly Cost</Typography><Typography variant="body2" sx={{ fontWeight: 600, color: '#007AFF' }}>${costs.totalPerHour.toFixed(2)}/hr</Typography></Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2" color="text.secondary">Annual Cost</Typography><Typography variant="body2" sx={{ fontWeight: 500 }}>${costs.totalPerYear.toLocaleString()}</Typography></Box>
-                  </CardContent>
-                  <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleEdit(eq._id); }}><EditIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDelete(eq._id); }}><DeleteIcon fontSize="small" /></IconButton>
-                  </CardActions>
-                </Card>
-              </Grid>
+
+                    {/* Action Menu */}
+                    <Box>
+                      <IconButton
+                        onClick={(e) => setMenuAnchorEl({ ...menuAnchorEl, [eq._id]: e.currentTarget })}
+                        size="small"
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                      <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={() => setMenuAnchorEl({ ...menuAnchorEl, [eq._id]: null })}
+                      >
+                        <MenuItem onClick={() => { setMenuAnchorEl({ ...menuAnchorEl, [eq._id]: null }); handleEdit(eq._id); }}>
+                          <EditIcon sx={{ mr: 1, fontSize: 20 }} /> Edit
+                        </MenuItem>
+                        <MenuItem onClick={() => { setMenuAnchorEl({ ...menuAnchorEl, [eq._id]: null }); /* TODO: Duplicate */ }}>
+                          <ContentCopy sx={{ mr: 1, fontSize: 20 }} /> Duplicate
+                        </MenuItem>
+                        <MenuItem onClick={() => { setMenuAnchorEl({ ...menuAnchorEl, [eq._id]: null }); setSelectedId(eq._id); setDetailOpen(true); }}>
+                          <AssignmentIcon sx={{ mr: 1, fontSize: 20 }} /> View Details
+                        </MenuItem>
+                        <Divider />
+                        <MenuItem onClick={() => { setMenuAnchorEl({ ...menuAnchorEl, [eq._id]: null }); handleDelete(eq._id); }} sx={{ color: 'error.main' }}>
+                          <DeleteIcon sx={{ mr: 1, fontSize: 20 }} /> Delete
+                        </MenuItem>
+                      </Menu>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
             );
           })}
-        </Grid>
+        </Box>
       )}
 
       <Fab color="primary" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleAdd}><AddIcon /></Fab>
@@ -311,7 +449,7 @@ function EquipmentPageContent() {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}><MoneyIcon sx={{ mr: 1, color: '#34C759' }} /><Typography variant="h6" sx={{ fontWeight: 600 }}>Acquisition</Typography></Box>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}><TextField fullWidth type="number" label="Purchase Price" value={formData.purchasePrice} onChange={(e) => setFormData({ ...formData, purchasePrice: parseFloat(e.target.value) })} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} /></Grid>
-                <Grid item xs={12} sm={4}><TextField fullWidth type="date" label="Purchase Date" value={new Date(formData.purchaseDate).toISOString().split('T')[0]} onChange={(e) => setFormData({ ...formData, purchaseDate: new Date(e.target.value).getTime() })} InputLabelProps={{ shrink: true }} /></Grid>
+                <Grid item xs={12} sm={4}><TextField fullWidth type="date" label="Purchase Date" value={formatDateForInput(formData.purchaseDate)} onChange={(e) => setFormData({ ...formData, purchaseDate: parseDateFromInput(e.target.value) })} InputLabelProps={{ shrink: true }} /></Grid>
                 <Grid item xs={12} sm={4}><TextField fullWidth label="Dealer/Vendor" value={formData.dealer} onChange={(e) => setFormData({ ...formData, dealer: e.target.value })} /></Grid>
                 <Grid item xs={12} sm={6}><TextField fullWidth label="Purchase Order #" value={formData.purchaseOrderNumber} onChange={(e) => setFormData({ ...formData, purchaseOrderNumber: e.target.value })} /></Grid>
                 <Grid item xs={12} sm={6}><TextField fullWidth select label="Depreciation Method" value={formData.depreciationMethod} onChange={(e) => setFormData({ ...formData, depreciationMethod: e.target.value })}>{DEPRECIATION_METHODS.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</TextField></Grid>
@@ -378,7 +516,7 @@ function EquipmentPageContent() {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}><ConstructionIcon sx={{ mr: 1, color: '#FF9500' }} /><Typography variant="h6" sx={{ fontWeight: 600 }}>Service Schedule</Typography></Box>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}><TextField fullWidth type="number" label="Service Interval" value={formData.serviceInterval} onChange={(e) => setFormData({ ...formData, serviceInterval: parseInt(e.target.value) })} InputProps={{ endAdornment: <InputAdornment position="end">hours</InputAdornment> }} /></Grid>
-                <Grid item xs={12} sm={4}><TextField fullWidth type="date" label="Last Service Date" value={new Date(formData.lastServiceDate).toISOString().split('T')[0]} onChange={(e) => setFormData({ ...formData, lastServiceDate: new Date(e.target.value).getTime() })} InputLabelProps={{ shrink: true }} /></Grid>
+                <Grid item xs={12} sm={4}><TextField fullWidth type="date" label="Last Service Date" value={formatDateForInput(formData.lastServiceDate)} onChange={(e) => setFormData({ ...formData, lastServiceDate: parseDateFromInput(e.target.value) })} InputLabelProps={{ shrink: true }} /></Grid>
                 <Grid item xs={12} sm={4}><TextField fullWidth type="number" label="Hours at Last Service" value={formData.lastServiceHours} onChange={(e) => setFormData({ ...formData, lastServiceHours: parseInt(e.target.value) })} /></Grid>
               </Grid>
               {formData.currentMeterReading > 0 && formData.lastServiceHours > 0 && (
