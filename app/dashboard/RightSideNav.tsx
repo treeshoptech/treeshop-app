@@ -27,6 +27,7 @@ import {
   Assessment as ReportsIcon,
   Map as MapIcon,
   Nature as TreeInventoryIcon,
+  Dashboard as DashboardIcon,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { UserButton, OrganizationSwitcher } from '@clerk/nextjs';
@@ -37,6 +38,16 @@ interface RightSideNavProps {
 }
 
 const menuSections = [
+  {
+    title: 'Overview',
+    items: [
+      {
+        title: 'Dashboard',
+        icon: <DashboardIcon />,
+        path: '/dashboard',
+      },
+    ],
+  },
   {
     title: 'Workflow',
     items: [

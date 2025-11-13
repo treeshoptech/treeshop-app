@@ -1175,8 +1175,27 @@ function LoadoutsPageContent() {
           <Button
             variant="contained"
             onClick={async () => {
+              // Validate form data
+              if (!formData.name.trim()) {
+                alert('Please enter a loadout name');
+                return;
+              }
+              if (formData.selectedEquipment.length === 0) {
+                alert('Please select at least one piece of equipment');
+                return;
+              }
+              if (formData.selectedEmployees.length === 0) {
+                alert('Please select at least one crew member');
+                return;
+              }
+              if (formData.productionRate <= 0) {
+                alert('Please enter a production rate greater than 0');
+                return;
+              }
+
               try {
-                await createLoadout({
+                console.log('Creating loadout with data:', formData);
+                const loadoutId = await createLoadout({
                   name: formData.name,
                   serviceType: formData.serviceType,
                   equipmentIds: formData.selectedEquipment as Id<"equipment">[],
@@ -1184,6 +1203,11 @@ function LoadoutsPageContent() {
                   productionRate: formData.productionRate,
                   status: formData.status,
                 });
+
+                console.log('Loadout created successfully with ID:', loadoutId);
+
+                // Show success message
+                alert(`Loadout "${formData.name}" created successfully!`);
 
                 // Reset form and close dialog
                 setFormData({
@@ -1199,12 +1223,12 @@ function LoadoutsPageContent() {
                 });
                 setFormTab(0);
                 setDialogOpen(false);
-              } catch (error) {
+              } catch (error: any) {
                 console.error('Failed to create loadout:', error);
-                alert('Failed to create loadout. Please try again.');
+                alert(`Failed to create loadout: ${error?.message || 'Unknown error'}. Please try again.`);
               }
             }}
-            disabled={!formData.name || formData.selectedEquipment.length === 0 || formData.selectedEmployees.length === 0}
+            disabled={!formData.name || formData.selectedEquipment.length === 0 || formData.selectedEmployees.length === 0 || formData.productionRate <= 0}
           >
             Create Loadout
           </Button>
