@@ -78,7 +78,7 @@ function DashboardPageContent() {
             <MetricCard
               title="Gross Profit"
               value={metrics.grossProfit}
-              subtitle={`${metrics.profitMargin.toFixed(1)}% margin`}
+              subtitle={`${(metrics?.profitMargin ?? 0).toFixed(1)}% margin`}
               icon={<TrendingUpIcon />}
               format="currency"
               color="#007AFF"

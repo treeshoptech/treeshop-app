@@ -3,10 +3,7 @@ import withPWA from 'next-pwa';
 
 const nextConfig: NextConfig = {
   typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
+    // TODO: Fix type errors in calculators page, then set to false
     ignoreBuildErrors: true,
   },
   // Add empty turbopack config to silence webpack/turbopack conflict

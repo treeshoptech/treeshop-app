@@ -279,11 +279,11 @@ function EmployeesPageContent() {
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">Hourly Rate</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#007AFF' }}>${comp.totalHourly.toFixed(2)}/hr</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#007AFF' }}>${(comp?.totalHourly ?? 0).toFixed(2)}/hr</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography variant="body2" color="text.secondary">True Cost</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>${comp.trueCost.toFixed(2)}/hr</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>${(comp?.trueCost ?? 0).toFixed(2)}/hr</Typography>
                     </Box>
                   </CardContent>
                   <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
@@ -489,13 +489,13 @@ function EmployeesPageContent() {
                       <Card sx={{ bgcolor: '#2C2C2E' }}>
                         <CardContent>
                           <Typography color="text.secondary" gutterBottom>Total Hourly Rate</Typography>
-                          <Typography variant="h4" sx={{ color: '#007AFF', fontWeight: 600 }}>${comp.totalHourly.toFixed(2)}/hr</Typography>
+                          <Typography variant="h4" sx={{ color: '#007AFF', fontWeight: 600 }}>${(comp?.totalHourly ?? 0).toFixed(2)}/hr</Typography>
                           <Divider sx={{ my: 1 }} />
-                          <Typography variant="body2" color="text.secondary">Base × Tier: ${comp.baseTiered.toFixed(2)}</Typography>
-                          {comp.leadershipPremium > 0 && <Typography variant="body2" color="text.secondary">Leadership: +${comp.leadershipPremium.toFixed(2)}</Typography>}
-                          {comp.equipmentPremium > 0 && <Typography variant="body2" color="text.secondary">Equipment: +${comp.equipmentPremium.toFixed(2)}</Typography>}
-                          {comp.driverPremium > 0 && <Typography variant="body2" color="text.secondary">Driver: +${comp.driverPremium.toFixed(2)}</Typography>}
-                          {comp.certPremium > 0 && <Typography variant="body2" color="text.secondary">Certifications: +${comp.certPremium.toFixed(2)}</Typography>}
+                          <Typography variant="body2" color="text.secondary">Base × Tier: ${(comp?.baseTiered ?? 0).toFixed(2)}</Typography>
+                          {(comp?.leadershipPremium ?? 0) > 0 && <Typography variant="body2" color="text.secondary">Leadership: +${(comp?.leadershipPremium ?? 0).toFixed(2)}</Typography>}
+                          {(comp?.equipmentPremium ?? 0) > 0 && <Typography variant="body2" color="text.secondary">Equipment: +${(comp?.equipmentPremium ?? 0).toFixed(2)}</Typography>}
+                          {(comp?.driverPremium ?? 0) > 0 && <Typography variant="body2" color="text.secondary">Driver: +${(comp?.driverPremium ?? 0).toFixed(2)}</Typography>}
+                          {(comp?.certPremium ?? 0) > 0 && <Typography variant="body2" color="text.secondary">Certifications: +${(comp?.certPremium ?? 0).toFixed(2)}</Typography>}
                         </CardContent>
                       </Card>
                     </Grid>
@@ -503,9 +503,9 @@ function EmployeesPageContent() {
                       <Card sx={{ bgcolor: '#2C2C2E' }}>
                         <CardContent>
                           <Typography color="text.secondary" gutterBottom>True Business Cost (1.7x)</Typography>
-                          <Typography variant="h4" sx={{ color: '#34C759', fontWeight: 600 }}>${comp.trueCost.toFixed(2)}/hr</Typography>
+                          <Typography variant="h4" sx={{ color: '#34C759', fontWeight: 600 }}>${(comp?.trueCost ?? 0).toFixed(2)}/hr</Typography>
                           <Divider sx={{ my: 1 }} />
-                          <Typography variant="body2" color="text.secondary">Annual: ${(comp.trueCost * 2080).toLocaleString()}</Typography>
+                          <Typography variant="body2" color="text.secondary">Annual: ${((comp?.trueCost ?? 0) * 2080).toLocaleString()}</Typography>
                           <Typography variant="caption" color="text.secondary">Includes burden (taxes, insurance, benefits)</Typography>
                         </CardContent>
                       </Card>
