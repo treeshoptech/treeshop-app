@@ -37,11 +37,11 @@ export function MetricCard({
           maximumFractionDigits: 0,
         }).format(val);
       case 'percentage':
-        return `${val.toFixed(1)}%`;
+        return `${(val ?? 0).toFixed(1)}%`;
       case 'rating':
-        return `${val.toFixed(1)} / 5.0`;
+        return `${(val ?? 0).toFixed(1)} / 5.0`;
       default:
-        return val.toLocaleString();
+        return (val ?? 0).toLocaleString();
     }
   };
 
@@ -126,7 +126,7 @@ export function MetricCard({
                 fontWeight: 600
               }}
             >
-              {trend >= 0 ? '+' : ''}{trend.toFixed(1)}% from last month
+              {trend >= 0 ? '+' : ''}{(trend ?? 0).toFixed(1)}% from last month
             </Typography>
           </Box>
         )}
@@ -138,7 +138,7 @@ export function MetricCard({
                 Progress
               </Typography>
               <Typography variant="caption" sx={{ color: color, fontWeight: 600 }}>
-                {progress.toFixed(0)}%
+                {(progress ?? 0).toFixed(0)}%
               </Typography>
             </Box>
             <LinearProgress
