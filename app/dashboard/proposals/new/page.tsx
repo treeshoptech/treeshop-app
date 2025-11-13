@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useSearchParams } from "next/navigation";
+import { Id } from "@/convex/_generated/dataModel";
 import {
   Box,
   Button,
@@ -56,6 +58,9 @@ const steps = ["Customer Info", "Add Line Items", "Review & Save"];
 
 export default function NewProposalPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const leadId = searchParams.get("leadId");
+
   const [activeStep, setActiveStep] = useState(0);
   const [lineItems, setLineItems] = useState<any[]>([]);
   const [showCalculator, setShowCalculator] = useState(false);
@@ -68,6 +73,21 @@ export default function NewProposalPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [propertyAddress, setPropertyAddress] = useState("");
   const [notes, setNotes] = useState("");
+
+  // Fetch lead data if leadId is provided
+  const allProjects = useQuery(api.projects.list);
+  const leadData = leadId ? allProjects?.find(p => p._id === leadId as Id<"projects">) : null;
+
+  // Pre-fill form data from lead
+  useEffect(() => {
+    if (leadData) {
+      setCustomerName(leadData.customerName || "");
+      setCustomerEmail(leadData.customerEmail || "");
+      setCustomerPhone(leadData.customerPhone || "");
+      setPropertyAddress(leadData.propertyAddress || "");
+      setNotes(leadData.notes || "");
+    }
+  }, [leadData]);
 
   // Fetch loadouts for calculators
   const loadouts = useQuery(api.loadouts.list);

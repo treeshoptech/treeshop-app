@@ -9,14 +9,15 @@ import {
   Divider,
   FormControl,
   FormControlLabel,
+  Grid,
   InputLabel,
   MenuItem,
   Paper,
   Radio,
   RadioGroup,
   Select,
-  Slider,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import {
@@ -118,17 +119,29 @@ export default function LandClearingCalculator({
         <Card>
           <CardContent>
             <Stack spacing={3}>
-              <Box>
-                <Typography gutterBottom>Acreage: {acres} acres</Typography>
-                <Slider
-                  value={acres}
-                  onChange={(_, val) => setAcres(val as number)}
-                  min={0.5}
-                  max={20}
-                  step={0.5}
-                  valueLabelDisplay="auto"
-                />
-              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Acreage"
+                    value={acres}
+                    onChange={(e) => setAcres(parseFloat(e.target.value) || 0.5)}
+                    InputProps={{ inputProps: { min: 0.5, max: 20, step: 0.5 } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="AFISS Complexity Multiplier"
+                    value={afissMultiplier}
+                    onChange={(e) => setAfissMultiplier(parseFloat(e.target.value) || 1.0)}
+                    InputProps={{ inputProps: { min: 1.0, max: 2.0, step: 0.05 } }}
+                    helperText="Adjust based on utilities, structures, access restrictions, etc."
+                  />
+                </Grid>
+              </Grid>
 
               <FormControl>
                 <Typography gutterBottom>Vegetation Density</Typography>
@@ -153,23 +166,6 @@ export default function LandClearingCalculator({
                   />
                 </RadioGroup>
               </FormControl>
-
-              <Box>
-                <Typography gutterBottom>
-                  AFISS Complexity Multiplier: {afissMultiplier.toFixed(2)}x
-                </Typography>
-                <Slider
-                  value={afissMultiplier}
-                  onChange={(_, val) => setAfissMultiplier(val as number)}
-                  min={1.0}
-                  max={2.0}
-                  step={0.05}
-                  valueLabelDisplay="auto"
-                />
-                <Typography variant="caption" color="text.secondary">
-                  Adjust based on utilities, structures, access restrictions, etc.
-                </Typography>
-              </Box>
             </Stack>
           </CardContent>
         </Card>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -9,6 +10,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Collapse,
   Container,
   Dialog,
   DialogActions,
@@ -22,12 +24,6 @@ import {
   Paper,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
@@ -39,6 +35,8 @@ import {
   Email as EmailIcon,
   LocationOn as LocationIcon,
   ArrowForward as ArrowForwardIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from "@mui/icons-material";
 import { Id } from "@/convex/_generated/dataModel";
 
@@ -53,13 +51,33 @@ const STATUS_COLORS: Record<LeadStatus, "default" | "info" | "warning" | "succes
 };
 
 export default function LeadsPage() {
+  const router = useRouter();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "All">("All");
+  const [showAddressOptions, setShowAddressOptions] = useState(false);
+  const [mapCoordinates, setMapCoordinates] = useState<{lat: number, lon: number} | null>(null);
+  const [orgInitialized, setOrgInitialized] = useState(false);
+
+  // Mutations
+  const ensureDevOrg = useMutation(api.organizations.ensureDevOrg);
+
+  // Initialize development organization on mount
+  useEffect(() => {
+    ensureDevOrg()
+      .then(() => {
+        setOrgInitialized(true);
+      })
+      .catch(err => {
+        console.error("Failed to initialize dev organization:", err);
+        // Even if it fails (org already exists), mark as initialized
+        setOrgInitialized(true);
+      });
+  }, [ensureDevOrg]);
 
   // Fetch projects (leads are projects with status "Lead")
-  const allProjects = useQuery(api.projects.list);
+  const allProjects = useQuery(api.projects.list, orgInitialized ? {} : "skip");
   const leads = allProjects?.filter((p) => p.status === "Lead") || [];
 
   // Filter by status
@@ -74,10 +92,14 @@ export default function LeadsPage() {
 
   // Form state for new lead
   const [formData, setFormData] = useState({
-    customerName: "",
+    firstName: "",
+    lastName: "",
     customerEmail: "",
     customerPhone: "",
     propertyAddress: "",
+    parcelId: "",
+    latitude: "",
+    longitude: "",
     serviceType: "Stump Grinding" as any,
     estimatedValue: "",
     leadSource: "",
@@ -87,10 +109,12 @@ export default function LeadsPage() {
 
   const handleAddLead = async () => {
     try {
+      const customerName = `${formData.firstName} ${formData.lastName}`.trim();
+
       await createProject({
-        name: `${formData.customerName} - ${formData.serviceType}`,
-        customerName: formData.customerName,
-        customerEmail: formData.customerEmail,
+        name: `${customerName} - ${formData.serviceType}`,
+        customerName: customerName,
+        customerEmail: formData.customerEmail || undefined,
         customerPhone: formData.customerPhone,
         propertyAddress: formData.propertyAddress,
         serviceType: formData.serviceType,
@@ -103,16 +127,22 @@ export default function LeadsPage() {
 
       setAddDialogOpen(false);
       setFormData({
-        customerName: "",
+        firstName: "",
+        lastName: "",
         customerEmail: "",
         customerPhone: "",
         propertyAddress: "",
+        parcelId: "",
+        latitude: "",
+        longitude: "",
         serviceType: "Stump Grinding",
         estimatedValue: "",
         leadSource: "",
         notes: "",
         leadStatus: "New",
       });
+      setShowAddressOptions(false);
+      setMapCoordinates(null);
     } catch (error) {
       console.error("Error creating lead:", error);
     }
@@ -152,15 +182,9 @@ export default function LeadsPage() {
     }
   };
 
-  const handleConvertToProposal = async (lead: any) => {
-    try {
-      await updateProject({
-        id: lead._id,
-        status: "Proposal",
-      });
-    } catch (error) {
-      console.error("Error converting to proposal:", error);
-    }
+  const handleConvertToProposal = (lead: any) => {
+    // Navigate to proposal creation page with lead data
+    router.push(`/dashboard/proposals/new?leadId=${lead._id}`);
   };
 
   const openEditDialog = (lead: any) => {
@@ -278,39 +302,58 @@ export default function LeadsPage() {
           </FormControl>
         </Paper>
 
-        {/* Leads Table */}
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Customer</TableCell>
-                <TableCell>Contact</TableCell>
-                <TableCell>Property Address</TableCell>
-                <TableCell>Service Type</TableCell>
-                <TableCell>Est. Value</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Source</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredLeads.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
-                      No leads found. Click "New Lead" to add one.
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredLeads.map((lead) => (
-                  <TableRow key={lead._id} hover>
-                    <TableCell>
-                      <Typography variant="body1" fontWeight="medium">
+        {/* Lead Cards Directory */}
+        {filteredLeads.length === 0 ? (
+          <Paper sx={{ p: 8, textAlign: 'center' }}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No leads found
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Click "New Lead" to add your first lead
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setAddDialogOpen(true)}
+            >
+              Add First Lead
+            </Button>
+          </Paper>
+        ) : (
+          <Stack spacing={2}>
+            {filteredLeads.map((lead) => (
+              <Card
+                key={lead._id}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  '&:hover': { borderColor: 'primary.main' }
+                }}
+              >
+                <CardContent
+                  sx={{
+                    cursor: 'pointer',
+                    pb: selectedLead?._id === lead._id ? 2 : 1
+                  }}
+                  onClick={() => setSelectedLead(selectedLead?._id === lead._id ? null : lead)}
+                >
+                  {/* Collapsed View */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+                    {/* Customer Name & Status */}
+                    <Box sx={{ minWidth: 200, flex: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
                         {lead.customerName}
                       </Typography>
-                    </TableCell>
-                    <TableCell>
+                      <Chip
+                        label={lead.leadStatus || "New"}
+                        color={STATUS_COLORS[lead.leadStatus as LeadStatus] || "default"}
+                        size="small"
+                        sx={{ mt: 0.5 }}
+                      />
+                    </Box>
+
+                    {/* Contact Info */}
+                    <Box sx={{ minWidth: 200, flex: 1 }}>
                       <Stack spacing={0.5}>
                         {lead.customerPhone && (
                           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -325,157 +368,274 @@ export default function LeadsPage() {
                           </Box>
                         )}
                       </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    </Box>
+
+                    {/* Service & Address */}
+                    <Box sx={{ minWidth: 250, flex: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {lead.serviceType}
+                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
                         <LocationIcon fontSize="small" color="action" />
-                        <Typography variant="body2">{lead.propertyAddress}</Typography>
+                        <Typography variant="body2" noWrap>
+                          {lead.propertyAddress?.split(',')[0] || 'No address'}
+                        </Typography>
                       </Box>
-                    </TableCell>
-                    <TableCell>{lead.serviceType}</TableCell>
-                    <TableCell>
-                      {lead.estimatedValue
-                        ? new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                            minimumFractionDigits: 0,
-                          }).format(lead.estimatedValue)
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={lead.leadStatus || "New"}
-                        color={STATUS_COLORS[lead.leadStatus as LeadStatus] || "default"}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>{lead.leadSource || "-"}</TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <IconButton
-                          size="small"
-                          onClick={() => openEditDialog(lead)}
-                          title="Edit Lead"
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="success"
-                          onClick={() => handleConvertToProposal(lead)}
-                          title="Convert to Proposal"
-                        >
-                          <ArrowForwardIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteLead(lead._id)}
-                          title="Delete Lead"
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                    </Box>
+
+                    {/* Date */}
+                    <Box sx={{ minWidth: 120 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '-'}
+                      </Typography>
+                    </Box>
+
+                    {/* Expand Icon */}
+                    <IconButton size="small">
+                      {selectedLead?._id === lead._id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </IconButton>
+                  </Box>
+
+                  {/* Expanded View */}
+                  <Collapse in={selectedLead?._id === lead._id}>
+                    <Box sx={{ mt: 3, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+                      <Grid container spacing={3}>
+                        {/* Full Details */}
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            Contact Information
+                          </Typography>
+                          <Stack spacing={1}>
+                            <Typography variant="body2">
+                              <strong>Name:</strong> {lead.customerName}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Phone:</strong> {lead.customerPhone || 'Not provided'}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Email:</strong> {lead.customerEmail || 'Not provided'}
+                            </Typography>
+                          </Stack>
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            Service Details
+                          </Typography>
+                          <Stack spacing={1}>
+                            <Typography variant="body2">
+                              <strong>Service:</strong> {lead.serviceType}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Address:</strong> {lead.propertyAddress || 'Not provided'}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Source:</strong> {lead.leadSource || 'Not specified'}
+                            </Typography>
+                          </Stack>
+                        </Grid>
+
+                        {lead.notes && (
+                          <Grid item xs={12}>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                              Notes
+                            </Typography>
+                            <Typography variant="body2">{lead.notes}</Typography>
+                          </Grid>
+                        )}
+
+                        {/* Action Buttons */}
+                        <Grid item xs={12}>
+                          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              startIcon={<ArrowForwardIcon />}
+                              onClick={() => handleConvertToProposal(lead)}
+                            >
+                              Create Proposal
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              startIcon={<PhoneIcon />}
+                              href={`tel:${lead.customerPhone}`}
+                            >
+                              Call Customer
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              startIcon={<EditIcon />}
+                              onClick={() => openEditDialog(lead)}
+                            >
+                              Edit Lead
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              startIcon={<DeleteIcon />}
+                              onClick={() => handleDeleteLead(lead._id)}
+                            >
+                              Delete
+                            </Button>
+                          </Stack>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  </Collapse>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        )}
       </Stack>
 
       {/* Add Lead Dialog */}
       <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Add New Lead</DialogTitle>
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
+          <Box sx={{ mt: 2 }}>
+            {/* Contact Info */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+              <TextField
+                label="First Name"
+                required
+                fullWidth
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              />
+              <TextField
+                label="Last Name"
+                required
+                fullWidth
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              />
+            </Box>
+
             <TextField
-              label="Customer Name"
-              value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-              fullWidth
+              label="Phone Number"
               required
-            />
-            <TextField
-              label="Email"
-              type="email"
-              value={formData.customerEmail}
-              onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
               fullWidth
-            />
-            <TextField
-              label="Phone"
+              sx={{ mb: 2 }}
               value={formData.customerPhone}
               onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-              fullWidth
             />
+
             <TextField
-              label="Property Address"
-              value={formData.propertyAddress}
-              onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
+              label="Email Address"
+              type="email"
               fullWidth
-              required
-              multiline
-              rows={2}
+              sx={{ mb: 2 }}
+              value={formData.customerEmail}
+              onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
             />
-            <FormControl fullWidth>
-              <InputLabel>Service Type</InputLabel>
+
+            {/* Service Type */}
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Service Needed</InputLabel>
               <Select
                 value={formData.serviceType}
-                label="Service Type"
+                label="Service Needed"
                 onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
               >
+                <MenuItem value="Tree Removal">Tree Removal</MenuItem>
+                <MenuItem value="Tree Trimming">Trimming/Pruning</MenuItem>
                 <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
                 <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
                 <MenuItem value="Land Clearing">Land Clearing</MenuItem>
-                <MenuItem value="Tree Removal">Tree Removal</MenuItem>
-                <MenuItem value="Tree Trimming">Tree Trimming</MenuItem>
+                <MenuItem value="Storm Damage">Storm Damage</MenuItem>
+                <MenuItem value="Emergency">Emergency Service</MenuItem>
+                <MenuItem value="Consultation">Consultation</MenuItem>
               </Select>
             </FormControl>
-            <TextField
-              label="Estimated Value"
-              type="number"
-              value={formData.estimatedValue}
-              onChange={(e) => setFormData({ ...formData, estimatedValue: e.target.value })}
-              fullWidth
-              InputProps={{ startAdornment: "$" }}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Lead Status</InputLabel>
-              <Select
-                value={formData.leadStatus}
-                label="Lead Status"
-                onChange={(e) => setFormData({ ...formData, leadStatus: e.target.value as LeadStatus })}
+
+            {/* Address with expandable options */}
+            <Box sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <TextField
+                  label="Service Address"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  placeholder="123 Oak Street, Miami, FL 33101"
+                  value={formData.propertyAddress}
+                  onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
+                />
+                <IconButton
+                  onClick={() => setShowAddressOptions(!showAddressOptions)}
+                  sx={{ mt: 1 }}
+                >
+                  <ExpandMoreIcon />
+                </IconButton>
+              </Box>
+
+              <Collapse in={showAddressOptions}>
+                <Box sx={{ mt: 2, pl: 2, borderLeft: 2, borderColor: 'divider' }}>
+                  <TextField
+                    label="Parcel ID"
+                    fullWidth
+                    size="small"
+                    sx={{ mb: 1 }}
+                    value={formData.parcelId}
+                    onChange={(e) => setFormData({ ...formData, parcelId: e.target.value })}
+                  />
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                    <TextField
+                      label="Latitude"
+                      size="small"
+                      placeholder="25.7617"
+                      value={formData.latitude}
+                      onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                    />
+                    <TextField
+                      label="Longitude"
+                      size="small"
+                      placeholder="-80.1918"
+                      value={formData.longitude}
+                      onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                    />
+                  </Box>
+                </Box>
+              </Collapse>
+            </Box>
+
+            {/* Map Display - Placeholder for future integration */}
+            {mapCoordinates && (
+              <Paper
+                elevation={2}
+                sx={{
+                  height: 200,
+                  mb: 2,
+                  bgcolor: 'grey.800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
               >
-                <MenuItem value="New">New</MenuItem>
-                <MenuItem value="Contacted">Contacted</MenuItem>
-                <MenuItem value="Qualified">Qualified</MenuItem>
-                <MenuItem value="Site Visit Scheduled">Site Visit Scheduled</MenuItem>
-                <MenuItem value="Lost">Lost</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Lead Source"
-              value={formData.leadSource}
-              onChange={(e) => setFormData({ ...formData, leadSource: e.target.value })}
-              fullWidth
-              placeholder="e.g., Website, Referral, Google Ads"
-            />
+                <Typography color="text.secondary">
+                  Satellite Map View
+                </Typography>
+                {/* TODO: Integrate Google Maps Static API or Mapbox */}
+              </Paper>
+            )}
+
+            {/* Notes */}
             <TextField
               label="Notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               fullWidth
               multiline
-              rows={3}
+              rows={4}
+              placeholder="Any additional details about the job, access restrictions, urgency, etc."
+              sx={{ mb: 2 }}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             />
-          </Stack>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddLead} variant="contained">
-            Add Lead
+          <Button onClick={handleAddLead} variant="contained" size="large">
+            Create Lead
           </Button>
         </DialogActions>
       </Dialog>

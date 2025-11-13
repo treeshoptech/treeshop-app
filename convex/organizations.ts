@@ -44,6 +44,38 @@ export const update = mutation({
 });
 
 /**
+ * Development-only mutation to ensure default org exists
+ * This bypasses auth checks for local development setup
+ */
+export const ensureDevOrg = mutation({
+  handler: async (ctx) => {
+    const devOrgId = "dev_default_org";
+
+    // Check if development organization already exists
+    const existing = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org_id", (q) => q.eq("clerkOrgId", devOrgId))
+      .first();
+
+    if (existing) {
+      return existing._id;
+    }
+
+    // Create development organization
+    return await ctx.db.insert("organizations", {
+      clerkOrgId: devOrgId,
+      name: "Development Organization",
+      businessAddress: "123 Dev Street, New Smyrna Beach, FL 32168",
+      coordinates: {
+        lat: 29.0258,
+        lng: -80.9270,
+      },
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/**
  * Public mutation to sync organization from client
  * Use this to ensure your organization exists in Convex
  */

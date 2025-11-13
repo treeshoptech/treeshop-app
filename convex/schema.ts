@@ -200,7 +200,17 @@ export default defineSchema({
   // Projects
   projects: defineTable({
     organizationId: v.id("organizations"),
-    customerId: v.id("customers"),
+    customerId: v.optional(v.id("customers")), // Optional - leads may not have customer record yet
+
+    // Lead-specific fields (when no customer record exists)
+    customerName: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    leadStatus: v.optional(v.string()), // "New", "Contacted", "Qualified", "Unqualified"
+    leadSource: v.optional(v.string()),
+
+    // Project details
+    name: v.optional(v.string()),
     serviceType: v.string(),
     status: v.string(), // "Lead", "Proposal", "Work Order", "Invoice", "Completed"
     propertyAddress: v.string(),
@@ -209,6 +219,7 @@ export default defineSchema({
     afissMultiplier: v.optional(v.number()),
     afissFactors: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
+    estimatedValue: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -375,7 +386,7 @@ export default defineSchema({
     equipmentCleaned: v.boolean(),
 
     // Status
-    status: v.string(), // "Scheduled", "In Progress", "Paused", "Completed", "Invoiced", "Cancelled"
+    status: v.string(), // "PreScheduled", "Scheduled", "In Progress", "Paused", "Completed", "Invoiced", "Cancelled"
 
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -516,6 +527,13 @@ export default defineSchema({
     category: v.string(), // "Tree Removal", "Stump Grinding", "Mulching", "Land Clearing", "Equipment Rental", "Labor", "Materials", "Other"
     serviceType: v.optional(v.string()),
 
+    // Loadout Assignment (NEW - for automatic cost/pricing calculation)
+    loadoutId: v.optional(v.id("loadouts")), // Which loadout performs this service
+    loadoutName: v.optional(v.string()), // Cached for quick display
+
+    // Pricing Method (NEW - determines how user assigns hours/quantity)
+    pricingMethod: v.optional(v.string()), // "Hourly" (assign hours, auto-price), "Unit" (existing), "Fixed"
+
     // Default Pricing
     defaultUnit: v.string(), // "Each", "Hour", "Day", "Acre", "Linear Foot", "Square Foot", "Cubic Yard", "Ton", "Tree", "Stump"
     defaultUnitPrice: v.number(),
@@ -525,8 +543,23 @@ export default defineSchema({
     costPerUnit: v.optional(v.number()),
     defaultMargin: v.optional(v.number()),
 
+    // Time Calculation Options (NEW - for hourly templates)
+    estimatedHours: v.optional(v.number()), // Default hours estimate
+    includeTransportTime: v.optional(v.boolean()), // Add transport time calculation
+    transportRate: v.optional(v.number()), // Transport billing rate multiplier (e.g., 0.50)
+    includeBuffer: v.optional(v.boolean()), // Add 10% buffer to total time
+    timeTrackingEnabled: v.optional(v.boolean()), // Enable time tracking on work orders
+
+    // Default Inclusions/Exclusions (NEW)
+    defaultInclusions: v.optional(v.array(v.string())),
+    defaultExclusions: v.optional(v.array(v.string())),
+
     // AFISS Factor IDs (selected complexity factors - percentages calculated server-side)
     afissFactorIds: v.optional(v.array(v.string())),
+
+    // Status & Organization (NEW)
+    isActive: v.optional(v.boolean()), // Active templates show in lists
+    sortOrder: v.optional(v.number()), // For custom ordering
 
     // Metadata
     usageCount: v.optional(v.number()),
@@ -536,10 +569,13 @@ export default defineSchema({
 
     createdAt: v.number(),
     updatedAt: v.number(),
+    createdBy: v.optional(v.string()),
   })
     .index("by_organization", ["organizationId"])
     .index("by_org_category", ["organizationId", "category"])
-    .index("by_org_service", ["organizationId", "serviceType"]),
+    .index("by_org_service", ["organizationId", "serviceType"])
+    .index("by_loadout", ["loadoutId"])
+    .index("by_org_active", ["organizationId", "isActive"]),
 
   // Organization Settings - Terms, conditions, and document templates
   organizationSettings: defineTable({

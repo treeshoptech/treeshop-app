@@ -10,9 +10,9 @@ import {
   Divider,
   FormControlLabel,
   FormGroup,
+  Grid,
   IconButton,
   Paper,
-  Slider,
   Stack,
   TextField,
   Typography,
@@ -166,40 +166,38 @@ export default function StumpGrindingCalculator({
                   )}
                 </Box>
 
-                <Box>
-                  <Typography gutterBottom>Diameter: {stump.diameter}"</Typography>
-                  <Slider
-                    value={stump.diameter}
-                    onChange={(_, val) => updateStump(stump.id, { diameter: val as number })}
-                    min={6}
-                    max={60}
-                    valueLabelDisplay="auto"
-                  />
-                </Box>
-
-                <Box>
-                  <Typography gutterBottom>Height Above Grade: {stump.heightAbove} ft</Typography>
-                  <Slider
-                    value={stump.heightAbove}
-                    onChange={(_, val) => updateStump(stump.id, { heightAbove: val as number })}
-                    min={0}
-                    max={3}
-                    step={0.5}
-                    valueLabelDisplay="auto"
-                  />
-                </Box>
-
-                <Box>
-                  <Typography gutterBottom>Grind Depth Below: {stump.depthBelow} ft</Typography>
-                  <Slider
-                    value={stump.depthBelow}
-                    onChange={(_, val) => updateStump(stump.id, { depthBelow: val as number })}
-                    min={0.5}
-                    max={1.5}
-                    step={0.25}
-                    valueLabelDisplay="auto"
-                  />
-                </Box>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Diameter (inches)"
+                      value={stump.diameter}
+                      onChange={(e) => updateStump(stump.id, { diameter: parseFloat(e.target.value) || 6 })}
+                      InputProps={{ inputProps: { min: 6, max: 60, step: 1 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Height Above Grade (ft)"
+                      value={stump.heightAbove}
+                      onChange={(e) => updateStump(stump.id, { heightAbove: parseFloat(e.target.value) || 0 })}
+                      InputProps={{ inputProps: { min: 0, max: 3, step: 0.5 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Grind Depth Below (ft)"
+                      value={stump.depthBelow}
+                      onChange={(e) => updateStump(stump.id, { depthBelow: parseFloat(e.target.value) || 0.5 })}
+                      InputProps={{ inputProps: { min: 0.5, max: 1.5, step: 0.25 } }}
+                    />
+                  </Grid>
+                </Grid>
 
                 <Divider />
 

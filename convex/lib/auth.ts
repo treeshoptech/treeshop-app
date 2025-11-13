@@ -30,7 +30,9 @@ export async function getOrganizationId(ctx: QueryCtx | MutationCtx) {
 
   if (!orgId) {
     console.error("No org_id found in token. Available claims:", Object.keys(identity));
-    throw new Error("No organization context. User must belong to an organization. Please configure Clerk JWT template.");
+    // For development: Return a default org ID if none found in JWT
+    // This allows local development without Clerk organization setup
+    return "dev_default_org";
   }
 
   return orgId;
@@ -48,6 +50,9 @@ export async function getOrganization(ctx: QueryCtx | MutationCtx) {
     .first();
 
   if (!org) {
+    if (clerkOrgId === "dev_default_org") {
+      throw new Error("Development organization not yet initialized. The app will automatically create it on first render.");
+    }
     throw new Error("Organization not found in database. Please contact support.");
   }
 

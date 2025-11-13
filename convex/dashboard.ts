@@ -2,7 +2,8 @@ import { query } from "./_generated/server";
 import { getOrganization } from "./lib/auth";
 
 /**
- * Get comprehensive dashboard metrics
+ * Get Hormozi-style dashboard metrics
+ * Focus: MONEY, ACTIVITY, CONVERSION
  */
 export const getMetrics = query({
   handler: async (ctx) => {
@@ -12,28 +13,28 @@ export const getMetrics = query({
     } catch (error) {
       // Return empty metrics if org not found
       return {
-        totalRevenue: 0,
-        totalCosts: 0,
-        grossProfit: 0,
-        profitMargin: 0,
-        monthlyRevenue: 0,
-        avgJobValue: 0,
+        // THIS MONTH - Money metrics
+        cashCollected: 0,
         pipelineValue: 0,
+        closeRate: 0,
+
+        // ACTIVITY (This Week)
+        leadsThisWeek: 0,
+        proposalsSentThisWeek: 0,
+        avgDaysToClose: 0,
+
+        // CONVERSION FUNNEL
         totalLeads: 0,
         totalProposals: 0,
-        totalWorkOrders: 0,
-        totalInvoices: 0,
-        leadToProposal: 0,
-        proposalToClose: 0,
-        revenueByService: {},
-        completedJobs: 0,
-        activeJobs: 0,
-        completionRate: 0,
-        avgResponseTime: "N/A",
-        customerSatisfaction: 0,
-        repeatCustomerRate: 0,
-        recentProposalsCount: 0,
-        recentInvoicesCount: 0,
+        totalWon: 0,
+        leadToProposalRate: 0,
+        proposalToWonRate: 0,
+        avgProposalValue: 0,
+
+        // CAPACITY
+        scheduledRevenue: 0,
+        availableCapacityPercent: 0,
+        nextOpenDate: null,
       };
     }
 
@@ -55,105 +56,92 @@ export const getMetrics = query({
     const workOrders = projects.filter(p => p.status === "Work Order");
     const invoices = projects.filter(p => p.status === "Invoice");
 
-    // Calculate revenue metrics
-    const totalRevenue = invoices.reduce((sum, inv) => {
+    // THIS MONTH - Cash Collected (Invoices paid this month)
+    const now = Date.now();
+    const firstOfMonth = new Date(new Date().setDate(1)).setHours(0, 0, 0, 0);
+    const invoicesThisMonth = invoices.filter(inv => (inv.createdAt || 0) >= firstOfMonth);
+    const cashCollected = invoicesThisMonth.reduce((sum, inv) => {
       const proposal = proposals.find(p => p.projectId === inv._id);
       return sum + (proposal?.finalPrice || 0);
     }, 0);
 
-    const totalCosts = invoices.reduce((sum, inv) => {
-      const proposal = proposals.find(p => p.projectId === inv._id);
-      return sum + (proposal?.totalCost || 0);
-    }, 0);
-
-    const grossProfit = totalRevenue - totalCosts;
-    const profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
-
-    // Revenue by service type
-    const revenueByService: Record<string, number> = {};
-    invoices.forEach(inv => {
-      const serviceType = inv.serviceType || "Unknown";
-      const proposal = proposals.find(p => p.projectId === inv._id);
-      const revenue = proposal?.finalPrice || 0;
-      revenueByService[serviceType] = (revenueByService[serviceType] || 0) + revenue;
-    });
-
-    // Average job value
-    const avgJobValue = invoices.length > 0 ? totalRevenue / invoices.length : 0;
-
-    // Pipeline value (proposals)
+    // Pipeline Value (Proposals not yet won/lost)
     const pipelineValue = proposalsSent.reduce((sum, proj) => {
       const proposal = proposals.find(p => p.projectId === proj._id);
       return sum + (proposal?.finalPrice || 0);
     }, 0);
 
-    // Conversion rates
-    const leadToProposal = leads.length > 0
+    // Close Rate (Proposals → Won)
+    const totalWon = workOrders.length + invoices.length;
+    const totalProposals = proposalsSent.length + totalWon;
+    const closeRate = totalProposals > 0 ? (totalWon / totalProposals) * 100 : 0;
+
+    // ACTIVITY - This Week
+    const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
+    const leadsThisWeek = leads.filter(l => (l.createdAt || 0) >= oneWeekAgo).length;
+    const proposalsSentThisWeek = proposalsSent.filter(p => (p.createdAt || 0) >= oneWeekAgo).length;
+
+    // Average Days to Close (from lead created to invoice)
+    const closedDeals = invoices.filter(inv => inv.createdAt && inv._creationTime);
+    const avgDaysToClose = closedDeals.length > 0
+      ? closedDeals.reduce((sum, inv) => {
+          const daysDiff = ((inv.createdAt || 0) - inv._creationTime) / (1000 * 60 * 60 * 24);
+          return sum + daysDiff;
+        }, 0) / closedDeals.length
+      : 0;
+
+    // CONVERSION FUNNEL
+    const leadToProposalRate = leads.length > 0
       ? (proposalsSent.length / (leads.length + proposalsSent.length)) * 100
       : 0;
 
-    const proposalToClose = proposalsSent.length > 0
-      ? ((workOrders.length + invoices.length) / (proposalsSent.length + workOrders.length + invoices.length)) * 100
+    const proposalToWonRate = totalProposals > 0
+      ? (totalWon / totalProposals) * 100
       : 0;
 
-    // Time-based metrics (last 30 days)
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const recentInvoices = invoices.filter(inv => (inv.createdAt || 0) >= thirtyDaysAgo);
-    const monthlyRevenue = recentInvoices.reduce((sum, inv) => {
-      const proposal = proposals.find(p => p.projectId === inv._id);
+    const avgProposalValue = proposalsSent.length > 0
+      ? pipelineValue / proposalsSent.length
+      : 0;
+
+    // CAPACITY
+    // Scheduled Revenue = Work Orders value
+    const scheduledRevenue = workOrders.reduce((sum, wo) => {
+      const proposal = proposals.find(p => p.projectId === wo._id);
       return sum + (proposal?.finalPrice || 0);
     }, 0);
 
-    const recentProposals = proposalsSent.filter(p => (p.createdAt || 0) >= thirtyDaysAgo);
+    // Available Capacity (simplified: assumes 10 concurrent jobs max)
+    const maxConcurrentJobs = 10;
+    const availableCapacityPercent = ((maxConcurrentJobs - workOrders.length) / maxConcurrentJobs) * 100;
 
-    // Job completion metrics
-    const completedJobs = invoices.length;
-    const activeJobs = workOrders.length;
-    const completionRate = (completedJobs + activeJobs) > 0
-      ? (completedJobs / (completedJobs + activeJobs)) * 100
-      : 0;
-
-    // Customer service metrics (mock for now - will be real when we add customer feedback)
-    const avgResponseTime = "2.3 hours"; // Mock
-    const customerSatisfaction = 4.7; // Mock (out of 5)
-    const repeatCustomerRate = 34; // Mock percentage
+    // Next Open Date (mock - would need scheduling system)
+    const nextOpenDate = workOrders.length < maxConcurrentJobs
+      ? new Date(now).toISOString().split('T')[0]
+      : new Date(now + (7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
 
     return {
-      // Revenue & Profit
-      totalRevenue,
-      totalCosts,
-      grossProfit,
-      profitMargin,
-      monthlyRevenue,
-      avgJobValue,
-
-      // Pipeline
+      // THIS MONTH - Money
+      cashCollected,
       pipelineValue,
+      closeRate,
+
+      // ACTIVITY (This Week)
+      leadsThisWeek,
+      proposalsSentThisWeek,
+      avgDaysToClose: Math.round(avgDaysToClose * 10) / 10,
+
+      // CONVERSION FUNNEL
       totalLeads: leads.length,
       totalProposals: proposalsSent.length,
-      totalWorkOrders: workOrders.length,
-      totalInvoices: invoices.length,
+      totalWon,
+      leadToProposalRate,
+      proposalToWonRate,
+      avgProposalValue,
 
-      // Conversion
-      leadToProposal,
-      proposalToClose,
-
-      // Service breakdown
-      revenueByService,
-
-      // Job metrics
-      completedJobs,
-      activeJobs,
-      completionRate,
-
-      // Customer service (mock)
-      avgResponseTime,
-      customerSatisfaction,
-      repeatCustomerRate,
-
-      // Recent activity
-      recentProposalsCount: recentProposals.length,
-      recentInvoicesCount: recentInvoices.length,
+      // CAPACITY
+      scheduledRevenue,
+      availableCapacityPercent: Math.max(0, Math.min(100, availableCapacityPercent)),
+      nextOpenDate,
     };
   },
 });

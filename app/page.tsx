@@ -1,132 +1,183 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import { SignInButton } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import Image from "next/image";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import Image from 'next/image';
 import {
-  Container,
   Box,
+  Container,
   Typography,
   Button,
+  Grid,
+  Card,
+  CardContent,
+  Stack,
   AppBar,
   Toolbar,
-  Stack,
+  Chip,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Fade,
+  Zoom,
   Link,
-  Card,
-  Grid,
 } from '@mui/material';
-import {
-  CheckCircle as CheckIcon,
-} from '@mui/icons-material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import SpeedIcon from '@mui/icons-material/Speed';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
-export default async function Home() {
-  // Redirect logged-in users directly to dashboard
-  const { userId } = await auth();
+export default function Home() {
+  const { userId } = useAuth();
+  const router = useRouter();
+  const [visible, setVisible] = useState(false);
+  const [spotsLeft] = useState(17);
+
+  useEffect(() => {
+    if (userId) {
+      router.push("/dashboard");
+    }
+    setVisible(true);
+  }, [userId, router]);
 
   if (userId) {
-    redirect("/dashboard");
+    return null; // Will redirect
   }
 
-  // Landing page for logged-out users
   return (
-    <>
-      {/* Navigation - Standard login position top-right */}
-      <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+    <Box sx={{ bgcolor: '#0a0a0a', minHeight: '100vh', color: 'white' }}>
+
+      {/* HEADER */}
+      <AppBar
+        position="sticky"
+        elevation={0}
+        sx={{
+          bgcolor: 'rgba(10, 10, 10, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(0, 153, 255, 0.1)'
+        }}
+      >
+        <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Image
               src="/treeshop-logo.png"
-              alt="TreeShop"
-              width={320}
-              height={107}
+              alt="TreeShop Logo"
+              width={180}
+              height={60}
               style={{ objectFit: 'contain' }}
               priority
             />
           </Box>
-          <Stack direction="row" spacing={2}>
-            <SignInButton mode="modal">
-              <Button
-                variant="text"
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  color: 'text.primary',
-                  '&:hover': {
-                    bgcolor: 'action.hover'
-                  }
-                }}
-              >
-                Sign In
-              </Button>
-            </SignInButton>
-            <Link
-              href="https://treeshop.app/tech"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ textDecoration: 'none' }}
+          <SignInButton mode="modal">
+            <Button
+              variant="contained"
+              sx={{
+                bgcolor: '#0099FF',
+                color: 'white',
+                fontWeight: 600,
+                px: 3,
+                py: 1,
+                borderRadius: 2,
+                textTransform: 'none',
+                '&:hover': {
+                  bgcolor: '#0077CC',
+                },
+              }}
             >
-              <Button variant="contained" color="primary" sx={{ textTransform: 'none', fontWeight: 600 }}>
-                Apply for Access
-              </Button>
-            </Link>
-          </Stack>
+              Login
+            </Button>
+          </SignInButton>
         </Toolbar>
       </AppBar>
 
-      {/* Hero Section - Outcome-focused headline */}
-      <Box sx={{
-        bgcolor: 'background.default',
-        pt: 18,
-        pb: 14,
-        background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.03) 0%, rgba(255, 255, 255, 0) 40%, rgba(144, 202, 249, 0.04) 100%)'
-      }}>
-        <Container maxWidth="lg">
-          <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Typography
-              variant="h1"
-              component="h1"
-              gutterBottom
-              sx={{
-                fontSize: { xs: '2.5rem', md: '4.5rem' },
-                fontWeight: 800,
-                mb: 3,
-                lineHeight: 1.1,
-              }}
-            >
-              Stop Estimating. Start Knowing.
-            </Typography>
-            <Typography
-              variant="h3"
-              component="h2"
-              color="text.secondary"
-              sx={{
-                mb: 4,
-                fontSize: { xs: '1.35rem', md: '1.75rem' },
-                fontWeight: 400,
-                maxWidth: '900px',
-                mx: 'auto',
-                lineHeight: 1.5,
-              }}
-            >
-              Transform project uncertainty into mathematical precision.
-              <br />
-              Protect profits. Eliminate surprises.
-            </Typography>
-            <Typography
-              variant="h6"
-              color="text.secondary"
-              sx={{
-                mb: 6,
-                maxWidth: '750px',
-                mx: 'auto',
-                fontSize: { xs: '1.1rem', md: '1.25rem' },
-                lineHeight: 1.7,
-              }}
-            >
-              Your experience + Our algorithms = Unbeatable accuracy.
-              Know if a project is profitable before you finish it, not after you've lost money.
-            </Typography>
+      {/* HERO SECTION */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #1a1a1a 0%, #0a1a3d 100%)',
+          pt: { xs: 8, md: 12 },
+          pb: { xs: 12, md: 16 },
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'radial-gradient(circle at 30% 50%, rgba(0, 153, 255, 0.15) 0%, transparent 50%)',
+          }
+        }}
+      >
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <Fade in={visible} timeout={1000}>
+            <Box textAlign="center">
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} justifyContent="center">
+              {/* Spots Left Badge */}
+              <Zoom in={visible} timeout={1200}>
+                <Chip
+                  icon={<TrendingUpIcon />}
+                  label={`${spotsLeft} Founding Member Spots Left`}
+                  sx={{
+                    bgcolor: '#0099FF',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    py: 2.5,
+                    px: 1,
+                    mb: 4,
+                    animation: 'pulse 2s infinite',
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1 },
+                      '50%': { opacity: 0.8 },
+                    }
+                  }}
+                />
+              </Zoom>
+
+              {/* Main Headline */}
+              <Typography
+                variant="h1"
+                sx={{
+                  fontSize: { xs: '2.5rem', md: '4.5rem' },
+                  fontWeight: 900,
+                  lineHeight: 1.1,
+                  mb: 3,
+                  background: 'linear-gradient(90deg, #ffffff 0%, #66CCFF 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Stop Losing Money<br />On Every Third Mulching Job
+              </Typography>
+
+              {/* Sub-headline */}
+              <Typography
+                variant="h5"
+                sx={{
+                  fontSize: { xs: '1.25rem', md: '1.75rem' },
+                  fontWeight: 400,
+                  lineHeight: 1.6,
+                  mb: 6,
+                  color: '#e0e0e0',
+                  maxWidth: '900px',
+                  mx: 'auto',
+                }}
+              >
+                Most forestry mulching companies guess their pricing and wonder where the profit went.
+                TreeShop gives you the exact numbers so you stop leaving{' '}
+                <Box component="span" sx={{ color: '#66CCFF', fontWeight: 700 }}>
+                  $50K+ per year
+                </Box>{' '}
+                on the table.
+              </Typography>
+
+              {/* CTA Button */}
               <Link
                 href="https://treeshop.app/tech"
                 target="_blank"
@@ -137,342 +188,351 @@ export default async function Home() {
                   variant="contained"
                   size="large"
                   sx={{
-                    px: 8,
-                    py: 2.5,
+                    bgcolor: '#0099FF',
+                    color: 'white',
                     fontSize: '1.25rem',
                     fontWeight: 700,
-                    textTransform: 'none',
+                    py: 2,
+                    px: 6,
                     borderRadius: 2,
-                    boxShadow: 3,
-                    transition: 'all 0.3s',
+                    textTransform: 'none',
+                    boxShadow: '0 8px 32px rgba(0, 153, 255, 0.4)',
                     '&:hover': {
+                      bgcolor: '#0077CC',
                       transform: 'translateY(-2px)',
-                      boxShadow: 6,
-                    }
+                      boxShadow: '0 12px 40px rgba(0, 153, 255, 0.5)',
+                    },
+                    transition: 'all 0.3s ease',
                   }}
                 >
-                  Apply for Access
+                  Apply for Founding Member Access
                 </Button>
               </Link>
-              <SignInButton mode="modal">
-                <Button
-                  variant="outlined"
-                  size="large"
+
+              <Typography
+                variant="body2"
+                sx={{
+                  mt: 2,
+                  color: '#888',
+                  fontSize: '0.9rem'
+                }}
+              >
+                $2,500/month • First 20 companies lock in this rate forever
+              </Typography>
+
+            </Box>
+          </Fade>
+        </Container>
+      </Box>
+
+      {/* WHAT YOU GET SECTION */}
+      <Box sx={{ bgcolor: '#0f0f0f', py: { xs: 8, md: 12 } }}>
+        <Container maxWidth="lg">
+          <Typography
+            variant="h2"
+            sx={{
+              fontSize: { xs: '2rem', md: '3rem' },
+              fontWeight: 800,
+              textAlign: 'center',
+              mb: 2,
+            }}
+          >
+            What You Get
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              textAlign: 'center',
+              color: '#888',
+              mb: 6,
+              fontSize: '1.1rem',
+            }}
+          >
+            Everything you need to price jobs scientifically and win more profitable work
+          </Typography>
+
+          <Grid container spacing={3}>
+            {/* Feature 1 */}
+            <Grid item xs={12} md={4}>
+              <Zoom in={visible} timeout={800}>
+                <Card
                   sx={{
-                    px: 8,
-                    py: 2.5,
-                    fontSize: '1.25rem',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    borderWidth: 2,
+                    bgcolor: '#1a1a1a',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: 3,
+                    height: '100%',
+                    transition: 'all 0.3s ease',
                     '&:hover': {
-                      borderWidth: 2,
-                    }
+                      transform: 'translateY(-8px)',
+                      borderColor: '#0099FF',
+                      boxShadow: '0 12px 40px rgba(0, 153, 255, 0.2)',
+                    },
                   }}
                 >
-                  Sign In
+                  <CardContent sx={{ p: 4 }}>
+                    <SpeedIcon sx={{ fontSize: 48, color: '#0099FF', mb: 2 }} />
+                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+                      Mulching Score Calculator
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#b0b0b0', lineHeight: 1.7 }}>
+                      Know exactly how many hours a job will take based on acreage, DBH, and 119 AFISS complexity factors. CAT 265, ASV, Fecon—all calibrated.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Zoom>
+            </Grid>
+
+            {/* Feature 2 */}
+            <Grid item xs={12} md={4}>
+              <Zoom in={visible} timeout={1000}>
+                <Card
+                  sx={{
+                    bgcolor: '#1a1a1a',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: 3,
+                    height: '100%',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      borderColor: '#0099FF',
+                      boxShadow: '0 12px 40px rgba(0, 153, 255, 0.2)',
+                    },
+                  }}
+                >
+                  <CardContent sx={{ p: 4 }}>
+                    <AttachMoneyIcon sx={{ fontSize: 48, color: '#0099FF', mb: 2 }} />
+                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+                      Real Equipment Costs
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#b0b0b0', lineHeight: 1.7 }}>
+                      Track actual hourly costs for each mulcher, truck, and operator. Fuel, maintenance, finance, insurance—everything factored in automatically.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Zoom>
+            </Grid>
+
+            {/* Feature 3 */}
+            <Grid item xs={12} md={4}>
+              <Zoom in={visible} timeout={1200}>
+                <Card
+                  sx={{
+                    bgcolor: '#1a1a1a',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: 3,
+                    height: '100%',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      borderColor: '#0099FF',
+                      boxShadow: '0 12px 40px rgba(0, 153, 255, 0.2)',
+                    },
+                  }}
+                >
+                  <CardContent sx={{ p: 4 }}>
+                    <BarChartIcon sx={{ fontSize: 48, color: '#0099FF', mb: 2 }} />
+                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+                      Proposal Generator
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#b0b0b0', lineHeight: 1.7 }}>
+                      Turn your calculations into professional proposals in seconds. Show clients exactly what they're getting with scientific precision.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Zoom>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* PRICING SECTION */}
+      <Box sx={{ bgcolor: '#0a0a0a', py: { xs: 8, md: 12 } }}>
+        <Container maxWidth="md">
+          <Card
+            sx={{
+              bgcolor: '#1a1a1a',
+              border: '2px solid #0099FF',
+              borderRadius: 4,
+              p: { xs: 4, md: 6 },
+              boxShadow: '0 20px 60px rgba(0, 153, 255, 0.3)',
+            }}
+          >
+            <Box textAlign="center">
+              <Chip
+                label="FOUNDING MEMBER"
+                sx={{
+                  bgcolor: '#0099FF',
+                  color: 'white',
+                  fontWeight: 700,
+                  mb: 3,
+                }}
+              />
+
+              <Typography
+                variant="h2"
+                sx={{
+                  fontSize: { xs: '3rem', md: '4rem' },
+                  fontWeight: 900,
+                  mb: 1,
+                }}
+              >
+                $2,500
+                <Typography
+                  component="span"
+                  sx={{ fontSize: '1.5rem', color: '#888', fontWeight: 400 }}
+                >
+                  /month
+                </Typography>
+              </Typography>
+
+              <Typography
+                variant="body1"
+                sx={{
+                  color: '#66CCFF',
+                  fontWeight: 600,
+                  mb: 4,
+                  fontSize: '1.1rem',
+                }}
+              >
+                Lock in this rate forever as a founding member
+              </Typography>
+
+              <List sx={{ textAlign: 'left', mb: 4 }}>
+                {[
+                  'Complete Mulching Score calculator',
+                  'Equipment cost tracking (unlimited machines)',
+                  'Crew & employee burden calculator',
+                  'AFISS complexity system (119 factors)',
+                  'Professional proposal generator',
+                  'Job tracking & analytics',
+                  'Priority founding member support',
+                ].map((item, index) => (
+                  <ListItem key={index} sx={{ px: 0, py: 1 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <CheckCircleIcon sx={{ color: '#0099FF' }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item}
+                      primaryTypographyProps={{
+                        sx: { color: '#e0e0e0', fontSize: '1.1rem' }
+                      }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+
+              <Link
+                href="https://treeshop.app/tech"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ textDecoration: 'none' }}
+              >
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  sx={{
+                    bgcolor: '#0099FF',
+                    color: 'white',
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    py: 2.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    boxShadow: '0 8px 32px rgba(0, 153, 255, 0.4)',
+                    '&:hover': {
+                      bgcolor: '#0077CC',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 12px 40px rgba(0, 153, 255, 0.5)',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  Apply Now
                 </Button>
-              </SignInButton>
-            </Stack>
+              </Link>
+
+              <Typography
+                variant="body2"
+                sx={{ mt: 3, color: '#888', fontSize: '0.9rem' }}
+              >
+                Only {spotsLeft} founding member spots remaining
+              </Typography>
+            </Box>
+          </Card>
+
+          {/* What You'll Achieve */}
+          <Box sx={{ mt: 8 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                textAlign: 'center',
+                mb: 4,
+              }}
+            >
+              What You'll Achieve
+            </Typography>
+            <List>
+              {[
+                'Price every job with mathematical precision—whether you\'re starting out or seasoned',
+                'Win more profitable work by knowing your exact costs down to the penny',
+                'Scale your mulching operation confidently with real data, not guesswork',
+                'Maximize profit per acre instead of just grinding more hours',
+                'Build a business that works for you, not the other way around',
+              ].map((item, index) => (
+                <ListItem key={index} sx={{ px: 0, py: 1 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircleIcon sx={{ color: '#0099FF' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item}
+                    primaryTypographyProps={{
+                      sx: { color: '#e0e0e0', fontSize: '1.1rem' }
+                    }}
+                  />
+                </ListItem>
+              ))}
+            </List>
           </Box>
         </Container>
       </Box>
 
-      {/* Problem-Precision-Power Section */}
-      <Box sx={{ py: 14, bgcolor: 'grey.900', color: 'white' }}>
+      {/* FOOTER */}
+      <Box
+        sx={{
+          bgcolor: '#000',
+          py: 4,
+          borderTop: '1px solid #1a1a1a',
+        }}
+      >
         <Container maxWidth="lg">
-          <Grid container spacing={8}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'error.light', mb: 3 }}>
-                  Problem
-                </Typography>
-                <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'grey.300' }}>
-                  Even the best estimators face uncertainty. Rough cost estimates leave you exposed to losses on profitable-looking jobs.
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'info.light', mb: 3 }}>
-                  Precision
-                </Typography>
-                <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'grey.300' }}>
-                  TreeShopOS automatically calculates exact equipment and labor costs based on your actual data. No spreadsheets, no guesswork.
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'success.light', mb: 3 }}>
-                  Power
-                </Typography>
-                <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'grey.300' }}>
-                  Bill for 100% of your costs—not 85%—and increase margins without raising prices. Reclaim control.
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* Empowerment Features - Results, not calculations */}
-      <Box sx={{ py: 14 }}>
-        <Container maxWidth="lg">
-          <Typography variant="h2" align="center" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-            Precision That Empowers
-          </Typography>
-          <Typography variant="h6" align="center" color="text.secondary" sx={{ mb: 10, maxWidth: '800px', mx: 'auto' }}>
-            While TreeShopOS handles verification automatically, you reclaim 10 hours per week for business growth.
-          </Typography>
-
-          <Grid container spacing={5}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{
-                p: 4,
-                height: '100%',
-                transition: 'all 0.3s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
-                }
-              }}>
-                <CheckIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                  Real Equipment Costs
-                </Typography>
-                <Typography variant="h6" color="primary.main" sx={{ mb: 2, fontWeight: 600 }}>
-                  Know what every piece of equipment actually costs to run
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                  Ownership cost per hour + operating cost per hour = total cost per hour. Built-in safeguards ensure precision—automatically verified so you can focus on winning profitable work.
-                </Typography>
-              </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{
-                p: 4,
-                height: '100%',
-                transition: 'all 0.3s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
-                }
-              }}>
-                <CheckIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                  True Employee Burden
-                </Typography>
-                <Typography variant="h6" color="primary.main" sx={{ mb: 2, fontWeight: 600 }}>
-                  Stop guessing at payroll taxes, insurance, and overhead
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                  Base wage × burden multiplier = real cost per hour. The system learns what's normal for your business, then validates data to protect your margins.
-                </Typography>
-              </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{
-                p: 4,
-                height: '100%',
-                transition: 'all 0.3s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
-                }
-              }}>
-                <CheckIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                  24/7 Profit Guardian
-                </Typography>
-                <Typography variant="h6" color="primary.main" sx={{ mb: 2, fontWeight: 600 }}>
-                  Catch profit leaks in real-time, not after the money is gone
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                  Know your margins before the job is done. Instant alerts when metrics shift—catching errors in milliseconds that would take hours to find manually.
-                </Typography>
-              </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card sx={{
-                p: 4,
-                height: '100%',
-                transition: 'all 0.3s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
-                }
-              }}>
-                <CheckIcon sx={{ fontSize: 56, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                  Superhuman Capabilities
-                </Typography>
-                <Typography variant="h6" color="primary.main" sx={{ mb: 2, fontWeight: 600 }}>
-                  Track 50 projects simultaneously—impossible with spreadsheets
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                  Productivity tracking in inch-acres, StumpScore, and service-specific metrics. Replace "we worked hard" with actual data that drives fair pay and clear advancement.
-                </Typography>
-              </Card>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* Respectful Disruption - Attack the system, not the people */}
-      <Box sx={{ py: 14, bgcolor: 'primary.dark', color: 'white' }}>
-        <Container maxWidth="md">
-          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
-            Built By An Operator, For Operators
-          </Typography>
-
-          <Typography variant="h6" align="center" sx={{ mb: 8, lineHeight: 1.8, color: 'grey.200', fontWeight: 400 }}>
-            You've built valuable expertise through years of experience.
-            <br />
-            Now amplify that expertise with mathematical precision.
-          </Typography>
-
-          <Grid container spacing={4}>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
-                  10+
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'grey.300' }}>
-                  Years in tree care operations
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
-                  5+
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'grey.300' }}>
-                  Years forestry mulching specialty
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
-                  10+
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'grey.300' }}>
-                  Hurricane disaster deployments
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
-                  17K+
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'grey.300' }}>
-                  YouTube subscribers learning these systems
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-
-          <Typography variant="h5" align="center" sx={{ mt: 10, fontWeight: 500, lineHeight: 1.6 }}>
-            This isn't software built by developers who Googled "tree removal."
-            <br />
-            It's mathematics built from boots-on-ground experience.
-          </Typography>
-        </Container>
-      </Box>
-
-      {/* Evolution Narrative - Respectful framing */}
-      <Box sx={{ py: 14 }}>
-        <Container maxWidth="md">
-          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 6 }}>
-            The Industry Is Evolving
-          </Typography>
-
-          <Typography variant="h6" color="text.secondary" sx={{ mb: 4, lineHeight: 1.8 }}>
-            Traditional approaches worked for their era. But market dynamics have shifted—customer expectations, competition, technology have all changed.
-          </Typography>
-
-          <Typography variant="h6" color="text.secondary" sx={{ mb: 4, lineHeight: 1.8 }}>
-            Companies clinging to fear-based pressure tactics and expensive guesswork are losing trust. The winners build genuine connections, transparent operations, and relationship-based growth.
-          </Typography>
-
-          <Typography variant="h6" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-            Most teams lack tools to do this at scale. Those who adapt will thrive.
-          </Typography>
-        </Container>
-      </Box>
-
-      {/* CTA Section - Invite-only positioning */}
-      <Box sx={{ py: 16, bgcolor: 'primary.main', color: 'white' }}>
-        <Container maxWidth="sm">
-          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
-            This Is Invite-Only
-          </Typography>
-
-          <Typography variant="h5" align="center" sx={{ mb: 8, lineHeight: 1.8, fontWeight: 400 }}>
-            We're working with serious operators who are tired of expensive nonsense that doesn't work.
-            <br /><br />
-            If you run equipment, know your business needs help, and are ready to amplify your expertise with precision—apply.
-          </Typography>
-
-          <Stack spacing={3} alignItems="center">
-            <Link
-              href="https://treeshop.app/tech"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ textDecoration: 'none' }}
-            >
-              <Button
-                variant="contained"
-                size="large"
-                sx={{
-                  bgcolor: 'white',
-                  color: 'primary.main',
-                  px: 10,
-                  py: 3,
-                  fontSize: '1.5rem',
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  boxShadow: 6,
-                  transition: 'all 0.3s',
-                  '&:hover': {
-                    bgcolor: 'grey.100',
-                    transform: 'translateY(-2px)',
-                    boxShadow: 8,
-                  }
-                }}
-              >
-                Apply for Access
-              </Button>
-            </Link>
-            <Typography variant="body1" sx={{ color: 'grey.200', mt: 3 }}>
-              Already have access?{' '}
-              <SignInButton mode="modal">
-                <Link component="button" sx={{ color: 'white', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
-                  Sign in here
-                </Link>
-              </SignInButton>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems="center"
+            spacing={2}
+          >
+            <Typography variant="body2" sx={{ color: '#666' }}>
+              © 2025 TreeShop. Built for forestry mulching companies.
             </Typography>
+            <Stack direction="row" spacing={3}>
+              <Link
+                href="https://treeshop.app/tech"
+                sx={{ color: '#666', textDecoration: 'none', '&:hover': { color: '#0099FF' } }}
+              >
+                Apply
+              </Link>
+              <Link
+                href="#"
+                sx={{ color: '#666', textDecoration: 'none', '&:hover': { color: '#0099FF' } }}
+              >
+                Contact
+              </Link>
+            </Stack>
           </Stack>
         </Container>
       </Box>
-
-      {/* Footer */}
-      <Box sx={{ py: 6, bgcolor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
-        <Container maxWidth="sm">
-          <Typography variant="body2" align="center" color="text.secondary">
-            TreeShopOS © 2025
-            <br />
-            Precision that empowers. Built for operators who know there's a better way.
-          </Typography>
-        </Container>
-      </Box>
-    </>
+    </Box>
   );
 }

@@ -9,12 +9,13 @@ import {
   Divider,
   FormControl,
   FormControlLabel,
+  Grid,
   IconButton,
   Paper,
   Radio,
   RadioGroup,
-  Slider,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import { Delete as DeleteIcon, Add as AddIcon } from "@mui/icons-material";
@@ -190,55 +191,49 @@ export default function TreeTrimmingCalculator({
                   )}
                 </Box>
 
-                <Box>
-                  <Typography gutterBottom>Height: {tree.height} feet</Typography>
-                  <Slider
-                    value={tree.height}
-                    onChange={(_, val) => updateTree(tree.id, { height: val as number })}
-                    min={10}
-                    max={120}
-                    valueLabelDisplay="auto"
-                  />
-                </Box>
-
-                <Box>
-                  <Typography gutterBottom>DBH (Diameter at Breast Height): {tree.dbh} inches</Typography>
-                  <Slider
-                    value={tree.dbh}
-                    onChange={(_, val) => updateTree(tree.id, { dbh: val as number })}
-                    min={6}
-                    max={60}
-                    valueLabelDisplay="auto"
-                  />
-                </Box>
-
-                <Box>
-                  <Typography gutterBottom>Canopy Radius: {tree.canopyRadius} feet</Typography>
-                  <Slider
-                    value={tree.canopyRadius}
-                    onChange={(_, val) => updateTree(tree.id, { canopyRadius: val as number })}
-                    min={5}
-                    max={40}
-                    valueLabelDisplay="auto"
-                  />
-                </Box>
-
-                <Box>
-                  <Typography gutterBottom>
-                    AFISS Complexity: {tree.afissMultiplier?.toFixed(2)}x
-                  </Typography>
-                  <Slider
-                    value={tree.afissMultiplier || 1.0}
-                    onChange={(_, val) => updateTree(tree.id, { afissMultiplier: val as number })}
-                    min={1.0}
-                    max={3.0}
-                    step={0.1}
-                    valueLabelDisplay="auto"
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    Adjust for power lines, structures, climbing difficulty, etc.
-                  </Typography>
-                </Box>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Height (feet)"
+                      value={tree.height}
+                      onChange={(e) => updateTree(tree.id, { height: parseFloat(e.target.value) || 10 })}
+                      InputProps={{ inputProps: { min: 10, max: 120, step: 1 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="DBH (inches)"
+                      value={tree.dbh}
+                      onChange={(e) => updateTree(tree.id, { dbh: parseFloat(e.target.value) || 6 })}
+                      InputProps={{ inputProps: { min: 6, max: 60, step: 1 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Canopy Radius (feet)"
+                      value={tree.canopyRadius}
+                      onChange={(e) => updateTree(tree.id, { canopyRadius: parseFloat(e.target.value) || 5 })}
+                      InputProps={{ inputProps: { min: 5, max: 40, step: 1 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="AFISS Complexity"
+                      value={tree.afissMultiplier || 1.0}
+                      onChange={(e) => updateTree(tree.id, { afissMultiplier: parseFloat(e.target.value) || 1.0 })}
+                      InputProps={{ inputProps: { min: 1.0, max: 3.0, step: 0.1 } }}
+                      helperText="Adjust for power lines, structures, climbing difficulty"
+                    />
+                  </Grid>
+                </Grid>
               </Stack>
             </CardContent>
           </Card>

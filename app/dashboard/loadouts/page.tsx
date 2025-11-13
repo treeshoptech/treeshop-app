@@ -333,23 +333,23 @@ function LoadoutsPageContent() {
           </Button>
         </Box>
       ) : (
-        <Grid container spacing={2}>
+        <Stack spacing={2}>
           {loadouts.map((loadout) => {
           const kpis = calculateLoadoutKPIs(loadout);
           const isExpanded = expandedCard === loadout._id;
 
           return (
-            <Grid item xs={12} key={loadout._id}>
-              <Card sx={{
-                bgcolor: '#1C1C1E',
-                border: '1px solid #2C2C2E',
-                transition: 'all 0.3s',
-                '&:hover': { borderColor: '#007AFF' },
-              }}>
-                {/* Collapsed View - Always Visible */}
-                <CardContent sx={{ pb: 1 }} onClick={() => handleExpandClick(loadout._id)}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    {/* Icon/Avatar */}
+            <Card key={loadout._id} sx={{
+              bgcolor: '#1C1C1E',
+              border: '1px solid #2C2C2E',
+              transition: 'all 0.3s',
+              '&:hover': { borderColor: '#007AFF' },
+            }}>
+              {/* Horizontal Collapsed View - Always Visible */}
+              <CardContent sx={{ pb: 1, cursor: 'pointer' }} onClick={() => handleExpandClick(loadout._id)}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
+                  {/* Icon/Avatar and Title */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 280, flex: { xs: '1 1 100%', md: '0 0 280px' } }}>
                     <Avatar sx={{
                       bgcolor: loadout.status === 'Active' ? '#34C759' : '#8E8E93',
                       width: 48,
@@ -359,92 +359,92 @@ function LoadoutsPageContent() {
                        loadout.serviceType === 'Forestry Mulching' ? <EquipmentIcon /> :
                        loadout.serviceType === 'Stump Grinding' ? <EquipmentIcon /> : <EquipmentIcon />}
                     </Avatar>
-
-                    {/* Main Content */}
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      {/* Title Row */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                            {loadout.name}
-                          </Typography>
-                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                            <Chip
-                              label={loadout.serviceType}
-                              size="small"
-                              sx={{ bgcolor: '#007AFF', color: '#FFF', height: 24 }}
-                            />
-                            <Chip
-                              icon={loadout.status === 'Active' ? <ActiveIcon /> : <InactiveIcon />}
-                              label={loadout.status}
-                              size="small"
-                              sx={{
-                                bgcolor: loadout.status === 'Active' ? '#34C75930' : '#8E8E9330',
-                                color: loadout.status === 'Active' ? '#34C759' : '#8E8E93',
-                                height: 24,
-                              }}
-                            />
-                          </Stack>
-                        </Box>
-
-                        {/* Action Menu Button */}
-                        <IconButton
+                      <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem', mb: 0.5 }}>
+                        {loadout.name}
+                      </Typography>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        <Chip
+                          label={loadout.serviceType}
                           size="small"
-                          onClick={(e) => handleMenuOpen(e, loadout)}
-                          sx={{ color: '#8E8E93' }}
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                      </Box>
-
-                      {/* Key Metrics - Always Visible */}
-                      <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                        <Box sx={{ flex: '1 1 120px' }}>
-                          <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
-                            Cost/Hour
-                          </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                            ${(kpis?.totalCostPerHour || 0).toFixed(0)}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ flex: '1 1 120px' }}>
-                          <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
-                            Billing Rate
-                          </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#34C759', fontSize: '1.1rem' }}>
-                            ${(kpis?.targetBillingRate || 0).toFixed(0)}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ flex: '1 1 120px' }}>
-                          <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
-                            Profit/Hour
-                          </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500', fontSize: '1.1rem' }}>
-                            ${(kpis?.profitPerHour || 0).toFixed(0)}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ flex: '1 1 80px' }}>
-                          <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
-                            Margin
-                          </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                            {kpis.targetMargin}%
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      {/* Expand Indicator */}
-                      <Box sx={{ textAlign: 'center', mt: 2 }}>
-                        <IconButton size="small" sx={{ color: '#8E8E93' }}>
-                          <ExpandMoreIcon sx={{
-                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.3s',
-                          }} />
-                        </IconButton>
-                      </Box>
+                          sx={{ bgcolor: '#007AFF', color: '#FFF', height: 20, fontSize: '0.7rem' }}
+                        />
+                        <Chip
+                          icon={loadout.status === 'Active' ? <ActiveIcon sx={{ fontSize: 12 }} /> : <InactiveIcon sx={{ fontSize: 12 }} />}
+                          label={loadout.status}
+                          size="small"
+                          sx={{
+                            bgcolor: loadout.status === 'Active' ? '#34C75930' : '#8E8E9330',
+                            color: loadout.status === 'Active' ? '#34C759' : '#8E8E93',
+                            height: 20,
+                            fontSize: '0.7rem',
+                          }}
+                        />
+                      </Stack>
                     </Box>
                   </Box>
-                </CardContent>
+
+                  {/* Key Metrics - Horizontal */}
+                  <Box sx={{
+                    display: 'flex',
+                    gap: 3,
+                    flex: 1,
+                    justifyContent: 'space-between',
+                    flexWrap: { xs: 'wrap', md: 'nowrap' },
+                    minWidth: { xs: '100%', md: 0 },
+                  }}>
+                    <Box sx={{ minWidth: 100 }}>
+                      <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
+                        Cost/Hour
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                        ${(kpis?.totalCostPerHour || 0).toFixed(0)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ minWidth: 100 }}>
+                      <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
+                        Billing Rate
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#34C759', fontSize: '1rem' }}>
+                        ${(kpis?.targetBillingRate || 0).toFixed(0)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ minWidth: 100 }}>
+                      <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
+                        Profit/Hour
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#FF9500', fontSize: '1rem' }}>
+                        ${(kpis?.profitPerHour || 0).toFixed(0)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ minWidth: 80 }}>
+                      <Typography variant="caption" sx={{ color: '#8E8E93', display: 'block' }}>
+                        Margin
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                        {kpis.targetMargin}%
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Action Menu and Expand Indicator */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => handleMenuOpen(e, loadout)}
+                      sx={{ color: '#8E8E93' }}
+                    >
+                      <MoreVertIcon />
+                    </IconButton>
+                    <IconButton size="small" sx={{ color: '#8E8E93' }}>
+                      <ExpandMoreIcon sx={{
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.3s',
+                      }} />
+                    </IconButton>
+                  </Box>
+                </Box>
+              </CardContent>
 
                 {/* Expanded View - Collapsible */}
                 <Collapse in={isExpanded} timeout="auto" unmountOnExit>
@@ -694,10 +694,9 @@ function LoadoutsPageContent() {
                   </CardContent>
                 </Collapse>
               </Card>
-            </Grid>
           );
         })}
-      </Grid>
+      </Stack>
       )}
 
       {/* Action Menu */}
