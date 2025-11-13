@@ -478,3 +478,127 @@ export const getMyWorkOrdersInRange = query({
     );
   },
 });
+
+// ============================================
+// DIRECT WORK ORDER CREATION (Bypass Proposal)
+// ============================================
+
+/**
+ * Create a direct work order without going through the proposal flow
+ * Used for jobs from insurance companies, government contracts, referrals, etc.
+ */
+export const createDirect = mutation({
+  args: {
+    customerId: v.id("customers"),
+    projectName: v.string(),
+    propertyAddress: v.string(),
+    propertyCoordinates: v.optional(
+      v.object({
+        lat: v.number(),
+        lng: v.number(),
+      })
+    ),
+    serviceType: v.string(),
+    contractAmount: v.number(),
+    estimatedAcres: v.optional(v.number()),
+    loadoutId: v.optional(v.id("loadouts")),
+    scheduledDate: v.optional(v.number()),
+    poNumber: v.optional(v.string()),
+    specialInstructions: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const org = await getOrganization(ctx);
+
+    const now = Date.now();
+
+    // Generate work order number: WO-YYYYMMDD-XXX
+    const date = new Date(now);
+    const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
+
+    // Count today's work orders to get sequence number
+    const todayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const todayEnd = todayStart + 24 * 60 * 60 * 1000;
+
+    const todayWorkOrders = await ctx.db
+      .query("workOrders")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .filter((q) =>
+        q.and(
+          q.gte(q.field("createdAt"), todayStart),
+          q.lt(q.field("createdAt"), todayEnd)
+        )
+      )
+      .collect();
+
+    const sequence = (todayWorkOrders.length + 1).toString().padStart(3, "0");
+    const workOrderNumber = `WO-${dateStr}-${sequence}`;
+
+    // Get loadout details if provided
+    let loadoutName: string | undefined;
+    let loadoutHourlyRate: number | undefined;
+
+    if (args.loadoutId) {
+      const loadout = await ctx.db.get(args.loadoutId);
+      if (loadout) {
+        loadoutName = loadout.name;
+        // Get the 50% margin rate (middle of the range)
+        if (loadout.billingRates && loadout.billingRates["50"]) {
+          loadoutHourlyRate = loadout.billingRates["50"];
+        }
+      }
+    }
+
+    const workOrderId = await ctx.db.insert("workOrders", {
+      organizationId: org._id,
+      creationType: "DIRECT",
+      projectName: args.projectName,
+      workOrderNumber,
+      customerId: args.customerId,
+      propertyAddress: args.propertyAddress,
+      propertyCoordinates: args.propertyCoordinates,
+      serviceType: args.serviceType,
+      estimatedAcres: args.estimatedAcres,
+      contractAmount: args.contractAmount,
+      loadoutId: args.loadoutId,
+      loadoutName,
+      loadoutHourlyRate,
+      scheduledDate: args.scheduledDate,
+      poNumber: args.poNumber,
+      specialInstructions: args.specialInstructions,
+      notes: args.notes,
+      status: "Created",
+      // Safety defaults (not required for direct work orders)
+      safetyBriefingCompleted: false,
+      ppeVerified: false,
+      // Completion checklist defaults
+      allLineItemsComplete: false,
+      finalPhotosUploaded: false,
+      customerWalkthroughComplete: false,
+      debrisRemoved: false,
+      siteRestored: false,
+      equipmentCleaned: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return workOrderId;
+  },
+});
+
+/**
+ * List direct work orders only
+ */
+export const listDirect = query({
+  handler: async (ctx) => {
+    const org = await getOrganization(ctx);
+
+    return await ctx.db
+      .query("workOrders")
+      .withIndex("by_creation_type", (q) =>
+        q.eq("organizationId", org._id).eq("creationType", "DIRECT")
+      )
+      .collect();
+  },
+});
