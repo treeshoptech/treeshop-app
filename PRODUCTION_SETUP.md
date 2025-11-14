@@ -52,15 +52,36 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
 ```
 
 ### Convex (Backend)
-```
-NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
-CONVEX_DEPLOYMENT=your-deployment-name
+
+**Step 1: Deploy Convex to Production**
+```bash
+npx convex deploy --prod
 ```
 
-Get Convex production URL:
-1. Run `npx convex deploy` from your project
-2. Copy the deployment URL shown
-3. Add to Vercel
+This will create a production deployment and give you a URL like:
+`https://your-prod-deployment.convex.cloud`
+
+**Step 2: Configure Convex Environment Variables**
+
+In your Convex dashboard (https://dashboard.convex.dev):
+1. Go to your production deployment
+2. Navigate to Settings → Environment Variables
+3. Add this variable:
+
+```
+CLERK_JWT_ISSUER_DOMAIN=https://clerk.treeshopterminal.com
+```
+
+Or find your actual production domain at:
+- Clerk Dashboard → Configure → API Keys → Advanced
+- Copy the "Issuer URL" (should be your custom domain or clerk subdomain)
+
+**Step 3: Add Convex URL to Vercel**
+
+In Vercel environment variables, add:
+```
+NEXT_PUBLIC_CONVEX_URL=https://your-prod-deployment.convex.cloud
+```
 
 ---
 
