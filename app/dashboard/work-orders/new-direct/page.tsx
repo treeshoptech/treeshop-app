@@ -92,8 +92,7 @@ export default function NewDirectWorkOrderPage() {
   const loadouts = useQuery(api.loadouts.list);
 
   // Mutations
-  const createProject = useMutation(api.projects.create);
-  const createWorkOrder = useMutation(api.workOrders.create);
+  const createWorkOrder = useMutation(api.workOrders.createDirect);
   const createCustomer = useMutation(api.customers.create);
 
   const handleNext = () => {
@@ -193,32 +192,29 @@ export default function NewDirectWorkOrderPage() {
       const customer = customers?.find((c) => c._id === customerData.customerId);
       if (!customer) throw new Error("Customer not found");
 
-      // Create project first
-      const projectId = await createProject({
-        name: `${customer.name} - Direct Work Order`,
-        customerName: customer.name,
-        customerEmail: customer.email || undefined,
-        customerPhone: customer.phone || undefined,
-        propertyAddress: customerData.propertyAddress,
-        propertyCity: customerData.propertyCity || undefined,
-        propertyState: customerData.propertyState || undefined,
-        propertyZip: customerData.propertyZip || undefined,
-        serviceType: lineItems[0]?.serviceType || "General",
-        status: "Work Order",
-        workOrderStatus: "Scheduled",
-        estimatedValue: parseFloat(contractData.contractAmount) || 0,
-        notes: contractData.notes || undefined,
-      });
+      // Build full property address
+      const fullAddress = [
+        customerData.propertyAddress,
+        customerData.propertyCity,
+        customerData.propertyState,
+        customerData.propertyZip,
+      ]
+        .filter(Boolean)
+        .join(", ");
 
-      // Create work order
+      // Create direct work order
       await createWorkOrder({
-        projectId,
-        loadoutId: contractData.loadoutId || undefined,
-        scheduledDate: contractData.scheduledDate || undefined,
-        customerPONumber: contractData.poNumber || undefined,
-        specialInstructions: contractData.specialInstructions || undefined,
+        customerId: customerData.customerId,
+        projectName: `${customer.name} - ${lineItems[0]?.serviceType || "Work Order"}`,
+        propertyAddress: fullAddress,
+        serviceType: lineItems[0]?.serviceType || "General",
         contractAmount: parseFloat(contractData.contractAmount),
-        status: "Scheduled",
+        estimatedAcres: lineItems[0]?.acreage ? parseFloat(lineItems[0].acreage) : undefined,
+        loadoutId: contractData.loadoutId || undefined,
+        scheduledDate: contractData.scheduledDate ? new Date(contractData.scheduledDate).getTime() : undefined,
+        poNumber: contractData.poNumber || undefined,
+        specialInstructions: contractData.specialInstructions || undefined,
+        notes: contractData.notes || undefined,
       });
 
       router.push("/dashboard/work-orders");
