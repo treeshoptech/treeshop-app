@@ -47,13 +47,25 @@ export default function DashboardLayout({
 
   return (
     <>
-      {/* Top App Bar - Compact for mobile */}
-      <AppBar position="static" elevation={0}>
-        <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
+      {/* Top App Bar - Mobile-optimized */}
+      <AppBar
+        position="sticky"
+        elevation={0}
+        sx={{
+          borderBottom: '1px solid #2C2C2E',
+          backgroundColor: '#000000',
+        }}
+      >
+        <Toolbar
+          sx={{
+            minHeight: { xs: 56, sm: 64 },
+            px: { xs: 1, sm: 2 },
+          }}
+        >
           {/* Logo - Clickable to Dashboard */}
           <Box
             sx={{
-              mr: 2,
+              mr: 1,
               display: 'flex',
               alignItems: 'center',
               cursor: 'pointer',
@@ -66,8 +78,8 @@ export default function DashboardLayout({
             <Image
               src="/images/logo.png"
               alt="TreeShop"
-              width={80}
-              height={40}
+              width={72}
+              height={36}
               style={{ objectFit: 'contain' }}
             />
           </Box>
@@ -75,28 +87,32 @@ export default function DashboardLayout({
           {/* Spacer */}
           <Box sx={{ flexGrow: 1 }} />
 
-          {/* Hamburger Menu Button */}
+          {/* Hamburger Menu Button - Larger touch target */}
           <IconButton
             onClick={() => setRightNavOpen(true)}
             sx={{
               color: '#FFFFFF',
+              p: 1.5,
+              minWidth: 44,
+              minHeight: 44,
               '&:hover': {
                 backgroundColor: '#1C1C1E',
               },
             }}
           >
-            <MenuIcon />
+            <MenuIcon sx={{ fontSize: 28 }} />
           </IconButton>
         </Toolbar>
       </AppBar>
 
-      {/* Main Content */}
+      {/* Main Content - Mobile-optimized spacing */}
       <Container
         maxWidth="lg"
         sx={{
-          mt: 2,
-          mb: 2,
-          px: { xs: 2, sm: 3 }
+          mt: { xs: 1.5, sm: 2 },
+          mb: { xs: 2, sm: 3 },
+          px: { xs: 1.5, sm: 3 },
+          minHeight: 'calc(100vh - 56px)', // Full height minus header
         }}
       >
         {children}

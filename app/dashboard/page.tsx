@@ -51,51 +51,56 @@ function DashboardPageContent() {
   };
 
   return (
-    <Box sx={{ pb: 10 }}>
-      {/* Header */}
-      <Box sx={{ px: 2, pt: 2, pb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.5px' }}>
+    <Box sx={{ pb: { xs: 8, sm: 10 } }}>
+      {/* Header - Mobile-optimized */}
+      <Box sx={{ px: { xs: 0, sm: 2 }, pt: { xs: 1, sm: 2 }, pb: 2 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.5px', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
           TreeShop
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </Typography>
       </Box>
 
-      <Stack spacing={2} sx={{ px: 2 }}>
-        {/* THIS MONTH - MONEY SECTION */}
-        <Paper sx={{ p: 2, bgcolor: '#1C1C1E', border: '1px solid #2C2C2E' }}>
-          <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>
+      <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ px: { xs: 0, sm: 2 } }}>
+        {/* THIS MONTH - MONEY SECTION - Mobile-optimized */}
+        <Paper sx={{ p: { xs: 1.5, sm: 2 }, bgcolor: '#1C1C1E', border: '1px solid #2C2C2E' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
             THIS MONTH
           </Typography>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, mt: 2 }}>
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr 1fr 1fr', sm: '1fr 1fr 1fr' },
+            gap: { xs: 1, sm: 2 },
+            mt: { xs: 1.5, sm: 2 }
+          }}>
             {/* Cash Collected */}
             <Box>
-              <Typography variant="h3" sx={{ fontWeight: 900, color: '#34C759', fontSize: '2.5rem', lineHeight: 1 }}>
+              <Typography variant="h3" sx={{ fontWeight: 900, color: '#34C759', fontSize: { xs: '1.25rem', sm: '2rem', md: '2.5rem' }, lineHeight: 1 }}>
                 {formatCurrency(metrics.cashCollected)}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: '0.75rem' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                 Cash Collected
               </Typography>
             </Box>
 
             {/* Pipeline Value */}
             <Box>
-              <Typography variant="h3" sx={{ fontWeight: 900, color: '#FF9500', fontSize: '2.5rem', lineHeight: 1 }}>
+              <Typography variant="h3" sx={{ fontWeight: 900, color: '#FF9500', fontSize: { xs: '1.25rem', sm: '2rem', md: '2.5rem' }, lineHeight: 1 }}>
                 {formatCurrency(metrics.pipelineValue)}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: '0.75rem' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                 Pipeline
               </Typography>
             </Box>
 
             {/* Close Rate */}
             <Box>
-              <Typography variant="h3" sx={{ fontWeight: 900, color: '#007AFF', fontSize: '2.5rem', lineHeight: 1 }}>
+              <Typography variant="h3" sx={{ fontWeight: 900, color: '#007AFF', fontSize: { xs: '1.25rem', sm: '2rem', md: '2.5rem' }, lineHeight: 1 }}>
                 {(metrics.closeRate || 0).toFixed(0)}%
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: '0.75rem' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                 Close Rate
               </Typography>
             </Box>
