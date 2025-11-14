@@ -135,8 +135,14 @@ export default function NewDirectWorkOrderPage() {
         notes: newCustomerData.notes || undefined,
       });
 
-      // Set the newly created customer as selected
-      setCustomerData({ ...customerData, customerId });
+      // Set the newly created customer as selected AND auto-populate their address
+      setCustomerData({
+        customerId,
+        propertyAddress: newCustomerData.propertyAddress,
+        propertyCity: newCustomerData.propertyCity,
+        propertyState: newCustomerData.propertyState,
+        propertyZip: newCustomerData.propertyZip,
+      });
 
       // Reset form and close dialog
       setNewCustomerData({
@@ -154,6 +160,31 @@ export default function NewDirectWorkOrderPage() {
     } catch (error) {
       console.error("Error creating customer:", error);
       alert("Failed to create customer");
+    }
+  };
+
+  // Handler for when customer is selected from dropdown
+  const handleCustomerSelect = (customerId: Id<"customers"> | "") => {
+    const customer = customers?.find((c) => c._id === customerId);
+
+    if (customer) {
+      // Auto-populate address from selected customer
+      setCustomerData({
+        customerId,
+        propertyAddress: customer.propertyAddress || "",
+        propertyCity: customer.propertyCity || "",
+        propertyState: customer.propertyState || "",
+        propertyZip: customer.propertyZip || "",
+      });
+    } else {
+      // Clear if no customer selected
+      setCustomerData({
+        customerId: "",
+        propertyAddress: "",
+        propertyCity: "",
+        propertyState: "",
+        propertyZip: "",
+      });
     }
   };
 
@@ -226,9 +257,7 @@ export default function NewDirectWorkOrderPage() {
                 <Select
                   value={customerData.customerId}
                   label="Select Customer"
-                  onChange={(e) =>
-                    setCustomerData({ ...customerData, customerId: e.target.value as any })
-                  }
+                  onChange={(e) => handleCustomerSelect(e.target.value as any)}
                 >
                   {customers?.map((customer) => (
                     <MenuItem key={customer._id} value={customer._id}>
