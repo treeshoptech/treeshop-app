@@ -118,6 +118,7 @@ function EquipmentPageContent() {
   }) || [];
 
   const handleAdd = () => {
+    console.log('handleAdd clicked - opening form dialog');
     setEditingId(null);
     setFormData({
       nickname: '', make: '', model: '', serialNumber: '', vin: '', year: new Date().getFullYear(),
@@ -379,7 +380,16 @@ function EquipmentPageContent() {
       <Fab color="primary" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={handleAdd}><AddIcon /></Fab>
 
       {/* FORM DIALOG */}
-      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { backgroundColor: '#1C1C1E', border: '1px solid #2C2C2E' } }}>
+      <Dialog
+        open={formOpen}
+        onClose={() => {
+          console.log('Dialog closing');
+          setFormOpen(false);
+        }}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { backgroundColor: '#1C1C1E', border: '1px solid #2C2C2E' } }}
+      >
         <DialogTitle>{editingId ? 'Edit Equipment' : 'Add Equipment'}</DialogTitle>
         
         <Tabs value={formTab} onChange={(_, v) => setFormTab(v)} variant="scrollable" scrollButtons="auto" sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
