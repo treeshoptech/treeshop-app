@@ -8,7 +8,7 @@ import { ConvexClientProvider } from './ConvexClientProvider';
 export const metadata: Metadata = {
   title: "TreeShop - Professional Tree Service Management",
   description: "Scientific pricing and project management for tree service professionals",
-  manifest: "/api/manifest",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
