@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   title: "TreeShop - Professional Tree Service Management",
   description: "Scientific pricing and project management for tree service professionals",
   manifest: "/manifest.json",
-  themeColor: "#007AFF",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -30,12 +29,14 @@ export const metadata: Metadata = {
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    viewportFit: "cover",
-  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#007AFF",
 };
 
 export default function RootLayout({
