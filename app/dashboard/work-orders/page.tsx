@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -70,6 +70,14 @@ export default function WorkOrdersPage() {
     dbhPackage?: number;
     treeShopScore?: number;
   }>>([]);
+
+  // Ensure dev organization exists (for development mode)
+  const ensureDevOrg = useMutation(api.organizations.ensureDevOrg);
+
+  useEffect(() => {
+    ensureDevOrg()
+      .catch((err) => console.error("Failed to ensure dev org:", err));
+  }, [ensureDevOrg]);
 
   // Fetch data
   const allProjects = useQuery(api.projects.list);
