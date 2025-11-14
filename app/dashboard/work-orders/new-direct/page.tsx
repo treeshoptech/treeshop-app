@@ -190,18 +190,41 @@ export default function NewDirectWorkOrderPage() {
 
   const handleSubmit = async () => {
     try {
-      // TODO: Create project and work order
-      // This will be implemented after we understand the exact flow you want
+      const customer = customers?.find((c) => c._id === customerData.customerId);
+      if (!customer) throw new Error("Customer not found");
 
-      console.log("Customer:", customerData);
-      console.log("Line Items:", lineItems);
-      console.log("Contract:", contractData);
+      // Create project first
+      const projectId = await createProject({
+        name: `${customer.name} - Direct Work Order`,
+        customerName: customer.name,
+        customerEmail: customer.email || undefined,
+        customerPhone: customer.phone || undefined,
+        propertyAddress: customerData.propertyAddress,
+        propertyCity: customerData.propertyCity || undefined,
+        propertyState: customerData.propertyState || undefined,
+        propertyZip: customerData.propertyZip || undefined,
+        serviceType: lineItems[0]?.serviceType || "General",
+        status: "Work Order",
+        workOrderStatus: "Scheduled",
+        estimatedValue: parseFloat(contractData.contractAmount) || 0,
+        notes: contractData.notes || undefined,
+      });
 
-      alert("Direct Work Order created! (Full implementation pending)");
+      // Create work order
+      await createWorkOrder({
+        projectId,
+        loadoutId: contractData.loadoutId || undefined,
+        scheduledDate: contractData.scheduledDate || undefined,
+        customerPONumber: contractData.poNumber || undefined,
+        specialInstructions: contractData.specialInstructions || undefined,
+        contractAmount: parseFloat(contractData.contractAmount),
+        status: "Scheduled",
+      });
+
       router.push("/dashboard/work-orders");
     } catch (error) {
       console.error("Error creating work order:", error);
-      alert("Failed to create work order");
+      alert("Failed to create work order: " + (error as Error).message);
     }
   };
 
