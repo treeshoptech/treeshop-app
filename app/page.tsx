@@ -461,40 +461,6 @@ export default function Home() {
             </Box>
           </Card>
 
-          {/* What You'll Achieve */}
-          <Box sx={{ mt: 8 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                textAlign: 'center',
-                mb: 4,
-              }}
-            >
-              What You'll Achieve
-            </Typography>
-            <List>
-              {[
-                'Price every job with mathematical precision—whether you\'re starting out or seasoned',
-                'Win more profitable work by knowing your exact costs down to the penny',
-                'Scale your mulching operation confidently with real data, not guesswork',
-                'Maximize profit per acre instead of just grinding more hours',
-                'Build a business that works for you, not the other way around',
-              ].map((item, index) => (
-                <ListItem key={index} sx={{ px: 0, py: 1 }}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <CheckCircleIcon sx={{ color: '#0099FF' }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item}
-                    primaryTypographyProps={{
-                      sx: { color: '#e0e0e0', fontSize: '1.1rem' }
-                    }}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Box>
         </Container>
       </Box>
 
