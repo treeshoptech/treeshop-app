@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useSearchParams } from "next/navigation";
@@ -35,6 +35,7 @@ import {
   TableRow,
   TextField,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -56,7 +57,7 @@ type ServiceType = "Stump Grinding" | "Forestry Mulching" | "Land Clearing" | "T
 
 const steps = ["Customer Info", "Add Line Items", "Review & Save"];
 
-export default function NewProposalPage() {
+function NewProposalContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const leadId = searchParams.get("leadId");
@@ -603,5 +604,17 @@ export default function NewProposalPage() {
         </DialogActions>
       </Dialog>
     </Container>
+  );
+}
+
+export default function NewProposalPage() {
+  return (
+    <Suspense fallback={
+      <Container maxWidth="xl" sx={{ py: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <CircularProgress />
+      </Container>
+    }>
+      <NewProposalContent />
+    </Suspense>
   );
 }
