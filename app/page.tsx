@@ -170,7 +170,7 @@ export default function Home() {
                 }}
               >
                 ...instead of building the business? Stop being an admin and start being a CEO.
-                We built the machine that runs your back-office{' '}
+                I built the machine that runs your back-office{' '}
                 <Box component="span" sx={{ color: '#66CCFF', fontWeight: 700 }}>
                   for you.
                 </Box>
@@ -367,7 +367,7 @@ export default function Home() {
               mx: 'auto',
             }}
           >
-            This isn't another app. This is a complete, automated machine for running a modern tree company. We took every admin task you hate and automated it.
+            This isn't another app. This is a complete, automated machine for running a modern tree company. I took every admin task you hate and automated it—because I was drowning in the same chaos running TREE SHOP LLC in Florida.
           </Typography>
 
           <Grid container spacing={4}>
@@ -429,6 +429,86 @@ export default function Home() {
               </Card>
             </Grid>
           </Grid>
+        </Container>
+      </Box>
+
+      {/* FOUNDER STORY SECTION */}
+      <Box sx={{ bgcolor: '#0f0f0f', py: { xs: 8, md: 12 } }}>
+        <Container maxWidth="md">
+          <Box
+            sx={{
+              bgcolor: '#1a1a1a',
+              border: '1px solid #2a2a2a',
+              borderRadius: 3,
+              p: { xs: 4, md: 6 },
+            }}
+          >
+            <Typography
+              variant="h3"
+              sx={{
+                fontSize: { xs: '1.75rem', md: '2.5rem' },
+                fontWeight: 800,
+                textAlign: 'center',
+                mb: 4,
+                color: '#0099FF',
+              }}
+            >
+              Built by a Tree Guy, For Tree Guys
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                color: '#e0e0e0',
+                fontSize: '1.1rem',
+                lineHeight: 1.8,
+                mb: 3,
+              }}
+            >
+              I'm Jeremiah Anderson. My wife Lacey and I own TREE SHOP LLC here in Florida.
+              I built this system because I was sick of running my business from the truck cab at 9 PM,
+              trying to remember if I invoiced the Johnson job or if the crew knew where to go tomorrow morning.
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                color: '#e0e0e0',
+                fontSize: '1.1rem',
+                lineHeight: 1.8,
+                mb: 3,
+              }}
+            >
+              I spent months building an iOS app to run our operation. Lacey helped me figure out what actually mattered
+              (and what was just me being a tech nerd). We got it dialed in for our business.
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                color: '#e0e0e0',
+                fontSize: '1.1rem',
+                lineHeight: 1.8,
+                mb: 3,
+              }}
+            >
+              Then early users told me they needed web access—not everyone wants to work from their phone.
+              So I rebuilt the whole thing in a week. Now I'm shipping it to founding members while still
+              running daily ops at TREE SHOP.
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                color: '#66CCFF',
+                fontSize: '1.2rem',
+                lineHeight: 1.8,
+                fontWeight: 600,
+                fontStyle: 'italic',
+                textAlign: 'center',
+                mt: 4,
+              }}
+            >
+              I'm getting acclimated to running a tech company while still running saws and managing crews.
+              Once we get dialed in with the founding members, we'll open it up to the whole industry.
+            </Typography>
+          </Box>
         </Container>
       </Box>
 
