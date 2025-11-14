@@ -104,10 +104,12 @@ If Clerk warnings persist:
 ## Current Deployment Status
 
 - [x] Code fixes pushed to GitHub
-- [ ] Convex deployed to production
-- [ ] Convex environment variables set
-- [ ] Vercel environment variables added
-- [ ] Production deployment completed
+- [x] Convex deployed to production ✅
+  - URL: https://bright-quail-848.convex.cloud
+- [x] Convex environment variables set ✅
+  - CLERK_JWT_ISSUER_DOMAIN=https://clerk.treeshopterminal.com
+- [ ] Vercel environment variables added (SEE VERCEL_ENV_VARS.txt)
+- [ ] Production deployment triggered
 - [ ] All errors resolved
 
 Complete each step above to finish production setup!
