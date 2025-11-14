@@ -6,8 +6,8 @@ import theme from './theme/theme';
 import { ConvexClientProvider } from './ConvexClientProvider';
 
 export const metadata: Metadata = {
-  title: "TreeShop - Professional Tree Service Management",
-  description: "Scientific pricing and project management for tree service professionals",
+  title: "TreeShop - Stop Running Your Business From the Truck",
+  description: "Stop being an admin and start being a CEO. TreeShop is your complete Business-in-a-Box operating system for tree service companies.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
