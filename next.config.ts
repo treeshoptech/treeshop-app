@@ -8,6 +8,14 @@ const nextConfig: NextConfig = {
   },
   // Add empty turbopack config to silence webpack/turbopack conflict
   turbopack: {},
+  async rewrites() {
+    return [
+      {
+        source: '/manifest.json',
+        destination: '/api/manifest',
+      },
+    ];
+  },
 };
 
 // PWA configuration
