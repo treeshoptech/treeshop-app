@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/manifest.json",
+      "destination": "/manifest.json"
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",
