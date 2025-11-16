@@ -359,26 +359,36 @@ function NewProposalPageContent() {
               {lineItems.length > 0 && (
                 <Stack spacing={2} sx={{ mb: 3 }}>
                   {lineItems.map((item, index) => (
-                    <Card key={item.id} variant="outlined">
-                      <CardContent>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                              <Typography variant="h6">
-                                {index + 1}. {item.serviceType}
-                              </Typography>
-                              {item.baseScore > 0 && (
-                                <Chip
-                                  label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : 'Inch-Acres'}`}
-                                  size="small"
-                                  color="primary"
-                                />
-                              )}
-                            </Stack>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description}
+                    <Paper key={item.id} elevation={2}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          p: 2,
+                        }}
+                      >
+                        <Box sx={{ flex: 1 }}>
+                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                            <Typography variant="subtitle1" fontWeight={600}>
+                              {index + 1}. {item.serviceType}
                             </Typography>
-                          </Box>
+                            {item.baseScore > 0 && (
+                              <Chip
+                                label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : item.serviceType === 'Forestry Mulching' ? 'Mulching Score' : 'Score'}`}
+                                size="small"
+                                color="primary"
+                              />
+                            )}
+                          </Stack>
+                        </Box>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="h6" color="primary" fontWeight={700}>
+                            {new Intl.NumberFormat("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(item.totalPrice)}
+                          </Typography>
                           <IconButton
                             size="small"
                             color="error"
@@ -386,9 +396,9 @@ function NewProposalPageContent() {
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                        </Box>
-                      </CardContent>
-                    </Card>
+                        </Stack>
+                      </Box>
+                    </Paper>
                   ))}
                   <Box sx={{ p: 2, bgcolor: "primary.dark", borderRadius: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -611,6 +621,7 @@ function NewProposalPageContent() {
           <Box sx={{ pt: 2 }}>
             <StumpGrindingCalculator
               loadout={loadouts?.[0]}
+              loadouts={loadouts}
               onLineItemCreate={handleLineItemCreate}
             />
           </Box>
@@ -646,6 +657,7 @@ function NewProposalPageContent() {
           <Box sx={{ pt: 2 }}>
             <LandClearingCalculator
               loadout={loadouts?.[0]}
+              loadouts={loadouts}
               onLineItemCreate={handleLineItemCreate}
             />
           </Box>

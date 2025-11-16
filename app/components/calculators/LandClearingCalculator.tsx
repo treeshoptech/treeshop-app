@@ -45,6 +45,13 @@ interface LandClearingCalculatorProps {
     costPerHour: number;
     targetMargin: number;
   };
+  loadouts?: Array<{
+    _id: string;
+    name: string;
+    productionRatePPH: number;
+    costPerHour: number;
+    targetMargin: number;
+  }>;
   driveTimeMinutes?: number;
   onLineItemCreate?: (lineItemData: any) => void;
 }
@@ -52,13 +59,17 @@ interface LandClearingCalculatorProps {
 type Density = "Light" | "Average" | "Heavy";
 
 export default function LandClearingCalculator({
-  loadout,
+  loadout: defaultLoadout,
+  loadouts,
   driveTimeMinutes = 30,
   onLineItemCreate,
 }: LandClearingCalculatorProps) {
+  const [selectedLoadoutId, setSelectedLoadoutId] = useState<string>(defaultLoadout?._id || loadouts?.[0]?._id || "");
   const [acres, setAcres] = useState(2);
   const [density, setDensity] = useState<Density>("Average");
   const [afissMultiplier, setAfissMultiplier] = useState(1.0);
+
+  const loadout = loadouts?.find(l => l._id === selectedLoadoutId) || defaultLoadout;
 
   // Calculate score
   const scoreResult = calculateLandClearingScore({
@@ -120,6 +131,29 @@ export default function LandClearingCalculator({
 
   return (
     <Stack spacing={2}>
+      {/* Loadout Selection */}
+      {loadouts && loadouts.length > 0 && (
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Select Equipment Loadout
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel>Loadout</InputLabel>
+            <Select
+              value={selectedLoadoutId}
+              label="Loadout"
+              onChange={(e) => setSelectedLoadoutId(e.target.value)}
+            >
+              {loadouts.map((l) => (
+                <MenuItem key={l._id} value={l._id}>
+                  {l.name} - {l.productionRatePPH} PpH @ {formatCurrency(l.costPerHour)}/hr
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6}>
           <TextField

@@ -49,15 +49,24 @@ interface StumpGrindingCalculatorProps {
     costPerHour: number;
     targetMargin: number;
   };
+  loadouts?: Array<{
+    _id: string;
+    name: string;
+    productionRatePPH: number;
+    costPerHour: number;
+    targetMargin: number;
+  }>;
   driveTimeMinutes?: number;
   onLineItemCreate?: (lineItemData: any) => void;
 }
 
 export default function StumpGrindingCalculator({
-  loadout,
+  loadout: defaultLoadout,
+  loadouts,
   driveTimeMinutes = 30,
   onLineItemCreate,
 }: StumpGrindingCalculatorProps) {
+  const [selectedLoadoutId, setSelectedLoadoutId] = useState<string>(defaultLoadout?._id || loadouts?.[0]?._id || "");
   const [stumps, setStumps] = useState<StumpEntry[]>([
     {
       id: crypto.randomUUID(),
@@ -71,6 +80,8 @@ export default function StumpGrindingCalculator({
       tightSpace: false,
     },
   ]);
+
+  const loadout = loadouts?.find(l => l._id === selectedLoadoutId) || defaultLoadout;
 
   const addStump = () => {
     setStumps([
@@ -156,6 +167,29 @@ export default function StumpGrindingCalculator({
 
   return (
     <Stack spacing={2}>
+      {/* Loadout Selection */}
+      {loadouts && loadouts.length > 0 && (
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Select Equipment Loadout
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel>Loadout</InputLabel>
+            <Select
+              value={selectedLoadoutId}
+              label="Loadout"
+              onChange={(e) => setSelectedLoadoutId(e.target.value)}
+            >
+              {loadouts.map((l) => (
+                <MenuItem key={l._id} value={l._id}>
+                  {l.name} - {l.productionRatePPH} PpH @ {formatCurrency(l.costPerHour)}/hr
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+
       {/* Stumps */}
       {stumps.map((stump, index) => (
         <Card key={stump.id} variant="outlined">
