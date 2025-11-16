@@ -412,59 +412,103 @@ function NewProposalPageContent() {
               {/* Added Line Items */}
               {lineItems.length > 0 && (
                 <Stack spacing={2} sx={{ mb: 3 }}>
-                  {lineItems.map((item, index) => (
-                    <Paper key={item.id} elevation={2}>
-                      <Box
+                  {lineItems.map((item, index) => {
+                    const scoreName = item.serviceType === 'Stump Grinding'
+                      ? 'StumpScore'
+                      : item.serviceType === 'Forestry Mulching'
+                        ? 'Mulching Score'
+                        : 'Score';
+                    const scoreValue = item.baseScore || 0;
+
+                    return (
+                      <Paper
+                        key={item.id}
+                        elevation={2}
                         sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          p: 2,
+                          bgcolor: '#2C2C2E',
+                          border: '1px solid #3C3C3E',
+                          borderRadius: 2,
+                          overflow: 'hidden',
                         }}
                       >
-                        <Box sx={{ flex: 1 }}>
-                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                            <Typography variant="subtitle1" fontWeight={600}>
-                              {index + 1}. {item.serviceType}
-                            </Typography>
-                            {item.baseScore > 0 && (
-                              <Chip
-                                label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : item.serviceType === 'Forestry Mulching' ? 'Mulching Score' : 'Score'}`}
-                                size="small"
-                                color="primary"
-                              />
-                            )}
-                          </Stack>
+                        <Box sx={{ p: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#00D26A', mb: 0.5 }}>
+                                {item.serviceType}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {item.description}
+                              </Typography>
+                            </Box>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleRemoveLineItem(item.id)}
+                              sx={{ ml: 1 }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            mt: 2,
+                            pt: 2,
+                            borderTop: '1px solid #3C3C3E'
+                          }}>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                Work Volume
+                              </Typography>
+                              <Typography variant="h5" sx={{ fontWeight: 700, color: '#00D26A' }}>
+                                {scoreValue.toFixed(1)} {scoreName}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                Estimated Time
+                              </Typography>
+                              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                {item.totalEstimatedHours?.toFixed(1) || '0.0'} hrs
+                              </Typography>
+                            </Box>
+                          </Box>
                         </Box>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="h6" color="primary" fontWeight={700}>
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            }).format(item.totalPrice)}
-                          </Typography>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleRemoveLineItem(item.id)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Stack>
-                      </Box>
-                    </Paper>
-                  ))}
-                  <Box sx={{ p: 2, bgcolor: "primary.dark", borderRadius: 1 }}>
+                      </Paper>
+                    );
+                  })}
+
+                  {/* Total Investment - Only place price is shown */}
+                  <Paper
+                    elevation={4}
+                    sx={{
+                      bgcolor: 'primary.dark',
+                      border: '2px solid',
+                      borderColor: 'primary.main',
+                      borderRadius: 2,
+                      p: 3,
+                    }}
+                  >
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <Typography variant="h6">Total</Typography>
-                      <Typography variant="h4">
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                          TOTAL INVESTMENT
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {lineItems.length} service{lineItems.length !== 1 ? 's' : ''}
+                        </Typography>
+                      </Box>
+                      <Typography variant="h3" sx={{ fontWeight: 900, color: '#00D26A' }}>
                         {new Intl.NumberFormat("en-US", {
                           style: "currency",
                           currency: "USD",
                         }).format(totalValue)}
                       </Typography>
                     </Box>
-                  </Box>
+                  </Paper>
                 </Stack>
               )}
 
