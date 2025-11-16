@@ -293,8 +293,15 @@ function LoadoutsPageContent() {
   };
 
   const handleEdit = () => {
-    if (!selectedLoadout) return;
+    console.log('🔍 handleEdit called');
+    console.log('🔍 selectedLoadout:', selectedLoadout);
 
+    if (!selectedLoadout) {
+      console.log('❌ No selectedLoadout, exiting');
+      return;
+    }
+
+    console.log('🔍 Setting formData with:', selectedLoadout);
     // Populate form with selected loadout data
     setFormData({
       name: selectedLoadout.name || '',
@@ -308,9 +315,13 @@ function LoadoutsPageContent() {
       overheadCost: selectedLoadout.overheadCost || 0,
     });
 
+    console.log('🔍 Setting isEditMode to true');
     setIsEditMode(true);
+    console.log('🔍 Setting dialogOpen to true');
     setDialogOpen(true);
+    console.log('🔍 Calling handleMenuClose');
     handleMenuClose();
+    console.log('✅ handleEdit complete');
   };
 
   const handleDuplicate = () => {
