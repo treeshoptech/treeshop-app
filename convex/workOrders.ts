@@ -544,8 +544,8 @@ export const createDirect = mutation({
       if (loadout) {
         loadoutName = loadout.name;
         // Get the 50% margin rate (middle of the range)
-        if (loadout.billingRates && loadout.billingRates["50"]) {
-          loadoutHourlyRate = loadout.billingRates["50"];
+        if (loadout.billingRates && loadout.billingRates.margin50) {
+          loadoutHourlyRate = loadout.billingRates.margin50;
         }
       }
     }
@@ -561,24 +561,12 @@ export const createDirect = mutation({
       serviceType: args.serviceType,
       estimatedAcres: args.estimatedAcres,
       contractAmount: args.contractAmount,
-      loadoutId: args.loadoutId,
-      loadoutName,
-      loadoutHourlyRate,
+      primaryLoadoutId: args.loadoutId,
       scheduledDate: args.scheduledDate,
       poNumber: args.poNumber,
       specialInstructions: args.specialInstructions,
       notes: args.notes,
-      status: "Created",
-      // Safety defaults (not required for direct work orders)
-      safetyBriefingCompleted: false,
-      ppeVerified: false,
-      // Completion checklist defaults
-      allLineItemsComplete: false,
-      finalPhotosUploaded: false,
-      customerWalkthroughComplete: false,
-      debrisRemoved: false,
-      siteRestored: false,
-      equipmentCleaned: false,
+      status: "Scheduled",
       createdAt: now,
       updatedAt: now,
     });
