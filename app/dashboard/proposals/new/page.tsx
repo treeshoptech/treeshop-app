@@ -25,6 +25,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Grid,
+  Tabs,
+  Tab,
+  OutlinedInput,
+  Checkbox,
+  ListItemText,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -32,6 +38,14 @@ import {
   ExpandMore as ExpandMoreIcon,
   PersonAdd as PersonAddIcon,
   Send as SendIcon,
+  Close as CloseIcon,
+  Person as PersonIcon,
+  ContactMail as ContactMailIcon,
+  Home as HomeIcon,
+  Receipt as ReceiptIcon,
+  Business as BusinessIcon,
+  LocalOffer as TagIcon,
+  Note as NoteIcon,
 } from "@mui/icons-material";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -40,6 +54,26 @@ import {
   LandClearingCalculator,
 } from "@/app/components/calculators";
 import { Id } from "@/convex/_generated/dataModel";
+
+const CUSTOMER_SOURCES = ['Referral', 'Website', 'Google Search', 'Social Media', 'Repeat Customer', 'Door Hanger', 'Yard Sign', 'Vehicle Wrap', 'Other'];
+const CUSTOMER_TYPES = ['Residential', 'Commercial', 'Municipal', 'HOA', 'Property Management', 'Real Estate'];
+const CONTACT_METHODS = ['Phone', 'Email', 'Text', 'Any'];
+const AVAILABLE_TAGS = ['VIP', 'Repeat Customer', 'High Value', 'Quick Pay', 'Difficult Access', 'Gated Community', 'Large Property', 'Preferred'];
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div role="tabpanel" hidden={value !== index} {...other}>
+      {value === index && <Box sx={{ py: 2 }}>{children}</Box>}
+    </div>
+  );
+}
 
 // Inner component that uses useSearchParams
 function NewProposalPageContent() {
@@ -67,14 +101,15 @@ function NewProposalPageContent() {
   // Active service calculator
   const [activeCalculator, setActiveCalculator] = useState<string | null>(null);
 
-  // New customer form
-  const [newCustomerFirstName, setNewCustomerFirstName] = useState("");
-  const [newCustomerLastName, setNewCustomerLastName] = useState("");
-  const [newCustomerCompany, setNewCustomerCompany] = useState("");
-  const [newCustomerEmail, setNewCustomerEmail] = useState("");
-  const [newCustomerPhone, setNewCustomerPhone] = useState("");
-  const [newCustomerSecondaryPhone, setNewCustomerSecondaryPhone] = useState("");
-  const [newCustomerAddress, setNewCustomerAddress] = useState("");
+  // New customer form - matches customers page
+  const [formTab, setFormTab] = useState(0);
+  const [formData, setFormData] = useState({
+    firstName: '', lastName: '', email: '', phone: '', secondaryPhone: '', company: '',
+    propertyAddress: '', propertyCity: '', propertyState: 'FL', propertyZip: '',
+    billingAddress: '', billingCity: '', billingState: 'FL', billingZip: '',
+    source: 'Website', referredBy: '', customerType: 'Residential', preferredContactMethod: 'Phone',
+    tags: [] as string[], notes: '',
+  });
 
   // Fetch data FIRST
   const loadouts = useQuery(api.loadouts.list);
@@ -101,11 +136,29 @@ function NewProposalPageContent() {
     if (name && !customerCreatedRef.current) {
       customerCreatedRef.current = true;
       const nameParts = name.trim().split(" ");
-      setNewCustomerFirstName(nameParts[0] || "");
-      setNewCustomerLastName(nameParts.slice(1).join(" ") || "");
-      setNewCustomerEmail(email || "");
-      setNewCustomerPhone(phone || "");
-      setNewCustomerAddress(address || "");
+      setFormData({
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(" ") || "",
+        email: email || "",
+        phone: phone || "",
+        secondaryPhone: "",
+        company: "",
+        propertyAddress: address || "",
+        propertyCity: "",
+        propertyState: "FL",
+        propertyZip: "",
+        billingAddress: "",
+        billingCity: "",
+        billingState: "FL",
+        billingZip: "",
+        source: "Website",
+        referredBy: "",
+        customerType: "Residential",
+        preferredContactMethod: "Phone",
+        tags: [],
+        notes: "",
+      });
+      setFormTab(0);
       setShowNewCustomerDialog(true);
     }
   }, [searchParams, customers, createCustomer]);
@@ -121,25 +174,22 @@ function NewProposalPageContent() {
   };
 
   const handleCreateCustomer = async () => {
+    if (!formData.firstName || !formData.lastName || !formData.propertyAddress) {
+      alert('Please fill in required fields (First Name, Last Name, Property Address)');
+      return;
+    }
+
     try {
-      const customerId = await createCustomer({
-        firstName: newCustomerFirstName,
-        lastName: newCustomerLastName,
-        company: newCustomerCompany || undefined,
-        email: newCustomerEmail || undefined,
-        phone: newCustomerPhone || undefined,
-        secondaryPhone: newCustomerSecondaryPhone || undefined,
-        propertyAddress: newCustomerAddress || undefined,
-      });
+      const customerId = await createCustomer(formData);
       setSelectedCustomerId(customerId);
       setShowNewCustomerDialog(false);
-      setNewCustomerFirstName("");
-      setNewCustomerLastName("");
-      setNewCustomerCompany("");
-      setNewCustomerEmail("");
-      setNewCustomerPhone("");
-      setNewCustomerSecondaryPhone("");
-      setNewCustomerAddress("");
+      setFormData({
+        firstName: '', lastName: '', email: '', phone: '', secondaryPhone: '', company: '',
+        propertyAddress: '', propertyCity: '', propertyState: 'FL', propertyZip: '',
+        billingAddress: '', billingCity: '', billingState: 'FL', billingZip: '',
+        source: 'Website', referredBy: '', customerType: 'Residential', preferredContactMethod: 'Phone',
+        tags: [], notes: '',
+      });
       // Expand line items section after customer is created
       setCustomerExpanded(false);
       setLineItemsExpanded(true);
@@ -561,65 +611,164 @@ function NewProposalPageContent() {
       </Stack>
 
       {/* New Customer Dialog */}
-      <Dialog open={showNewCustomerDialog} onClose={() => setShowNewCustomerDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Customer</DialogTitle>
+      <Dialog open={showNewCustomerDialog} onClose={() => setShowNewCustomerDialog(false)} maxWidth="md" fullWidth PaperProps={{ sx: { backgroundColor: '#1C1C1E', border: '1px solid #2C2C2E' } }}>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Add New Customer
+            </Typography>
+            <IconButton onClick={() => setShowNewCustomerDialog(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <Tabs value={formTab} onChange={(_, v) => setFormTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
+          <Tab label="Basic Info" />
+          <Tab label="Addresses" />
+          <Tab label="Details" />
+        </Tabs>
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" fontWeight={600}>Personal Information</Typography>
-            <TextField
-              label="First Name"
-              value={newCustomerFirstName}
-              onChange={(e) => setNewCustomerFirstName(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Last Name"
-              value={newCustomerLastName}
-              onChange={(e) => setNewCustomerLastName(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Company"
-              value={newCustomerCompany}
-              onChange={(e) => setNewCustomerCompany(e.target.value)}
-              fullWidth
-            />
-            <Typography variant="subtitle2" fontWeight={600}>Contact</Typography>
-            <TextField
-              label="Email"
-              type="email"
-              value={newCustomerEmail}
-              onChange={(e) => setNewCustomerEmail(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Phone"
-              value={newCustomerPhone}
-              onChange={(e) => setNewCustomerPhone(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Secondary Phone"
-              value={newCustomerSecondaryPhone}
-              onChange={(e) => setNewCustomerSecondaryPhone(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Property Address"
-              value={newCustomerAddress}
-              onChange={(e) => setNewCustomerAddress(e.target.value)}
-              fullWidth
-              multiline
-              rows={2}
-            />
-          </Stack>
+          <TabPanel value={formTab} index={0}>
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <PersonIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Personal Information</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={6}><TextField fullWidth label="First Name" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required /></Grid>
+                <Grid item xs={6}><TextField fullWidth label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Company" value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 3, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <ContactMailIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Contact</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12}><TextField fullWidth label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></Grid>
+                <Grid item xs={6}><TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></Grid>
+                <Grid item xs={6}><TextField fullWidth label="Secondary Phone" value={formData.secondaryPhone} onChange={(e) => setFormData({ ...formData, secondaryPhone: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+          </TabPanel>
+
+          <TabPanel value={formTab} index={1}>
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <HomeIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Property Address</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Property Address"
+                    value={formData.propertyAddress}
+                    onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
+                    fullWidth
+                    required
+                    placeholder="123 Main St"
+                  />
+                </Grid>
+                <Grid item xs={5}><TextField fullWidth label="City" value={formData.propertyCity} onChange={(e) => setFormData({ ...formData, propertyCity: e.target.value })} /></Grid>
+                <Grid item xs={3}><TextField fullWidth label="State" value={formData.propertyState} onChange={(e) => setFormData({ ...formData, propertyState: e.target.value })} /></Grid>
+                <Grid item xs={4}><TextField fullWidth label="ZIP" value={formData.propertyZip} onChange={(e) => setFormData({ ...formData, propertyZip: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 3, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <ReceiptIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Billing Address</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>(if different)</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12}><TextField fullWidth label="Street Address" value={formData.billingAddress} onChange={(e) => setFormData({ ...formData, billingAddress: e.target.value })} /></Grid>
+                <Grid item xs={5}><TextField fullWidth label="City" value={formData.billingCity} onChange={(e) => setFormData({ ...formData, billingCity: e.target.value })} /></Grid>
+                <Grid item xs={3}><TextField fullWidth label="State" value={formData.billingState} onChange={(e) => setFormData({ ...formData, billingState: e.target.value })} /></Grid>
+                <Grid item xs={4}><TextField fullWidth label="ZIP" value={formData.billingZip} onChange={(e) => setFormData({ ...formData, billingZip: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+          </TabPanel>
+
+          <TabPanel value={formTab} index={2}>
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <BusinessIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Customer Details</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Customer Type</InputLabel>
+                    <Select value={formData.customerType} label="Customer Type" onChange={(e) => setFormData({ ...formData, customerType: e.target.value })}>
+                      {CUSTOMER_TYPES.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Source</InputLabel>
+                    <Select value={formData.source} label="Source" onChange={(e) => setFormData({ ...formData, source: e.target.value })}>
+                      {CUSTOMER_SOURCES.map(source => <MenuItem key={source} value={source}>{source}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Preferred Contact Method</InputLabel>
+                    <Select value={formData.preferredContactMethod} label="Preferred Contact Method" onChange={(e) => setFormData({ ...formData, preferredContactMethod: e.target.value })}>
+                      {CONTACT_METHODS.map(method => <MenuItem key={method} value={method}>{method}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}><TextField fullWidth label="Referred By" value={formData.referredBy} onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <TagIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Tags</Typography>
+              </Box>
+              <FormControl fullWidth>
+                <InputLabel>Select Tags</InputLabel>
+                <Select
+                  multiple
+                  value={formData.tags}
+                  onChange={(e) => setFormData({ ...formData, tags: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value })}
+                  input={<OutlinedInput label="Select Tags" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (<Chip key={value} label={value} size="small" />))}
+                    </Box>
+                  )}
+                >
+                  {AVAILABLE_TAGS.map((tag) => (
+                    <MenuItem key={tag} value={tag}>
+                      <Checkbox checked={formData.tags.indexOf(tag) > -1} />
+                      <ListItemText primary={tag} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Paper>
+
+            <Paper sx={{ p: 3, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <NoteIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Notes</Typography>
+              </Box>
+              <TextField fullWidth multiline rows={4} label="Customer Notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Add any notes about this customer..." />
+            </Paper>
+          </TabPanel>
         </DialogContent>
-        <DialogActions>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setShowNewCustomerDialog(false)}>Cancel</Button>
-          <Button onClick={handleCreateCustomer} variant="contained" disabled={!newCustomerFirstName || !newCustomerLastName}>
-            Create Customer
+          <Button onClick={handleCreateCustomer} variant="contained" disabled={!formData.firstName || !formData.lastName || !formData.propertyAddress}>
+            Add Customer
           </Button>
         </DialogActions>
       </Dialog>
