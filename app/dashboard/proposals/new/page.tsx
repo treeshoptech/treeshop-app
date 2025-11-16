@@ -68,9 +68,12 @@ function NewProposalPageContent() {
   const [activeCalculator, setActiveCalculator] = useState<string | null>(null);
 
   // New customer form
-  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerFirstName, setNewCustomerFirstName] = useState("");
+  const [newCustomerLastName, setNewCustomerLastName] = useState("");
+  const [newCustomerCompany, setNewCustomerCompany] = useState("");
   const [newCustomerEmail, setNewCustomerEmail] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerSecondaryPhone, setNewCustomerSecondaryPhone] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
 
   // Fetch data FIRST
@@ -94,27 +97,16 @@ function NewProposalPageContent() {
     if (address) setScopeOfWork(`Work to be performed at: ${address}`);
     if (id) setLeadId(id as Id<"projects">);
 
-    // Auto-create customer from lead (only run once)
-    if (name && customers !== undefined && !customerCreatedRef.current) {
+    // Auto-fill customer form from lead
+    if (name && !customerCreatedRef.current) {
       customerCreatedRef.current = true;
       const nameParts = name.trim().split(" ");
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-
-      createCustomer({
-        firstName,
-        lastName,
-        email: email || undefined,
-        phone: phone || undefined,
-        propertyAddress: address || "",
-      }).then((customerId) => {
-        setSelectedCustomerId(customerId);
-        // Auto-expand line items section
-        setCustomerExpanded(false);
-        setLineItemsExpanded(true);
-      }).catch((error) => {
-        console.error("Error auto-creating customer from lead:", error);
-      });
+      setNewCustomerFirstName(nameParts[0] || "");
+      setNewCustomerLastName(nameParts.slice(1).join(" ") || "");
+      setNewCustomerEmail(email || "");
+      setNewCustomerPhone(phone || "");
+      setNewCustomerAddress(address || "");
+      setShowNewCustomerDialog(true);
     }
   }, [searchParams, customers, createCustomer]);
 
@@ -130,23 +122,23 @@ function NewProposalPageContent() {
 
   const handleCreateCustomer = async () => {
     try {
-      // Split name into first and last
-      const nameParts = newCustomerName.trim().split(" ");
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-
       const customerId = await createCustomer({
-        firstName,
-        lastName,
+        firstName: newCustomerFirstName,
+        lastName: newCustomerLastName,
+        company: newCustomerCompany || undefined,
         email: newCustomerEmail || undefined,
         phone: newCustomerPhone || undefined,
-        propertyAddress: newCustomerAddress,
+        secondaryPhone: newCustomerSecondaryPhone || undefined,
+        propertyAddress: newCustomerAddress || undefined,
       });
       setSelectedCustomerId(customerId);
       setShowNewCustomerDialog(false);
-      setNewCustomerName("");
+      setNewCustomerFirstName("");
+      setNewCustomerLastName("");
+      setNewCustomerCompany("");
       setNewCustomerEmail("");
       setNewCustomerPhone("");
+      setNewCustomerSecondaryPhone("");
       setNewCustomerAddress("");
       // Expand line items section after customer is created
       setCustomerExpanded(false);
@@ -573,13 +565,28 @@ function NewProposalPageContent() {
         <DialogTitle>Add New Customer</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" fontWeight={600}>Personal Information</Typography>
             <TextField
-              label="Customer Name"
-              value={newCustomerName}
-              onChange={(e) => setNewCustomerName(e.target.value)}
+              label="First Name"
+              value={newCustomerFirstName}
+              onChange={(e) => setNewCustomerFirstName(e.target.value)}
               fullWidth
               required
             />
+            <TextField
+              label="Last Name"
+              value={newCustomerLastName}
+              onChange={(e) => setNewCustomerLastName(e.target.value)}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Company"
+              value={newCustomerCompany}
+              onChange={(e) => setNewCustomerCompany(e.target.value)}
+              fullWidth
+            />
+            <Typography variant="subtitle2" fontWeight={600}>Contact</Typography>
             <TextField
               label="Email"
               type="email"
@@ -594,6 +601,12 @@ function NewProposalPageContent() {
               fullWidth
             />
             <TextField
+              label="Secondary Phone"
+              value={newCustomerSecondaryPhone}
+              onChange={(e) => setNewCustomerSecondaryPhone(e.target.value)}
+              fullWidth
+            />
+            <TextField
               label="Property Address"
               value={newCustomerAddress}
               onChange={(e) => setNewCustomerAddress(e.target.value)}
@@ -605,7 +618,7 @@ function NewProposalPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowNewCustomerDialog(false)}>Cancel</Button>
-          <Button onClick={handleCreateCustomer} variant="contained" disabled={!newCustomerName}>
+          <Button onClick={handleCreateCustomer} variant="contained" disabled={!newCustomerFirstName || !newCustomerLastName}>
             Create Customer
           </Button>
         </DialogActions>
