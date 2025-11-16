@@ -852,12 +852,10 @@ function NewProposalPageContent() {
                 <Box sx={{ display: "flex", gap: 2 }}>
                   <Button
                     variant="outlined"
-                    onClick={() => {
-                      alert(`TEST: Customer=${selectedCustomerId}, Lead=${leadId}, Items=${lineItems.length}`);
-                      handleSaveProposal();
-                    }}
+                    onClick={handleSaveProposal}
                     size="large"
                     fullWidth
+                    disabled={(!selectedCustomerId && !leadId) || lineItems.length === 0}
                   >
                     Save
                   </Button>
@@ -875,9 +873,8 @@ function NewProposalPageContent() {
                     variant="outlined"
                     size="large"
                     fullWidth
-                    onClick={() => {
-                      alert("Export clicked!");
-                    }}
+                    onClick={() => alert("Export coming soon")}
+                    disabled={(!selectedCustomerId && !leadId) || lineItems.length === 0}
                   >
                     Export
                   </Button>
