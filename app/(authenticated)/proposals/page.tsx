@@ -59,14 +59,6 @@ export default function ProposalsPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<ProposalStatus | "All">("All");
   const [expandedProposal, setExpandedProposal] = useState<Id<"projects"> | null>(null);
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
-  const [selectedProposal, setSelectedProposal] = useState<any>(null);
-  const [convertData, setConvertData] = useState({
-    scheduledDate: "",
-    scheduledStartTime: "",
-    specialInstructions: "",
-    notes: "",
-  });
 
   // Fetch projects with status "Proposal"
   const allProjects = useQuery(api.projects.list);
@@ -95,30 +87,16 @@ export default function ProposalsPage() {
     }
   };
 
-  const handleOpenConvertDialog = (proposal: any) => {
-    setSelectedProposal(proposal);
-    setConvertDialogOpen(true);
-  };
-
-  const handleConvertToWorkOrder = async () => {
-    if (!selectedProposal) return;
+  const handleConvertToWorkOrder = async (proposal: any) => {
+    if (!confirm(`Convert proposal for ${proposal.customerName} to work order?`)) {
+      return;
+    }
 
     try {
       const workOrderId = await createWorkOrderFromProposal({
-        proposalId: selectedProposal._id,
-        scheduledDate: convertData.scheduledDate ? new Date(convertData.scheduledDate).getTime() : undefined,
-        scheduledStartTime: convertData.scheduledStartTime || undefined,
-        specialInstructions: convertData.specialInstructions || undefined,
-        notes: convertData.notes || undefined,
+        proposalId: proposal._id,
       });
 
-      setConvertDialogOpen(false);
-      setConvertData({
-        scheduledDate: "",
-        scheduledStartTime: "",
-        specialInstructions: "",
-        notes: "",
-      });
       router.push(`/dashboard/work-orders/${workOrderId}`);
     } catch (error) {
       console.error("Error converting to work order:", error);
@@ -352,7 +330,7 @@ export default function ProposalsPage() {
                             startIcon={<ConvertIcon />}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenConvertDialog(proposal);
+                              handleConvertToWorkOrder(proposal);
                             }}
                           >
                             Create Work Order
@@ -507,7 +485,7 @@ export default function ProposalsPage() {
                                   startIcon={<ConvertIcon />}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleOpenConvertDialog(proposal);
+                                    handleConvertToWorkOrder(proposal);
                                   }}
                                 >
                                   Create Work Order
@@ -537,89 +515,6 @@ export default function ProposalsPage() {
           </Stack>
         )}
       </Stack>
-
-      {/* Convert to Work Order Dialog */}
-      <Dialog open={convertDialogOpen} onClose={() => setConvertDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create Work Order from Proposal</DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
-            <Typography>
-              Convert this accepted proposal into a work order. All line items will be copied and ready for scheduling.
-            </Typography>
-
-            {selectedProposal && (
-              <>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Customer
-                  </Typography>
-                  <Typography variant="body1">{selectedProposal.customerName}</Typography>
-                </Box>
-
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Contract Amount
-                  </Typography>
-                  <Typography variant="h5" color="success.main">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    }).format(getProposalValue(selectedProposal._id))}
-                  </Typography>
-                </Box>
-              </>
-            )}
-
-            <TextField
-              label="Scheduled Date"
-              type="date"
-              value={convertData.scheduledDate}
-              onChange={(e) => setConvertData({ ...convertData, scheduledDate: e.target.value })}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-
-            <TextField
-              label="Scheduled Start Time"
-              type="time"
-              value={convertData.scheduledStartTime}
-              onChange={(e) => setConvertData({ ...convertData, scheduledStartTime: e.target.value })}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-
-            <TextField
-              label="Special Instructions"
-              value={convertData.specialInstructions}
-              onChange={(e) => setConvertData({ ...convertData, specialInstructions: e.target.value })}
-              fullWidth
-              multiline
-              rows={2}
-              placeholder="Gate codes, parking instructions, etc."
-            />
-
-            <TextField
-              label="Internal Notes"
-              value={convertData.notes}
-              onChange={(e) => setConvertData({ ...convertData, notes: e.target.value })}
-              fullWidth
-              multiline
-              rows={2}
-              placeholder="Internal notes for crew..."
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConvertDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleConvertToWorkOrder}
-          >
-            Create Work Order
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 }
