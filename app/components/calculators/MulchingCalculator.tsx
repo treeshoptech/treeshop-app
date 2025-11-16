@@ -107,8 +107,8 @@ export default function MulchingCalculator({
   driveTimeMinutes = 30,
   onLineItemCreate,
 }: MulchingCalculatorProps) {
-  const [acres, setAcres] = useState(3.5);
-  const [dbhPackage, setDbhPackage] = useState(6);
+  const [acres, setAcres] = useState(1.0);
+  const [dbhPackage, setDbhPackage] = useState(8);
   const [selectedAfissFactors, setSelectedAfissFactors] = useState<string[]>([]);
 
   // Calculate AFISS impacts - TWO SEPARATE TYPES
@@ -223,35 +223,77 @@ export default function MulchingCalculator({
   };
 
   return (
-    <Stack spacing={2}>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            type="number"
-            label="Acreage"
-            value={acres}
-            onChange={(e) => setAcres(parseFloat(e.target.value) || 0.5)}
-            InputProps={{ inputProps: { min: 0.5, max: 50, step: 0.5 } }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth>
-            <InputLabel>DBH Package</InputLabel>
-            <Select
-              value={dbhPackage}
-              label="DBH Package"
-              onChange={(e) => setDbhPackage(e.target.value as number)}
+    <Stack spacing={3}>
+      {/* Project Acreage */}
+      <Box>
+        <Typography variant="subtitle2" gutterBottom sx={{ mb: 1 }}>
+          Project Acreage
+        </Typography>
+        <TextField
+          fullWidth
+          type="number"
+          value={acres.toFixed(1)}
+          onChange={(e) => {
+            const val = parseFloat(e.target.value);
+            if (!isNaN(val) && val >= 0.1 && val <= 50) {
+              setAcres(val);
+            }
+          }}
+          onFocus={(e) => e.target.select()}
+          InputProps={{
+            inputProps: {
+              min: 0.1,
+              max: 50,
+              step: 0.1,
+              style: { fontSize: '1.5rem', fontWeight: 600, textAlign: 'center' }
+            },
+            endAdornment: <Typography variant="body1" color="text.secondary" sx={{ ml: 1 }}>acres</Typography>,
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: 'background.default',
+            }
+          }}
+        />
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+          Tap to type • Use whole or decimal numbers (e.g., 1.0, 5.5, 10.0)
+        </Typography>
+      </Box>
+
+      {/* DBH Package Selection */}
+      <Box>
+        <Typography variant="subtitle2" gutterBottom sx={{ mb: 1 }}>
+          DBH Package (Maximum Tree Diameter)
+        </Typography>
+        <Stack spacing={1}>
+          {DBH_PACKAGES.map((pkg) => (
+            <Paper
+              key={pkg.value}
+              sx={{
+                p: 2,
+                cursor: 'pointer',
+                border: 2,
+                borderColor: dbhPackage === pkg.value ? 'primary.main' : 'transparent',
+                bgcolor: dbhPackage === pkg.value ? 'primary.dark' : 'background.default',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  bgcolor: dbhPackage === pkg.value ? 'primary.dark' : 'action.hover',
+                },
+              }}
+              onClick={() => setDbhPackage(pkg.value)}
             >
-              {DBH_PACKAGES.map((pkg) => (
-                <MenuItem key={pkg.value} value={pkg.value}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, minWidth: 50 }}>
+                  {pkg.value}"
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
                   {pkg.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-      </Grid>
+                </Typography>
+              </Box>
+            </Paper>
+          ))}
+        </Stack>
+      </Box>
 
       <AfissSelector
         categories={AFISS_CATEGORIES}
