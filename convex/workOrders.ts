@@ -334,42 +334,37 @@ export const complete = mutation({
   },
 });
 
-// Create work order from accepted proposal
+// Create work order from accepted proposal (project)
 export const createFromProposal = mutation({
   args: {
-    proposalId: v.id("proposals"),
-    scheduledDate: v.optional(v.number()),
-    scheduledStartTime: v.optional(v.string()),
-    specialInstructions: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    proposalId: v.id("projects"), // This is actually a project ID with status="Proposal"
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const org = await getOrganization(ctx);
 
-    // 1. Get proposal and verify ownership
-    const proposal = await ctx.db.get(args.proposalId);
-    if (!proposal) {
-      throw new Error("Proposal not found");
-    }
-
-    if (proposal.organizationId !== org._id) {
-      throw new Error("Proposal not found");
-    }
-
-    // 2. Get project
-    const project = await ctx.db.get(proposal.projectId);
+    // 1. Get project (which represents the proposal) and verify ownership
+    const project = await ctx.db.get(args.proposalId);
     if (!project) {
-      throw new Error("Project not found");
+      throw new Error("Proposal not found");
     }
 
-    // 3. Get customer
-    const customer = await ctx.db.get(proposal.customerId);
-    if (!customer) {
-      throw new Error("Customer not found");
+    if (project.organizationId !== org._id) {
+      throw new Error("Proposal not found");
     }
 
-    // 4. Get all line items for this proposal
+    // Verify this is actually a proposal
+    if (project.status !== "Proposal") {
+      throw new Error("Project is not a proposal");
+    }
+
+    // 2. Get customer (may not exist for leads)
+    let customer = null;
+    if (project.customerId) {
+      customer = await ctx.db.get(project.customerId);
+    }
+
+    // 3. Get all line items for this proposal
     const lineItems = await ctx.db
       .query("lineItems")
       .withIndex("by_parent_doc", (q) =>
@@ -384,7 +379,7 @@ export const createFromProposal = mutation({
 
     const now = Date.now();
 
-    // 5. Generate work order number: WO-YYYYMMDD-XXX
+    // 4. Generate work order number: WO-YYYYMMDD-XXX
     const date = new Date(now);
     const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
 
@@ -405,35 +400,37 @@ export const createFromProposal = mutation({
     const sequence = (todayWorkOrders.length + 1).toString().padStart(3, "0");
     const workOrderNumber = `WO-${dateStr}-${sequence}`;
 
-    // 6. Determine primary loadout and service type from line items
+    // 5. Determine primary loadout and service type from line items
     const primaryLineItem = lineItems[0];
-    const primaryLoadoutId = proposal.loadoutId || primaryLineItem.loadoutId;
+    const primaryLoadoutId = primaryLineItem.loadoutId;
     const serviceType = lineItems.length === 1
       ? primaryLineItem.serviceType
       : `${primaryLineItem.serviceType} + ${lineItems.length - 1} more`;
 
-    // 7. Calculate contract amount from proposal price range (use high estimate)
-    const contractAmount = proposal.priceRangeHigh;
+    // 6. Calculate contract amount from line items total
+    const contractAmount = lineItems.reduce((sum, li) => sum + (li.estimatedPrice || 0), 0);
+    const estimatedHours = lineItems.reduce((sum, li) => sum + (li.totalEstimatedHours || 0), 0);
+
+    // 7. Determine customer name (from customer record or project fields)
+    const customerName = customer?.name
+      || project.customerName
+      || `${project.customerFirstName || ''} ${project.customerLastName || ''}`.trim()
+      || "Unknown Customer";
 
     // 8. Create work order
     const workOrderId = await ctx.db.insert("workOrders", {
       organizationId: org._id,
       creationType: "PROPOSAL",
-      proposalId: args.proposalId,
-      projectId: proposal.projectId,
-      customerId: proposal.customerId,
-      projectName: project.name || `${customer.name} - ${serviceType}`,
+      projectId: args.proposalId,
+      customerId: project.customerId,
+      projectName: project.name || `${customerName} - ${serviceType}`,
       workOrderNumber,
-      propertyAddress: project.propertyAddress || customer.propertyAddress || "",
-      propertyCoordinates: project.propertyCoordinates || customer.propertyCoordinates,
+      propertyAddress: project.propertyAddress || "",
+      propertyCoordinates: undefined, // Projects don't store coordinates yet
       serviceType,
       contractAmount,
-      estimatedHours: proposal.estimatedHours,
+      estimatedHours,
       primaryLoadoutId,
-      scheduledDate: args.scheduledDate,
-      scheduledStartTime: args.scheduledStartTime,
-      specialInstructions: args.specialInstructions,
-      notes: args.notes,
       status: "Scheduled",
       createdAt: now,
       updatedAt: now,
@@ -467,6 +464,7 @@ export const createFromProposal = mutation({
         estimatedPrice: lineItem.estimatedPrice,
         estimatedProfit: lineItem.estimatedProfit,
         estimatedMargin: lineItem.estimatedMargin,
+        totalPrice: lineItem.totalPrice, // Copy total price
         status: "Scheduled",
         createdAt: now,
         updatedAt: now,
@@ -474,14 +472,9 @@ export const createFromProposal = mutation({
     }
 
     // 10. Update project status to "Work Order"
-    await ctx.db.patch(proposal.projectId, {
-      status: "Work Order",
-      updatedAt: now,
-    });
-
-    // 11. Update proposal status to "Accepted" (if it has signatureData, it's "Signed")
     await ctx.db.patch(args.proposalId, {
-      status: proposal.signatureData ? "Signed" : "Accepted",
+      status: "Work Order",
+      workOrderStatus: "Scheduled",
       updatedAt: now,
     });
 
