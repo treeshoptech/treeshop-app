@@ -231,8 +231,13 @@ function NewProposalPageContent() {
             return; // Exit here, user will choose what to do
           } else {
             // No duplicates found, create new customer from lead
+            const nameParts = (lead.customerName || "").trim().split(" ");
+            const firstName = nameParts[0] || "Unknown";
+            const lastName = nameParts.slice(1).join(" ") || "";
+
             customerId = await createCustomer({
-              name: lead.customerName || "",
+              firstName,
+              lastName,
               email: lead.customerEmail || "",
               phone: lead.customerPhone || "",
               propertyAddress: lead.propertyAddress || "",
