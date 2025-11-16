@@ -9,11 +9,8 @@ import {
   Card,
   CardContent,
   Chip,
+  Collapse,
   Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   Grid,
   IconButton,
@@ -22,24 +19,29 @@ import {
   Paper,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
   Typography,
+  LinearProgress,
+  Divider,
 } from "@mui/material";
 import {
   PlayArrow as StartIcon,
   Stop as StopIcon,
-  Visibility as VisibilityIcon,
-  ArrowForward as ArrowForwardIcon,
+  CheckCircle as CompleteIcon,
+  Visibility as ViewIcon,
+  ArrowForward as InvoiceIcon,
   Add as AddIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Timer as TimerIcon,
+  Person as PersonIcon,
+  Construction as EquipmentIcon,
+  Assignment as TaskIcon,
+  CalendarToday as CalendarIcon,
+  LocationOn as LocationIcon,
 } from "@mui/icons-material";
 import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
+import TimeTracker from "./[id]/components/TimeTracker";
 
 type WorkOrderStatus = "Scheduled" | "In Progress" | "Completed" | "Invoiced";
 
@@ -53,23 +55,7 @@ const STATUS_COLORS: Record<WorkOrderStatus, "default" | "info" | "success" | "p
 export default function WorkOrdersPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | "All">("All");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    customerId: "" as Id<"customers"> | "",
-    propertyAddress: "",
-    contractAmount: "",
-    loadoutId: "" as Id<"loadouts"> | "",
-    poNumber: "",
-    specialInstructions: "",
-    notes: "",
-  });
-
-  const [lineItems, setLineItems] = useState<Array<{
-    serviceType: string;
-    acreage?: number;
-    dbhPackage?: number;
-    treeShopScore?: number;
-  }>>([]);
+  const [expandedWorkOrder, setExpandedWorkOrder] = useState<Id<"projects"> | null>(null);
 
   // Ensure dev organization exists (for development mode)
   const ensureDevOrg = useMutation(api.organizations.ensureDevOrg);
@@ -82,8 +68,8 @@ export default function WorkOrdersPage() {
   // Fetch data
   const allProjects = useQuery(api.projects.list);
   const workOrderProjects = allProjects?.filter((p) => p.status === "Work Order") || [];
-  const customers = useQuery(api.customers.list);
   const loadouts = useQuery(api.loadouts.list);
+  const employees = useQuery(api.employees.list);
 
   // Filter by status
   const filteredWorkOrders = statusFilter === "All"
@@ -92,45 +78,6 @@ export default function WorkOrdersPage() {
 
   // Mutations
   const updateProject = useMutation(api.projects.update);
-  const createDirectWorkOrder = useMutation(api.workOrders.createDirect);
-
-  const handleCreateDirectWorkOrder = async () => {
-    try {
-      const workOrderId = await createDirectWorkOrder({
-        customerId: formData.customerId as Id<"customers">,
-        projectName: formData.projectName,
-        propertyAddress: formData.propertyAddress,
-        serviceType: formData.serviceType,
-        contractAmount: parseFloat(formData.contractAmount),
-        estimatedAcres: formData.estimatedAcres ? parseFloat(formData.estimatedAcres) : undefined,
-        loadoutId: formData.loadoutId || undefined,
-        poNumber: formData.poNumber || undefined,
-        specialInstructions: formData.specialInstructions || undefined,
-        notes: formData.notes || undefined,
-      });
-
-      // Reset form and close dialog
-      setFormData({
-        customerId: "",
-        projectName: "",
-        propertyAddress: "",
-        serviceType: "",
-        contractAmount: "",
-        estimatedAcres: "",
-        loadoutId: "",
-        poNumber: "",
-        specialInstructions: "",
-        notes: "",
-      });
-      setDialogOpen(false);
-
-      // Navigate to the new work order (once detail page exists)
-      // router.push(`/dashboard/work-orders/${workOrderId}`);
-    } catch (error) {
-      console.error("Error creating direct work order:", error);
-      alert("Failed to create work order. Please check all required fields.");
-    }
-  };
 
   const handleStartWork = async (workOrder: any) => {
     try {
@@ -264,257 +211,293 @@ export default function WorkOrdersPage() {
           </FormControl>
         </Paper>
 
-        {/* Work Orders Table */}
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Customer</TableCell>
-                <TableCell>Property Address</TableCell>
-                <TableCell>Service Type</TableCell>
-                <TableCell>Scheduled Date</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredWorkOrders.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
-                      No work orders found. Convert accepted proposals to work orders.
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredWorkOrders.map((workOrder) => (
-                  <TableRow key={workOrder._id} hover>
-                    <TableCell>
-                      <Typography variant="body1" fontWeight="medium">
-                        {workOrder.customerName}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{workOrder.propertyAddress}</Typography>
-                    </TableCell>
-                    <TableCell>{workOrder.serviceType}</TableCell>
-                    <TableCell>
-                      {workOrder.scheduledDate
-                        ? new Date(workOrder.scheduledDate).toLocaleDateString()
-                        : "Not scheduled"}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={workOrder.workOrderStatus || "Scheduled"}
-                        color={STATUS_COLORS[workOrder.workOrderStatus as WorkOrderStatus] || "info"}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <Button
+        {/* Work Order Cards */}
+        {filteredWorkOrders.length === 0 ? (
+          <Paper sx={{ p: 8, textAlign: 'center' }}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No work orders found
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Convert accepted proposals to work orders or create a new work order directly
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => router.push("/dashboard/work-orders/new-direct")}
+            >
+              Create First Work Order
+            </Button>
+          </Paper>
+        ) : (
+          <Stack spacing={2}>
+            {filteredWorkOrders.map((workOrder) => {
+              const isExpanded = expandedWorkOrder === workOrder._id;
+              const loadout = loadouts?.find(l => l._id === workOrder.loadoutId);
+
+              return (
+                <Card
+                  key={workOrder._id}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: isExpanded ? 'primary.main' : 'divider',
+                    '&:hover': { borderColor: 'primary.main' }
+                  }}
+                >
+                  <CardContent
+                    sx={{
+                      cursor: 'pointer',
+                      pb: isExpanded ? 2 : 1
+                    }}
+                    onClick={() => setExpandedWorkOrder(isExpanded ? null : workOrder._id)}
+                  >
+                    {/* Collapsed View */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+                      {/* Customer & Status */}
+                      <Box sx={{ minWidth: 200, flex: 1 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          {workOrder.customerName || "Unknown Customer"}
+                        </Typography>
+                        <Chip
+                          label={workOrder.workOrderStatus || "Scheduled"}
+                          color={STATUS_COLORS[workOrder.workOrderStatus as WorkOrderStatus] || "info"}
                           size="small"
-                          variant="outlined"
-                          startIcon={<VisibilityIcon />}
-                          onClick={() => router.push(`/dashboard/work-orders/${workOrder._id}`)}
-                        >
-                          View
-                        </Button>
-                        {(!workOrder.workOrderStatus || workOrder.workOrderStatus === "Scheduled") && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="primary"
-                            startIcon={<StartIcon />}
-                            onClick={() => handleStartWork(workOrder)}
-                          >
-                            Start Work
-                          </Button>
-                        )}
-                        {workOrder.workOrderStatus === "In Progress" && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            startIcon={<StopIcon />}
-                            onClick={() => handleCompleteWork(workOrder)}
-                          >
-                            Complete
-                          </Button>
-                        )}
-                        {workOrder.workOrderStatus === "Completed" && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="primary"
-                            startIcon={<ArrowForwardIcon />}
-                            onClick={() => handleConvertToInvoice(workOrder)}
-                          >
-                            Create Invoice
-                          </Button>
-                        )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Stack>
+                          sx={{ mt: 0.5 }}
+                        />
+                      </Box>
 
-      {/* New Direct Work Order Dialog */}
-      <Dialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Create Direct Work Order</DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
-            {/* Customer Selection */}
-            <FormControl fullWidth required>
-              <InputLabel>Customer</InputLabel>
-              <Select
-                value={formData.customerId}
-                label="Customer"
-                onChange={(e) => setFormData({ ...formData, customerId: e.target.value as any })}
-              >
-                {customers?.map((customer) => (
-                  <MenuItem key={customer._id} value={customer._id}>
-                    {customer.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                      {/* Service & Location */}
+                      <Box sx={{ minWidth: 250, flex: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {workOrder.serviceType}
+                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                          <LocationIcon fontSize="small" color="action" />
+                          <Typography variant="body2" noWrap>
+                            {workOrder.propertyAddress?.split(',')[0] || 'No address'}
+                          </Typography>
+                        </Box>
+                      </Box>
 
-            {/* Project Name */}
-            <TextField
-              fullWidth
-              required
-              label="Project Name"
-              value={formData.projectName}
-              onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
-              placeholder="e.g., Land Clearing - Oak Street"
-            />
+                      {/* Scheduled Date */}
+                      <Box sx={{ minWidth: 120 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                          <CalendarIcon fontSize="small" color="action" />
+                          <Typography variant="caption" color="text.secondary">
+                            {workOrder.scheduledDate
+                              ? new Date(workOrder.scheduledDate).toLocaleDateString()
+                              : "Not scheduled"}
+                          </Typography>
+                        </Box>
+                      </Box>
 
-            {/* Property Address */}
-            <TextField
-              fullWidth
-              required
-              label="Property Address"
-              value={formData.propertyAddress}
-              onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
-              placeholder="123 Main St, City, State ZIP"
-            />
+                      {/* Quick Actions - Only when NOT expanded */}
+                      {!isExpanded && (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          {(!workOrder.workOrderStatus || workOrder.workOrderStatus === "Scheduled") && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="primary"
+                              startIcon={<StartIcon />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartWork(workOrder);
+                              }}
+                            >
+                              Start
+                            </Button>
+                          )}
+                          {workOrder.workOrderStatus === "In Progress" && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="success"
+                              startIcon={<CompleteIcon />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCompleteWork(workOrder);
+                              }}
+                            >
+                              Complete
+                            </Button>
+                          )}
+                        </Box>
+                      )}
 
-            {/* Service Type */}
-            <FormControl fullWidth required>
-              <InputLabel>Service Type</InputLabel>
-              <Select
-                value={formData.serviceType}
-                label="Service Type"
-                onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
-              >
-                <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
-                <MenuItem value="Land Clearing">Land Clearing</MenuItem>
-                <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
-                <MenuItem value="Tree Removal">Tree Removal</MenuItem>
-                <MenuItem value="Brush Clearing">Brush Clearing</MenuItem>
-                <MenuItem value="Excavation">Excavation</MenuItem>
-              </Select>
-            </FormControl>
+                      {/* Expand Icon */}
+                      <IconButton size="small">
+                        {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      </IconButton>
+                    </Box>
 
-            {/* Contract Amount */}
-            <TextField
-              fullWidth
-              required
-              label="Contract Amount"
-              type="number"
-              value={formData.contractAmount}
-              onChange={(e) => setFormData({ ...formData, contractAmount: e.target.value })}
-              InputProps={{
-                startAdornment: "$",
-              }}
-            />
+                    {/* Expanded View */}
+                    <Collapse in={isExpanded}>
+                      <Box sx={{ mt: 3, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+                        <Grid container spacing={3}>
+                          {/* Work Order Details */}
+                          <Grid item xs={12} md={6}>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                              Work Order Information
+                            </Typography>
+                            <Stack spacing={1}>
+                              <Typography variant="body2">
+                                <strong>Customer:</strong> {workOrder.customerName || "Unknown"}
+                              </Typography>
+                              <Typography variant="body2">
+                                <strong>Service:</strong> {workOrder.serviceType}
+                              </Typography>
+                              <Typography variant="body2">
+                                <strong>Address:</strong> {workOrder.propertyAddress || 'Not provided'}
+                              </Typography>
+                              <Typography variant="body2">
+                                <strong>Scheduled:</strong>{" "}
+                                {workOrder.scheduledDate
+                                  ? new Date(workOrder.scheduledDate).toLocaleDateString()
+                                  : "Not scheduled"}
+                              </Typography>
+                              {workOrder.contractAmount && (
+                                <Typography variant="body2">
+                                  <strong>Contract Amount:</strong> ${workOrder.contractAmount.toLocaleString()}
+                                </Typography>
+                              )}
+                            </Stack>
+                          </Grid>
 
-            {/* Estimated Acres */}
-            <TextField
-              fullWidth
-              label="Estimated Acres"
-              type="number"
-              value={formData.estimatedAcres}
-              onChange={(e) => setFormData({ ...formData, estimatedAcres: e.target.value })}
-              inputProps={{ step: "0.1" }}
-            />
+                          {/* Loadout & Crew */}
+                          <Grid item xs={12} md={6}>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                              Crew & Equipment
+                            </Typography>
+                            <Stack spacing={1}>
+                              {loadout ? (
+                                <>
+                                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                    <EquipmentIcon fontSize="small" color="action" />
+                                    <Typography variant="body2">
+                                      <strong>Loadout:</strong> {loadout.name}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                    <PersonIcon fontSize="small" color="action" />
+                                    <Typography variant="body2">
+                                      <strong>Crew Size:</strong> {loadout.employeeIds?.length || 0} members
+                                    </Typography>
+                                  </Box>
+                                  <Typography variant="body2">
+                                    <strong>Equipment:</strong> {loadout.equipmentIds?.length || 0} items
+                                  </Typography>
+                                </>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                  No loadout assigned
+                                </Typography>
+                              )}
+                            </Stack>
+                          </Grid>
 
-            {/* Loadout Selection */}
-            <FormControl fullWidth>
-              <InputLabel>Loadout (Optional)</InputLabel>
-              <Select
-                value={formData.loadoutId}
-                label="Loadout (Optional)"
-                onChange={(e) => setFormData({ ...formData, loadoutId: e.target.value as any })}
-              >
-                <MenuItem value="">None</MenuItem>
-                {loadouts?.map((loadout) => (
-                  <MenuItem key={loadout._id} value={loadout._id}>
-                    {loadout.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                          {/* Special Instructions & Notes */}
+                          {(workOrder.specialInstructions || workOrder.notes) && (
+                            <Grid item xs={12}>
+                              <Divider sx={{ my: 2 }} />
+                              {workOrder.specialInstructions && (
+                                <Box sx={{ mb: 2 }}>
+                                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Special Instructions
+                                  </Typography>
+                                  <Typography variant="body2">{workOrder.specialInstructions}</Typography>
+                                </Box>
+                              )}
+                              {workOrder.notes && (
+                                <Box>
+                                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Internal Notes
+                                  </Typography>
+                                  <Typography variant="body2">{workOrder.notes}</Typography>
+                                </Box>
+                              )}
+                            </Grid>
+                          )}
 
-            {/* PO Number */}
-            <TextField
-              fullWidth
-              label="PO Number"
-              value={formData.poNumber}
-              onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
-              placeholder="Customer PO or reference number"
-            />
+                          {/* Time Tracking Section */}
+                          {workOrder.workOrderStatus === "In Progress" && (
+                            <Grid item xs={12}>
+                              <Divider sx={{ my: 2 }} />
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+                                <TimerIcon color="primary" />
+                                <Typography variant="h6">Time Tracking</Typography>
+                              </Box>
+                              <TimeTracker workOrderId={workOrder._id} />
+                            </Grid>
+                          )}
 
-            {/* Special Instructions */}
-            <TextField
-              fullWidth
-              label="Special Instructions"
-              multiline
-              rows={2}
-              value={formData.specialInstructions}
-              onChange={(e) => setFormData({ ...formData, specialInstructions: e.target.value })}
-              placeholder="Gate codes, hazards, special requirements..."
-            />
+                          {/* Action Buttons */}
+                          <Grid item xs={12}>
+                            <Divider sx={{ my: 2 }} />
+                            <Stack direction="row" spacing={2} flexWrap="wrap">
+                              <Button
+                                variant="outlined"
+                                startIcon={<ViewIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/dashboard/work-orders/${workOrder._id}`);
+                                }}
+                              >
+                                View Full Dashboard
+                              </Button>
 
-            {/* Notes */}
-            <TextField
-              fullWidth
-              label="Internal Notes"
-              multiline
-              rows={2}
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Internal notes about this work order..."
-            />
+                              {(!workOrder.workOrderStatus || workOrder.workOrderStatus === "Scheduled") && (
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  startIcon={<StartIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartWork(workOrder);
+                                  }}
+                                >
+                                  Start Work
+                                </Button>
+                              )}
+
+                              {workOrder.workOrderStatus === "In Progress" && (
+                                <Button
+                                  variant="contained"
+                                  color="success"
+                                  startIcon={<CompleteIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteWork(workOrder);
+                                  }}
+                                >
+                                  Complete Work Order
+                                </Button>
+                              )}
+
+                              {workOrder.workOrderStatus === "Completed" && (
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  startIcon={<InvoiceIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleConvertToInvoice(workOrder);
+                                  }}
+                                >
+                                  Create Invoice
+                                </Button>
+                              )}
+                            </Stack>
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    </Collapse>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleCreateDirectWorkOrder}
-            variant="contained"
-            disabled={
-              !formData.customerId ||
-              !formData.projectName ||
-              !formData.propertyAddress ||
-              !formData.serviceType ||
-              !formData.contractAmount
-            }
-          >
-            Create Work Order
-          </Button>
-        </DialogActions>
-      </Dialog>
+        )}
+      </Stack>
     </Container>
   );
 }
