@@ -94,6 +94,9 @@ function NewProposalPageContent() {
   const [scopeOfWork, setScopeOfWork] = useState("");
   const [notes, setNotes] = useState("");
   const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateCustomers, setDuplicateCustomers] = useState<any[]>([]);
+  const [leadToConvert, setLeadToConvert] = useState<any>(null);
 
   // Expanded sections
   const [customerExpanded, setCustomerExpanded] = useState(true);
@@ -188,20 +191,62 @@ function NewProposalPageContent() {
   };
 
   const handleSaveProposal = async () => {
+    console.log("🔍 handleSaveProposal called");
+    console.log("🔍 selectedCustomerId:", selectedCustomerId);
+    console.log("🔍 leadId:", leadId);
+    console.log("🔍 lineItems.length:", lineItems.length);
+
     if ((!selectedCustomerId && !leadId) || lineItems.length === 0) {
+      console.log("❌ Validation failed");
       alert("Please select a customer or lead and add at least one line item");
       return;
     }
 
+    console.log("✅ Validation passed, proceeding to save");
     try {
       let projectId: Id<"projects">;
+      let customerId: Id<"customers"> | undefined;
 
       const selectedCustomer = customers?.find((c) => c._id === selectedCustomerId);
 
-      // If converting from lead, update the existing project
+      // If converting from lead, check for duplicate customers first
       if (leadId) {
+        const lead = leads?.find(l => l._id === leadId);
+
+        // Check if lead already has a customer linked
+        if (lead?.customerId) {
+          customerId = lead.customerId;
+        } else if (lead) {
+          // Search for potential duplicate customers by email or phone
+          const potentialDuplicates = customers?.filter(c =>
+            (lead.customerEmail && c.email === lead.customerEmail) ||
+            (lead.customerPhone && c.phone === lead.customerPhone)
+          ) || [];
+
+          if (potentialDuplicates.length > 0) {
+            // Found potential duplicates - show dialog
+            setDuplicateCustomers(potentialDuplicates);
+            setLeadToConvert(lead);
+            setShowDuplicateDialog(true);
+            return; // Exit here, user will choose what to do
+          } else {
+            // No duplicates found, create new customer from lead
+            customerId = await createCustomer({
+              name: lead.customerName || "",
+              email: lead.customerEmail || "",
+              phone: lead.customerPhone || "",
+              propertyAddress: lead.propertyAddress || "",
+              source: lead.leadSource || "Lead",
+              customerType: "Residential",
+              preferredContactMethod: "Phone",
+            });
+          }
+        }
+
+        // Update the project with customer ID and change status to Proposal
         await updateProject({
           id: leadId,
+          customerId,
           status: "Proposal",
           proposalStatus: "Draft",
           estimatedValue: totalInvestment,
