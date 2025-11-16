@@ -798,66 +798,36 @@ function NewProposalPageContent() {
             <Box sx={{ p: 3, pt: 0 }}>
               <Stack spacing={2}>
                 <Typography variant="body2" color="text.secondary">
-                  Save this proposal, send to customer, or approve to begin work.
+                  Save this proposal or send it to the customer.
                 </Typography>
 
-                {/* Primary Actions */}
-                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                <Box sx={{ display: "flex", gap: 2 }}>
                   <Button
                     variant="outlined"
                     onClick={handleSaveProposal}
                     size="large"
-                    sx={{ flex: "1 1 200px" }}
+                    fullWidth
                     disabled={!selectedCustomerId}
                   >
-                    Save Draft
+                    Save
                   </Button>
                   <Button
                     variant="contained"
                     startIcon={<SendIcon />}
                     onClick={handleSaveProposal}
                     size="large"
-                    sx={{ flex: "1 1 200px" }}
+                    fullWidth
                     disabled={!selectedCustomerId || lineItems.length === 0}
                   >
                     Save & Send
                   </Button>
                   <Button
-                    variant="contained"
-                    color="success"
-                    onClick={handleSaveProposal}
+                    variant="outlined"
                     size="large"
-                    sx={{ flex: "1 1 200px" }}
+                    fullWidth
                     disabled={!selectedCustomerId || lineItems.length === 0}
                   >
-                    Approve & Create Work Order
-                  </Button>
-                </Box>
-
-                {/* Secondary Actions */}
-                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                  <Button
-                    variant="outlined"
-                    size="medium"
-                    sx={{ flex: "1 1 150px" }}
-                    disabled={!selectedCustomerId || lineItems.length === 0}
-                  >
-                    Export PDF
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="medium"
-                    sx={{ flex: "1 1 150px" }}
-                    disabled={!selectedCustomerId || lineItems.length === 0}
-                  >
-                    Print
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="medium"
-                    sx={{ flex: "1 1 150px" }}
-                  >
-                    Duplicate
+                    Export
                   </Button>
                 </Box>
               </Stack>
