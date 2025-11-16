@@ -187,12 +187,16 @@ export default function MulchingCalculator({
       cat.factors.filter((f) => selectedAfissFactors.includes(f.id))
     );
 
+    const adjustedScore = baseScore * productionMultiplier * timeMultiplier;
+
     const lineItemData = {
       serviceType: "Forestry Mulching",
       description: `${acres} acres, ${dbhPackage}" DBH package - ${baseScore.toFixed(1)} inch-acres${selectedFactorDetails.length > 0 ? ` (${selectedFactorDetails.length} AFISS factors)` : ""}`,
       formulaUsed: `Acres × DBH Package = ${acres} × ${dbhPackage}`,
       workVolumeInputs: { acres, dbhPackage },
       baseScore: baseScore,
+      complexityMultiplier: productionMultiplier * timeMultiplier,
+      adjustedScore: adjustedScore,
       termsAndConditions: MULCHING_TERMS,
       afissFactors: selectedFactorDetails.map((f) => ({
         id: f.id,
@@ -318,14 +322,21 @@ export default function MulchingCalculator({
         )}
       </Box>
 
-      {loadout && (
+      {loadout ? (
         <Button
           variant="contained"
           onClick={handleCreateLineItem}
           fullWidth
+          size="large"
         >
           Add to Proposal
         </Button>
+      ) : (
+        <Paper sx={{ p: 2, bgcolor: 'error.dark' }}>
+          <Typography variant="body2" color="error.light">
+            ⚠️ No loadout configured. Please create a Forestry Mulching loadout in Settings first.
+          </Typography>
+        </Paper>
       )}
     </Stack>
   );
