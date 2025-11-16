@@ -188,8 +188,8 @@ function NewProposalPageContent() {
   };
 
   const handleSaveProposal = async () => {
-    if (!selectedCustomerId || lineItems.length === 0) {
-      alert("Please select a customer and add at least one line item");
+    if ((!selectedCustomerId && !leadId) || lineItems.length === 0) {
+      alert("Please select a customer or lead and add at least one line item");
       return;
     }
 
@@ -807,7 +807,7 @@ function NewProposalPageContent() {
                     onClick={handleSaveProposal}
                     size="large"
                     fullWidth
-                    disabled={!selectedCustomerId}
+                    disabled={!selectedCustomerId && !leadId}
                   >
                     Save
                   </Button>
@@ -817,7 +817,7 @@ function NewProposalPageContent() {
                     onClick={handleSaveProposal}
                     size="large"
                     fullWidth
-                    disabled={!selectedCustomerId || lineItems.length === 0}
+                    disabled={(!selectedCustomerId && !leadId) || lineItems.length === 0}
                   >
                     Save & Send
                   </Button>
@@ -829,7 +829,7 @@ function NewProposalPageContent() {
                       // TODO: Implement PDF export
                       alert("Export functionality coming soon!");
                     }}
-                    disabled={!selectedCustomerId || lineItems.length === 0}
+                    disabled={(!selectedCustomerId && !leadId) || lineItems.length === 0}
                   >
                     Export
                   </Button>
