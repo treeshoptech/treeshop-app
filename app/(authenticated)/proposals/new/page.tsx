@@ -20,7 +20,6 @@ import {
   Stack,
   TextField,
   Typography,
-  Grid,
   Collapse,
   Dialog,
   DialogTitle,
@@ -28,7 +27,6 @@ import {
   DialogActions,
 } from "@mui/material";
 import {
-  Add as AddIcon,
   Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
@@ -42,126 +40,14 @@ import {
   StumpGrindingCalculator,
   MulchingCalculator,
   LandClearingCalculator,
-  TreeRemovalCalculator,
-  TreeTrimmingCalculator,
 } from "@/app/components/calculators";
 import { Id } from "@/convex/_generated/dataModel";
-
-type ServiceType = "Stump Grinding" | "Forestry Mulching" | "Land Clearing" | "Tree Removal" | "Tree Trimming" | "Custom";
-
-// Custom Line Item Form Component
-function CustomLineItemForm({ onLineItemCreate }: { onLineItemCreate: (data: any) => void }) {
-  const [description, setDescription] = useState("");
-  const [hours, setHours] = useState(1);
-  const [pricePerHour, setPricePerHour] = useState(500);
-
-  const handleCreate = () => {
-    const totalPrice = hours * pricePerHour;
-    const totalCost = totalPrice * 0.5;
-
-    onLineItemCreate({
-      serviceType: "Custom",
-      description: description || "Custom line item",
-      formulaUsed: "Manual Entry",
-      workVolumeInputs: {},
-      baseScore: 0,
-      afissFactors: [],
-      loadoutId: undefined,
-      loadoutName: "Manual Entry",
-      productionRatePPH: 0,
-      costPerHour: totalCost / hours,
-      billingRatePerHour: pricePerHour,
-      targetMargin: 50,
-      productionHours: hours,
-      transportHours: 0,
-      bufferHours: 0,
-      totalEstimatedHours: hours,
-      pricingMethod: "Manual",
-      totalCost,
-      totalPrice,
-      profit: totalPrice - totalCost,
-      marginPercent: 50,
-    });
-  };
-
-  return (
-    <Stack spacing={3}>
-      <Typography variant="body2" color="text.secondary">
-        Create a custom line item for special services or one-off tasks
-      </Typography>
-      <TextField
-        label="Description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        fullWidth
-        required
-        multiline
-        rows={3}
-        placeholder="e.g., Emergency call-out fee, Special equipment rental, Debris hauling"
-      />
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Estimated Hours"
-            type="number"
-            value={hours}
-            onChange={(e) => setHours(parseFloat(e.target.value) || 1)}
-            fullWidth
-            InputProps={{ inputProps: { min: 0.5, max: 100, step: 0.5 } }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Price per Hour"
-            type="number"
-            value={pricePerHour}
-            onChange={(e) => setPricePerHour(parseFloat(e.target.value) || 100)}
-            fullWidth
-            InputProps={{
-              startAdornment: "$",
-              inputProps: { min: 0, max: 10000, step: 50 },
-            }}
-          />
-        </Grid>
-      </Grid>
-      <Paper sx={{ p: 2, bgcolor: "background.default" }}>
-        <Stack spacing={1}>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography variant="body2" color="text.secondary">
-              Total Hours
-            </Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {hours.toFixed(1)} hrs
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography variant="body2" color="text.secondary">
-              Total Price
-            </Typography>
-            <Typography variant="h6" color="primary">
-              {new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: "USD",
-              }).format(hours * pricePerHour)}
-            </Typography>
-          </Box>
-        </Stack>
-      </Paper>
-      <Button variant="contained" onClick={handleCreate} fullWidth size="large" disabled={!description}>
-        Create Line Item
-      </Button>
-    </Stack>
-  );
-}
 
 // Inner component that uses useSearchParams
 function NewProposalPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [lineItems, setLineItems] = useState<any[]>([]);
-  const [showServiceCatalog, setShowServiceCatalog] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [leadId, setLeadId] = useState<Id<"projects"> | null>(null);
 
   // Proposal data
@@ -182,7 +68,6 @@ function NewProposalPageContent() {
 
   // Pre-fill form from URL parameters (from lead)
   useEffect(() => {
-    const name = searchParams.get("customerName");
     const address = searchParams.get("propertyAddress");
     const id = searchParams.get("leadId");
 
@@ -202,20 +87,6 @@ function NewProposalPageContent() {
 
   const handleLineItemCreate = (lineItemData: any) => {
     setLineItems([...lineItems, { ...lineItemData, id: crypto.randomUUID() }]);
-    setShowCalculator(false);
-    setShowServiceCatalog(false);
-    setSelectedService(null);
-  };
-
-  const handleServiceSelect = (service: ServiceType) => {
-    setSelectedService(service);
-    setShowServiceCatalog(false);
-    setShowCalculator(true);
-  };
-
-  const handleCancelCalculator = () => {
-    setShowCalculator(false);
-    setSelectedService(null);
   };
 
   const handleRemoveLineItem = (id: string) => {
@@ -334,7 +205,7 @@ function NewProposalPageContent() {
           </Box>
         </Box>
 
-        {/* Customer Selection */}
+        {/* Customer Information */}
         <Paper sx={{ p: 3 }}>
           <Stack spacing={2}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -398,7 +269,7 @@ function NewProposalPageContent() {
           />
         </Paper>
 
-        {/* Line Items */}
+        {/* Pricing & Services */}
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>
             Pricing & Services
@@ -452,163 +323,9 @@ function NewProposalPageContent() {
             </Stack>
           )}
 
-          {/* Add Service Item Button */}
-          {!showCalculator && !showServiceCatalog && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setShowServiceCatalog(true)}
-              size="large"
-              fullWidth
-              sx={{ maxWidth: 300 }}
-            >
-              + Service Item
-            </Button>
-          )}
-
-          {/* Service Catalog */}
-          {showServiceCatalog && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Select Service to Add
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Choose a service type from the catalog
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={4}>
-                  <Card
-                    sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
-                    onClick={() => handleServiceSelect("Stump Grinding")}
-                  >
-                    <CardContent>
-                      <Typography variant="h6">Stump Grinding</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Individual stump removal
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <Card
-                    sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
-                    onClick={() => handleServiceSelect("Forestry Mulching")}
-                  >
-                    <CardContent>
-                      <Typography variant="h6">Forestry Mulching</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Acreage-based clearing
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <Card
-                    sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
-                    onClick={() => handleServiceSelect("Land Clearing")}
-                  >
-                    <CardContent>
-                      <Typography variant="h6">Land Clearing</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Heavy equipment work
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <Card
-                    sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
-                    onClick={() => handleServiceSelect("Tree Removal")}
-                  >
-                    <CardContent>
-                      <Typography variant="h6">Tree Removal</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Full tree takedown
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <Card
-                    sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
-                    onClick={() => handleServiceSelect("Tree Trimming")}
-                  >
-                    <CardContent>
-                      <Typography variant="h6">Tree Trimming</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Pruning & maintenance
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <Card
-                    sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
-                    onClick={() => handleServiceSelect("Custom")}
-                    variant="outlined"
-                  >
-                    <CardContent>
-                      <Typography variant="h6">Custom Line Item</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Manual entry
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-              <Box sx={{ mt: 3 }}>
-                <Button onClick={() => setShowServiceCatalog(false)}>Cancel</Button>
-              </Box>
-            </Box>
-          )}
-
-          {/* Calculator Form */}
-          {showCalculator && selectedService && (
-            <Paper sx={{ p: 3, bgcolor: "background.default" }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-                <Typography variant="h6">{selectedService} Calculator</Typography>
-                <Button onClick={handleCancelCalculator}>Cancel</Button>
-              </Box>
-              <Divider sx={{ mb: 3 }} />
-              {selectedService === "Stump Grinding" && (
-                <StumpGrindingCalculator
-                  loadout={loadouts?.[0]}
-                  onLineItemCreate={handleLineItemCreate}
-                />
-              )}
-              {selectedService === "Forestry Mulching" && (
-                <MulchingCalculator
-                  loadout={loadouts?.[0]}
-                  onLineItemCreate={handleLineItemCreate}
-                />
-              )}
-              {selectedService === "Land Clearing" && (
-                <LandClearingCalculator
-                  loadout={loadouts?.[0]}
-                  onLineItemCreate={handleLineItemCreate}
-                />
-              )}
-              {selectedService === "Tree Removal" && (
-                <TreeRemovalCalculator
-                  loadout={loadouts?.[0]}
-                  onLineItemCreate={handleLineItemCreate}
-                />
-              )}
-              {selectedService === "Tree Trimming" && (
-                <TreeTrimmingCalculator
-                  loadout={loadouts?.[0]}
-                  onLineItemCreate={handleLineItemCreate}
-                />
-              )}
-              {selectedService === "Custom" && (
-                <CustomLineItemForm onLineItemCreate={handleLineItemCreate} />
-              )}
-            </Paper>
-          )}
-
           {/* Total */}
           {lineItems.length > 0 && (
-            <Box sx={{ mt: 3, p: 2, bgcolor: "primary.dark", borderRadius: 1 }}>
+            <Box sx={{ p: 2, bgcolor: "primary.dark", borderRadius: 1, mb: 3 }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <Typography variant="h6">Proposal Total (USD)</Typography>
                 <Typography variant="h4">
@@ -620,6 +337,50 @@ function NewProposalPageContent() {
               </Box>
             </Box>
           )}
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* ADD SERVICE ITEMS - ALL ON SAME PAGE */}
+          <Typography variant="h6" gutterBottom>
+            Add Service Items
+          </Typography>
+
+          {/* Stump Grinding */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+              Stump Grinding
+            </Typography>
+            <StumpGrindingCalculator
+              loadout={loadouts?.[0]}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Forestry Mulching */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+              Forestry Mulching
+            </Typography>
+            <MulchingCalculator
+              loadout={loadouts?.[0]}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Land Clearing */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+              Land Clearing
+            </Typography>
+            <LandClearingCalculator
+              loadout={loadouts?.[0]}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
         </Paper>
 
         {/* Notes */}
