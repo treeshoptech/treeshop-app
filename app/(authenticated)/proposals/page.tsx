@@ -423,6 +423,58 @@ export default function ProposalsPage() {
                             </Grid>
                           )}
 
+                          {/* Summary & Totals */}
+                          <Grid item xs={12}>
+                            <Divider sx={{ my: 2 }} />
+                            <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
+                              <Grid container spacing={2}>
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Summary
+                                  </Typography>
+                                  <Stack spacing={1}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                      <Typography variant="body2">Line Items Subtotal:</Typography>
+                                      <Typography variant="body2" fontWeight={500}>
+                                        {new Intl.NumberFormat("en-US", {
+                                          style: "currency",
+                                          currency: "USD",
+                                        }).format(proposalValue)}
+                                      </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                      <Typography variant="body2">Total Hours:</Typography>
+                                      <Typography variant="body2" fontWeight={500}>
+                                        {proposalLineItems.reduce((sum, li) => sum + (li.totalEstimatedHours || 0), 0).toFixed(1)} hrs
+                                      </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                      <Typography variant="body2">Number of Items:</Typography>
+                                      <Typography variant="body2" fontWeight={500}>
+                                        {proposalLineItems.length}
+                                      </Typography>
+                                    </Box>
+                                  </Stack>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Total Investment
+                                  </Typography>
+                                  <Typography variant="h4" color="success.main" sx={{ fontWeight: 600 }}>
+                                    {new Intl.NumberFormat("en-US", {
+                                      style: "currency",
+                                      currency: "USD",
+                                      minimumFractionDigits: 0,
+                                    }).format(proposalValue)}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    All-inclusive pricing
+                                  </Typography>
+                                </Grid>
+                              </Grid>
+                            </Paper>
+                          </Grid>
+
                           {/* Action Buttons */}
                           <Grid item xs={12}>
                             <Divider sx={{ my: 2 }} />
