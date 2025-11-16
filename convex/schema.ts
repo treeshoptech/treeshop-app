@@ -215,6 +215,11 @@ export default defineSchema({
     name: v.optional(v.string()),
     serviceType: v.string(),
     status: v.string(), // "Lead", "Proposal", "Work Order", "Invoice", "Completed"
+    proposalStatus: v.optional(v.string()),
+    workOrderStatus: v.optional(v.string()),
+    invoiceStatus: v.optional(v.string()),
+    scheduledDate: v.optional(v.number()),
+    amountPaid: v.optional(v.number()),
     propertyAddress: v.string(),
     driveTimeMinutes: v.optional(v.number()),
     treeShopScore: v.optional(v.number()),
