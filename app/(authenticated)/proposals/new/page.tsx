@@ -46,6 +46,10 @@ import {
   Business as BusinessIcon,
   LocalOffer as TagIcon,
   Note as NoteIcon,
+  Yard as ForestIcon,
+  BubbleChart as StumpIcon,
+  Landscape as LandIcon,
+  ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -518,32 +522,133 @@ function NewProposalPageContent() {
 
               <Divider sx={{ my: 3 }} />
 
-              {/* Service Selection Buttons */}
-              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-                Add Service
+              {/* Service Selection - Card Style */}
+              <Typography variant="subtitle2" gutterBottom sx={{ mb: 2, color: 'text.secondary' }}>
+                SELECT SERVICE TYPE
               </Typography>
-              <Stack direction="row" spacing={2} flexWrap="wrap" gap={2}>
-                <Button
-                  variant="contained"
-                  onClick={() => setActiveCalculator("Stump Grinding")}
-                  size="large"
-                >
-                  Stump Grinding
-                </Button>
-                <Button
-                  variant="contained"
+              <Stack spacing={2}>
+                {/* Forestry Mulching */}
+                <Paper
                   onClick={() => setActiveCalculator("Forestry Mulching")}
-                  size="large"
+                  sx={{
+                    p: 2,
+                    cursor: 'pointer',
+                    bgcolor: '#2C2C2E',
+                    border: '1px solid #3C3C3E',
+                    borderRadius: 2,
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: '#3C3C3E',
+                      borderColor: '#00D26A',
+                      transform: 'translateX(4px)',
+                    }
+                  }}
                 >
-                  Forestry Mulching
-                </Button>
-                <Button
-                  variant="contained"
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 2,
+                      bgcolor: '#1e4620',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <ForestIcon sx={{ fontSize: 32, color: '#00D26A' }} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#00D26A', mb: 0.5 }}>
+                        Forestry Mulching
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Clear vegetation by acreage and DBH
+                      </Typography>
+                    </Box>
+                    <ChevronRightIcon sx={{ color: 'text.secondary' }} />
+                  </Box>
+                </Paper>
+
+                {/* Stump Grinding */}
+                <Paper
+                  onClick={() => setActiveCalculator("Stump Grinding")}
+                  sx={{
+                    p: 2,
+                    cursor: 'pointer',
+                    bgcolor: '#2C2C2E',
+                    border: '1px solid #3C3C3E',
+                    borderRadius: 2,
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: '#3C3C3E',
+                      borderColor: '#00D26A',
+                      transform: 'translateX(4px)',
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 2,
+                      bgcolor: '#3d2d1f',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <StumpIcon sx={{ fontSize: 32, color: '#ff9500' }} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#00D26A', mb: 0.5 }}>
+                        Stump Grinding
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Grind stumps with diameter and depth
+                      </Typography>
+                    </Box>
+                    <ChevronRightIcon sx={{ color: 'text.secondary' }} />
+                  </Box>
+                </Paper>
+
+                {/* Land Clearing */}
+                <Paper
                   onClick={() => setActiveCalculator("Land Clearing")}
-                  size="large"
+                  sx={{
+                    p: 2,
+                    cursor: 'pointer',
+                    bgcolor: '#2C2C2E',
+                    border: '1px solid #3C3C3E',
+                    borderRadius: 2,
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: '#3C3C3E',
+                      borderColor: '#00D26A',
+                      transform: 'translateX(4px)',
+                    }
+                  }}
                 >
-                  Land Clearing
-                </Button>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 2,
+                      bgcolor: '#3a2f24',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <LandIcon sx={{ fontSize: 32, color: '#8e7654' }} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: '#00D26A', mb: 0.5 }}>
+                        Land Clearing
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Clear lots by project type and intensity
+                      </Typography>
+                    </Box>
+                    <ChevronRightIcon sx={{ color: 'text.secondary' }} />
+                  </Box>
+                </Paper>
               </Stack>
             </Box>
           </Collapse>
