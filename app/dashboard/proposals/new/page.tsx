@@ -84,8 +84,8 @@ function NewProposalPageContent() {
     if (address) setScopeOfWork(`Work to be performed at: ${address}`);
     if (id) setLeadId(id as Id<"projects">);
 
-    // Auto-create customer from lead
-    if (name && !selectedCustomerId) {
+    // Auto-create customer from lead (only if customers query has loaded)
+    if (name && !selectedCustomerId && customers !== undefined) {
       const nameParts = name.trim().split(" ");
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
@@ -105,7 +105,7 @@ function NewProposalPageContent() {
         console.error("Error auto-creating customer from lead:", error);
       });
     }
-  }, [searchParams, createCustomer, selectedCustomerId]);
+  }, [searchParams, createCustomer, selectedCustomerId, customers]);
 
   // Fetch data
   const loadouts = useQuery(api.loadouts.list);
