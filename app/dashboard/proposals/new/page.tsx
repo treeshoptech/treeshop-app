@@ -73,6 +73,16 @@ function NewProposalPageContent() {
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
 
+  // Fetch data FIRST
+  const loadouts = useQuery(api.loadouts.list);
+  const customers = useQuery(api.customers.list);
+
+  // Mutations
+  const createProject = useMutation(api.projects.create);
+  const updateProject = useMutation(api.projects.update);
+  const createLineItem = useMutation(api.lineItems.create);
+  const createCustomer = useMutation(api.customers.create);
+
   // Pre-fill form from URL parameters (from lead)
   useEffect(() => {
     const name = searchParams.get("customerName");
@@ -107,16 +117,6 @@ function NewProposalPageContent() {
       });
     }
   }, [searchParams, customers, createCustomer]);
-
-  // Fetch data
-  const loadouts = useQuery(api.loadouts.list);
-  const customers = useQuery(api.customers.list);
-
-  // Mutations
-  const createProject = useMutation(api.projects.create);
-  const updateProject = useMutation(api.projects.update);
-  const createLineItem = useMutation(api.lineItems.create);
-  const createCustomer = useMutation(api.customers.create);
 
   const handleLineItemCreate = (lineItemData: any) => {
     setLineItems([...lineItems, { ...lineItemData, id: crypto.randomUUID() }]);
