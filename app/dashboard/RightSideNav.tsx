@@ -63,7 +63,7 @@ const menuSections = [
       {
         title: 'Proposals',
         icon: <ProposalIcon />,
-        path: '/dashboard/proposals',
+        path: '/proposals',
       },
       {
         title: 'Work Orders',
