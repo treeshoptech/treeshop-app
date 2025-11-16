@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Box,
   Checkbox,
@@ -9,17 +9,20 @@ import {
   IconButton,
   Paper,
   Stack,
+  TextField,
   Typography,
+  Chip,
 } from "@mui/material";
 import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 
 export type AfissFactor = {
   id: string;
   label: string;
-  impact: number; // Negative percentage (e.g., -27 for -27%)
+  impact: number; // Keep for internal calculation only - NEVER show to user
   description?: string;
 };
 
@@ -40,9 +43,9 @@ export function AfissSelector({
   selectedFactors,
   onFactorsChange,
 }: AfissSelectorProps) {
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(
-    categories.map((c) => c.id)
-  );
+  // All categories collapsed by default
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -60,54 +63,82 @@ export function AfissSelector({
     );
   };
 
-  // Calculate total impact (compound multiplication)
-  const calculateTotalImpact = () => {
-    let multiplier = 1.0;
+  // Search/autocomplete functionality
+  const searchResults = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+
+    const term = searchTerm.toLowerCase();
+    const results: Array<{ factor: AfissFactor; category: AfissCategory }> = [];
 
     categories.forEach((category) => {
       category.factors.forEach((factor) => {
-        if (selectedFactors.includes(factor.id)) {
-          multiplier *= 1 + factor.impact / 100;
+        if (factor.label.toLowerCase().includes(term)) {
+          results.push({ factor, category });
         }
       });
     });
 
-    const totalImpactPercent = (1 - multiplier) * 100;
-    return totalImpactPercent;
-  };
+    return results.slice(0, 5); // Top 5 matches
+  }, [searchTerm, categories]);
 
-  const totalImpact = calculateTotalImpact();
+  const handleSearchResultClick = (factorId: string) => {
+    if (!selectedFactors.includes(factorId)) {
+      onFactorsChange([...selectedFactors, factorId]);
+    }
+    setSearchTerm("");
+  };
 
   return (
     <Box>
-      <Paper sx={{ p: 2, mb: 2, bgcolor: "#1C1C1E", border: "1px solid #2C2C2E" }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-          AFISS Complexity Factors
+      {/* Search Bar */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Site Assessment Factors
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Select all factors that apply to this job. Each factor impacts production rate.
+          Search or browse to identify site conditions
         </Typography>
+        <TextField
+          fullWidth
+          placeholder="Search factors (e.g., 'power lines', 'steep', 'wetlands')"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
+          }}
+        />
 
-        {totalImpact > 0 && (
-          <Box
-            sx={{
-              p: 1.5,
-              bgcolor: "rgba(255, 149, 0, 0.1)",
-              border: "1px solid #FF9500",
-              borderRadius: 1,
-              mb: 2,
-            }}
-          >
-            <Typography variant="body2" sx={{ fontWeight: 700, color: "#FF9500" }}>
-              Total Production Impact: {totalImpact.toFixed(1)}% slower
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+              Quick Add:
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Production rate reduced to {(100 - totalImpact).toFixed(1)}% of normal
-            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+              {searchResults.map(({ factor, category }) => (
+                <Chip
+                  key={factor.id}
+                  label={`${factor.label} (${category.name})`}
+                  onClick={() => handleSearchResultClick(factor.id)}
+                  color={selectedFactors.includes(factor.id) ? "success" : "default"}
+                  sx={{ cursor: "pointer" }}
+                />
+              ))}
+            </Stack>
           </Box>
         )}
       </Paper>
 
+      {/* Selected Factors Count */}
+      {selectedFactors.length > 0 && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: "success.dark" }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {selectedFactors.length} factor{selectedFactors.length !== 1 ? "s" : ""} identified
+          </Typography>
+        </Paper>
+      )}
+
+      {/* Categories - Collapsed by Default */}
       <Stack spacing={1}>
         {categories.map((category) => {
           const selectedInCategory = category.factors.filter((f) =>
@@ -116,14 +147,7 @@ export function AfissSelector({
           const isExpanded = expandedCategories.includes(category.id);
 
           return (
-            <Paper
-              key={category.id}
-              sx={{
-                bgcolor: "#1C1C1E",
-                border: "1px solid #2C2C2E",
-                overflow: "hidden",
-              }}
-            >
+            <Paper key={category.id} sx={{ overflow: "hidden" }}>
               {/* Category Header */}
               <Box
                 sx={{
@@ -132,7 +156,7 @@ export function AfissSelector({
                   alignItems: "center",
                   justifyContent: "space-between",
                   cursor: "pointer",
-                  "&:hover": { bgcolor: "rgba(255, 255, 255, 0.05)" },
+                  "&:hover": { bgcolor: "action.hover" },
                 }}
                 onClick={() => toggleCategory(category.id)}
               >
@@ -141,18 +165,12 @@ export function AfissSelector({
                     {category.name}
                   </Typography>
                   {selectedInCategory > 0 && (
-                    <Box
-                      sx={{
-                        px: 1,
-                        py: 0.25,
-                        bgcolor: "#FF9500",
-                        borderRadius: 1,
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {selectedInCategory}
-                    </Box>
+                    <Chip
+                      label={selectedInCategory}
+                      size="small"
+                      color="success"
+                      sx={{ height: 20, fontSize: "0.7rem" }}
+                    />
                   )}
                 </Box>
                 <IconButton size="small">
@@ -160,9 +178,9 @@ export function AfissSelector({
                 </IconButton>
               </Box>
 
-              {/* Category Factors */}
+              {/* Category Factors - NO PERCENTAGES SHOWN */}
               <Collapse in={isExpanded}>
-                <Box sx={{ px: 2, pb: 2 }}>
+                <Box sx={{ px: 2, pb: 2, bgcolor: "background.default" }}>
                   {category.factors.map((factor) => (
                     <FormControlLabel
                       key={factor.id}
@@ -170,35 +188,9 @@ export function AfissSelector({
                         <Checkbox
                           checked={selectedFactors.includes(factor.id)}
                           onChange={() => handleFactorToggle(factor.id)}
-                          sx={{
-                            color: "#8E8E93",
-                            "&.Mui-checked": { color: "#FF9500" },
-                          }}
                         />
                       }
-                      label={
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            width: "100%",
-                          }}
-                        >
-                          <Typography variant="body2">{factor.label}</Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: 700,
-                              color: factor.impact < 0 ? "#FF3B30" : "#34C759",
-                              ml: 2,
-                            }}
-                          >
-                            {factor.impact > 0 ? "+" : ""}
-                            {factor.impact}%
-                          </Typography>
-                        </Box>
-                      }
+                      label={<Typography variant="body2">{factor.label}</Typography>}
                       sx={{ display: "flex", width: "100%", m: 0, py: 0.5 }}
                     />
                   ))}
