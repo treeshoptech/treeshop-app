@@ -83,16 +83,28 @@ function NewProposalPageContent() {
     if (address) setScopeOfWork(`Work to be performed at: ${address}`);
     if (id) setLeadId(id as Id<"projects">);
 
-    // Auto-fill new customer form if coming from lead
-    if (name) {
-      setNewCustomerName(name);
-      setNewCustomerEmail(email || "");
-      setNewCustomerPhone(phone || "");
-      setNewCustomerAddress(address || "");
-      // Auto-open customer dialog
-      setShowNewCustomerDialog(true);
+    // Auto-create customer from lead (only run once, check if customers loaded and no customer selected yet)
+    if (name && customers !== undefined && !selectedCustomerId) {
+      const nameParts = name.trim().split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      createCustomer({
+        firstName,
+        lastName,
+        email: email || undefined,
+        phone: phone || undefined,
+        propertyAddress: address || "",
+      }).then((customerId) => {
+        setSelectedCustomerId(customerId);
+        // Auto-expand line items section
+        setCustomerExpanded(false);
+        setLineItemsExpanded(true);
+      }).catch((error) => {
+        console.error("Error auto-creating customer from lead:", error);
+      });
     }
-  }, [searchParams]);
+  }, [searchParams, customers, createCustomer, selectedCustomerId]);
 
   // Fetch data
   const loadouts = useQuery(api.loadouts.list);
