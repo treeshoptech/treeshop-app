@@ -15,6 +15,32 @@ export const list = query({
   },
 });
 
+// List loadouts that can perform a specific service type
+export const listByServiceType = query({
+  args: { serviceType: v.string() },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    const allLoadouts = await ctx.db
+      .query("loadouts")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .collect();
+
+    // Filter to only loadouts that can perform this service
+    return allLoadouts.filter((loadout) => {
+      // Check new serviceTypes array
+      if (loadout.serviceTypes && loadout.serviceTypes.length > 0) {
+        return loadout.serviceTypes.includes(args.serviceType);
+      }
+      // Fallback to legacy serviceType field
+      if (loadout.serviceType) {
+        return loadout.serviceType === args.serviceType;
+      }
+      return false;
+    });
+  },
+});
+
 // Get single loadout
 export const get = query({
   args: { id: v.id("loadouts") },
@@ -38,14 +64,29 @@ export const get = query({
 export const create = mutation({
   args: {
     name: v.string(),
-    serviceType: v.string(),
+    // NEW: Multiple service types
+    serviceTypes: v.optional(v.array(v.string())),
+    // NEW: Service-specific production rates
+    productionRates: v.optional(v.object({
+      "Forestry Mulching": v.optional(v.number()),
+      "Land Clearing": v.optional(v.number()),
+      "Brush Clearing": v.optional(v.number()),
+      "Stump Grinding": v.optional(v.number()),
+      "Tree Removal": v.optional(v.number()),
+      "Tree Trimming": v.optional(v.number()),
+    })),
+    // DEPRECATED: Legacy fields (kept for backward compatibility)
+    serviceType: v.optional(v.string()),
+    productionRate: v.optional(v.number()),
     equipmentIds: v.array(v.id("equipment")),
     employeeIds: v.array(v.id("employees")),
-    productionRate: v.number(), // Changed from productionRatePPH to match schema
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const org = await getOrganization(ctx);
+
+    // Convert legacy single service to array format if needed
+    const serviceTypes = args.serviceTypes || (args.serviceType ? [args.serviceType] : []);
 
     // Fetch all equipment to calculate costs
     const equipmentList = await Promise.all(
@@ -168,10 +209,14 @@ export const create = mutation({
     const loadoutId = await ctx.db.insert("loadouts", {
       organizationId: org._id,
       name: args.name,
+      // NEW: Multi-service support
+      serviceTypes,
+      productionRates: args.productionRates,
+      // DEPRECATED: Keep legacy fields for backward compatibility
       serviceType: args.serviceType,
+      productionRate: args.productionRate,
       equipmentIds: args.equipmentIds,
       employeeIds: args.employeeIds,
-      productionRate: args.productionRate,
       totalEquipmentCost,
       totalLaborCost,
       totalCostPerHour,
@@ -189,10 +234,22 @@ export const update = mutation({
   args: {
     id: v.id("loadouts"),
     name: v.optional(v.string()),
+    // NEW: Multiple service types
+    serviceTypes: v.optional(v.array(v.string())),
+    // NEW: Service-specific production rates
+    productionRates: v.optional(v.object({
+      "Forestry Mulching": v.optional(v.number()),
+      "Land Clearing": v.optional(v.number()),
+      "Brush Clearing": v.optional(v.number()),
+      "Stump Grinding": v.optional(v.number()),
+      "Tree Removal": v.optional(v.number()),
+      "Tree Trimming": v.optional(v.number()),
+    })),
+    // DEPRECATED: Legacy fields
     serviceType: v.optional(v.string()),
+    productionRate: v.optional(v.number()),
     equipmentIds: v.optional(v.array(v.id("equipment"))),
     employeeIds: v.optional(v.array(v.id("employees"))),
-    productionRate: v.optional(v.number()),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {

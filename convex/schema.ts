@@ -131,10 +131,29 @@ export default defineSchema({
   loadouts: defineTable({
     organizationId: v.id("organizations"),
     name: v.string(),
-    serviceType: v.string(), // "Forestry Mulching", "Land Clearing", "Stump Grinding", "Tree Removal", "Tree Trimming"
+
+    // NEW: Multiple service types this loadout can perform
+    serviceTypes: v.array(v.string()), // ["Forestry Mulching", "Land Clearing", "Brush Clearing"]
+
+    // DEPRECATED: Legacy single service type (kept for backward compatibility)
+    serviceType: v.optional(v.string()),
+
     equipmentIds: v.array(v.id("equipment")),
     employeeIds: v.array(v.id("employees")),
-    productionRate: v.number(), // PpH (Points per Hour)
+
+    // NEW: Service-specific production rates
+    productionRates: v.optional(v.object({
+      "Forestry Mulching": v.optional(v.number()),
+      "Land Clearing": v.optional(v.number()),
+      "Brush Clearing": v.optional(v.number()),
+      "Stump Grinding": v.optional(v.number()),
+      "Tree Removal": v.optional(v.number()),
+      "Tree Trimming": v.optional(v.number()),
+    })),
+
+    // DEPRECATED: Legacy single production rate (kept for backward compatibility)
+    productionRate: v.optional(v.number()), // PpH (Points per Hour)
+
     totalEquipmentCost: v.number(),
     totalLaborCost: v.number(),
     totalCostPerHour: v.number(),
