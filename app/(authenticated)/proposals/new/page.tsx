@@ -808,7 +808,7 @@ function NewProposalPageContent() {
                     onClick={handleSaveProposal}
                     size="large"
                     sx={{ flex: "1 1 200px" }}
-                    disabled={!selectedCustomerId || lineItems.length === 0}
+                    disabled={!selectedCustomerId}
                   >
                     Save Draft
                   </Button>
@@ -856,7 +856,6 @@ function NewProposalPageContent() {
                     variant="outlined"
                     size="medium"
                     sx={{ flex: "1 1 150px" }}
-                    disabled={!selectedCustomerId || lineItems.length === 0}
                   >
                     Duplicate
                   </Button>
