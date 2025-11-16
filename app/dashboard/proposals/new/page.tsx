@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -47,6 +47,7 @@ function NewProposalPageContent() {
   const searchParams = useSearchParams();
   const [lineItems, setLineItems] = useState<any[]>([]);
   const [leadId, setLeadId] = useState<Id<"projects"> | null>(null);
+  const customerCreatedRef = useRef(false);
 
   // Proposal data
   const [selectedCustomerId, setSelectedCustomerId] = useState<Id<"customers"> | "">("");
@@ -83,8 +84,9 @@ function NewProposalPageContent() {
     if (address) setScopeOfWork(`Work to be performed at: ${address}`);
     if (id) setLeadId(id as Id<"projects">);
 
-    // Auto-create customer from lead (only run once, check if customers loaded and no customer selected yet)
-    if (name && customers !== undefined && !selectedCustomerId) {
+    // Auto-create customer from lead (only run once)
+    if (name && customers !== undefined && !customerCreatedRef.current) {
+      customerCreatedRef.current = true;
       const nameParts = name.trim().split(" ");
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
@@ -104,7 +106,7 @@ function NewProposalPageContent() {
         console.error("Error auto-creating customer from lead:", error);
       });
     }
-  }, [searchParams, customers, createCustomer, selectedCustomerId]);
+  }, [searchParams, customers, createCustomer]);
 
   // Fetch data
   const loadouts = useQuery(api.loadouts.list);
