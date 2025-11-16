@@ -195,7 +195,6 @@ function NewProposalPageContent() {
     try {
       let projectId: Id<"projects">;
 
-      const totalValue = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const selectedCustomer = customers?.find((c) => c._id === selectedCustomerId);
 
       // If converting from lead, update the existing project
@@ -204,7 +203,7 @@ function NewProposalPageContent() {
           id: leadId,
           status: "Proposal",
           proposalStatus: "Draft",
-          estimatedValue: totalValue,
+          estimatedValue: totalInvestment,
         });
         projectId = leadId;
       } else {
@@ -219,7 +218,7 @@ function NewProposalPageContent() {
           serviceType: lineItems[0]?.serviceType || "Stump Grinding",
           status: "Proposal",
           proposalStatus: "Draft",
-          estimatedValue: totalValue,
+          estimatedValue: totalInvestment,
           notes: scopeOfWork,
         });
       }
@@ -260,7 +259,23 @@ function NewProposalPageContent() {
     }
   };
 
-  const totalValue = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  // Calculate proposal-level totals
+  const lineItemsTotal = lineItems.reduce((sum, item) => sum + (item.lineItemPrice || item.totalPrice || 0), 0);
+  const totalWorkHours = lineItems.reduce((sum, item) => sum + (item.totalWorkHours || item.totalEstimatedHours || 0), 0);
+
+  // Transport calculated ONCE for entire project (30 min default drive time, 0.5 rate)
+  const driveTimeMinutes = 30; // TODO: Get from customer address
+  const transportHours = (driveTimeMinutes / 60 * 2) * 0.5;
+  const avgBillingRate = lineItemsTotal / (totalWorkHours || 1); // Avoid division by zero
+  const transportCost = transportHours * avgBillingRate;
+
+  // Buffer calculated ONCE for entire project (10% of work + transport)
+  const bufferHours = (totalWorkHours + transportHours) * 0.10;
+  const bufferCost = bufferHours * avgBillingRate;
+
+  // Total Investment = Line Items + Transport + Buffer
+  const totalInvestment = lineItemsTotal + transportCost + bufferCost;
+
   const selectedCustomer = customers?.find((c) => c._id === selectedCustomerId);
 
   // Auto-aggregate unique terms from all line items
@@ -477,10 +492,10 @@ function NewProposalPageContent() {
                             </Box>
                             <Box sx={{ textAlign: 'right' }}>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                Estimated Time
+                                Work Hours
                               </Typography>
                               <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                                {(item.totalEstimatedHours && !isNaN(item.totalEstimatedHours)) ? item.totalEstimatedHours.toFixed(1) : '0.0'} hrs
+                                {(item.totalWorkHours || item.totalEstimatedHours) && !isNaN(item.totalWorkHours || item.totalEstimatedHours) ? (item.totalWorkHours || item.totalEstimatedHours).toFixed(1) : '0.0'} hrs
                               </Typography>
                             </Box>
                           </Box>
@@ -500,21 +515,29 @@ function NewProposalPageContent() {
                       p: 3,
                     }}
                   >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                           TOTAL INVESTMENT
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {lineItems.length} service{lineItems.length !== 1 ? 's' : ''}
+                          {lineItems.length} service{lineItems.length !== 1 ? 's' : ''} • {totalWorkHours.toFixed(1)} work hrs • {transportHours.toFixed(1)} transport • {bufferHours.toFixed(1)} buffer
                         </Typography>
                       </Box>
                       <Typography variant="h3" sx={{ fontWeight: 900, color: '#00D26A' }}>
                         {new Intl.NumberFormat("en-US", {
                           style: "currency",
                           currency: "USD",
-                        }).format(totalValue)}
+                        }).format(totalInvestment)}
                       </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 2, borderTop: '1px solid #3C3C3E' }}>
+                      <Typography variant="body2" color="text.secondary">Services Total:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(lineItemsTotal)}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary">Transport & Buffer:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(transportCost + bufferCost)}</Typography>
                     </Box>
                   </Paper>
                 </Stack>

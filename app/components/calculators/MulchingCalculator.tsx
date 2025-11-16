@@ -151,42 +151,33 @@ export default function MulchingCalculator({
   // Base score (NOT affected by AFISS - property doesn't change)
   const baseScore = acres * dbhPackage;
 
-  // Calculate time estimate with AFISS impacts
+  // Calculate work hours ONLY (no transport/buffer per line item)
   const timeEstimate = loadout
     ? (() => {
         // Step 1: Apply production impact to production rate
         const adjustedProductionRate = loadout.productionRatePPH * productionMultiplier;
 
-        // Step 2: Calculate base production hours with adjusted rate
-        const productionHours = baseScore / adjustedProductionRate;
+        // Step 2: Calculate work hours with adjusted rate
+        const workHours = baseScore / adjustedProductionRate;
 
-        // Step 3: Calculate transport
-        const transportHours = (driveTimeMinutes / 60) * TRANSPORT_RATES["Forestry Mulching"];
+        // Step 3: Apply AFISS time overhead multiplier
+        const timeOverheadHours = workHours * (1 - timeMultiplier); // Negative becomes positive
 
-        // Step 4: Apply time overhead multiplier to (production + transport)
-        const baseWorkTime = productionHours + transportHours;
-        const timeOverheadHours = baseWorkTime * (1 - timeMultiplier); // Negative becomes positive
-
-        // Step 5: Add buffer (10% of adjusted time)
-        const bufferHours = (baseWorkTime + timeOverheadHours) * 0.10;
-
-        const totalEstimatedHours = baseWorkTime + timeOverheadHours + bufferHours;
+        const totalWorkHours = workHours + timeOverheadHours;
 
         return {
-          productionHours,
-          transportHours,
-          timeOverheadHours, // New: AFISS time overhead
-          bufferHours,
-          totalEstimatedHours,
-          adjustedProductionRate, // Store for reference
+          workHours,
+          timeOverheadHours,
+          totalWorkHours,
+          adjustedProductionRate,
         };
       })()
     : null;
 
-  // Calculate pricing if loadout provided
+  // Calculate line item cost ONLY (no transport/buffer)
   const pricing = loadout && timeEstimate
     ? calculatePricing({
-        totalEstimatedHours: timeEstimate.totalEstimatedHours,
+        totalEstimatedHours: timeEstimate.totalWorkHours,
         costPerHour: loadout.costPerHour,
         targetMargin: loadout.targetMargin,
       })
@@ -222,16 +213,14 @@ export default function MulchingCalculator({
       productionRatePPH: loadout.productionRatePPH,
       adjustedProductionRate: timeEstimate.adjustedProductionRate,
       costPerHour: loadout.costPerHour,
-      billingRatePerHour: pricing.totalPrice / timeEstimate.totalEstimatedHours,
+      billingRatePerHour: pricing.totalPrice / timeEstimate.totalWorkHours,
       targetMargin: loadout.targetMargin,
-      productionHours: timeEstimate.productionHours,
-      transportHours: timeEstimate.transportHours,
+      workHours: timeEstimate.workHours,
       timeOverheadHours: timeEstimate.timeOverheadHours,
-      bufferHours: timeEstimate.bufferHours,
-      totalEstimatedHours: timeEstimate.totalEstimatedHours,
+      totalWorkHours: timeEstimate.totalWorkHours,
       pricingMethod: pricing.pricingMethod,
-      totalCost: pricing.totalCost,
-      totalPrice: pricing.totalPrice,
+      lineItemCost: pricing.totalCost,
+      lineItemPrice: pricing.totalPrice,
       profit: pricing.profit,
       marginPercent: pricing.marginPercent,
     };
@@ -387,14 +376,17 @@ export default function MulchingCalculator({
             </Typography>
             {timeEstimate && (
               <Typography variant="body2" color="text.secondary">
-                Estimated Time: <strong>{formatHours(timeEstimate.totalEstimatedHours)}</strong>
+                Work Hours: <strong>{formatHours(timeEstimate.totalWorkHours)}</strong>
               </Typography>
             )}
             {pricing && (
               <Typography variant="body1" color="primary" sx={{ mt: 1 }}>
-                Price: <strong>{formatCurrency(pricing.totalPrice)}</strong>
+                Line Item: <strong>{formatCurrency(pricing.totalPrice)}</strong>
               </Typography>
             )}
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              Transport & buffer calculated at proposal level
+            </Typography>
           </Box>
 
           <Button
