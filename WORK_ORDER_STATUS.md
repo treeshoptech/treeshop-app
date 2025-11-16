@@ -22,32 +22,35 @@
    - Added conversion dialog with scheduling inputs
    - Button appears when proposal status is "Accepted"
 
+8. **Work Order Status Enum Fixed** - Status matching UI now!
+   - Updated schema from v.string() to v.union with proper literals
+   - Now uses "In Progress" with space (matches UI exactly)
+   - All status values properly typed: "Created", "PreScheduled", "Scheduled", "In Progress", "Paused", "Completed", "Invoiced", "Cancelled"
+
 ## ⚠️ STILL NEEDS WORK
 
-### 2. Work Order Status Flow
-**Current statuses in schema:** "Created", "PreScheduled", "Scheduled", "InProgress", "Paused", "Completed", "Invoiced", "Cancelled"
+### 1. Work Order Status Flow - ✅ RESOLVED
+~~**Status mismatch**~~ - ✅ FIXED!
 
-**Status mismatch** - The UI uses:
+Schema now properly uses:
+- "Created"
+- "PreScheduled"
 - "Scheduled"
-- "In Progress" 
+- "In Progress" (WITH SPACE - matches UI!)
+- "Paused"
 - "Completed"
 - "Invoiced"
+- "Cancelled"
 
-But schema expects:
-- "Scheduled"
-- "InProgress" (no space!)
-- "Completed"
-- "Invoiced"
+UI displays match schema exactly. No more status filtering issues!
 
-**Fix needed:** Update schema or UI to match (recommend fixing schema to allow spaces for better UX)
-
-### 3. Work Order Detail Page Integration
+### 2. Work Order Detail Page Integration
 **Issue:** Detail page expects full work order with all line items
 - TimeTracker component needs work order with line items
 - Crew assignment needs proper workflow
 - Equipment assignment needs proper workflow
 
-### 4. Missing Features
+### 3. Missing Features
 - [ ] Crew clock in/out workflow (partially built)
 - [ ] Equipment tracking per work order
 - [ ] Material/consumables tracking
@@ -57,28 +60,24 @@ But schema expects:
 - [ ] Completion checklist automation
 - [ ] Invoice generation from completed work orders
 
-## 🔧 QUICK FIXES NEEDED
+## 🔧 QUICK FIXES COMPLETED
 
-### Fix Status Enum Mismatch
-In `/convex/schema.ts` line 474, the status field allows:
-```typescript
-status: v.string(), // "Created", "PreScheduled", "Scheduled", "InProgress", "Paused", "Completed", "Invoiced", "Cancelled"
-```
-
-Should be updated to match UI expectations:
+### ✅ Fix Status Enum Mismatch - DONE!
+In `/convex/schema.ts` line 474-483, the status field now uses proper union:
 ```typescript
 status: v.union(
   v.literal("Created"),
+  v.literal("PreScheduled"),
   v.literal("Scheduled"),
-  v.literal("In Progress"), // Note the space!
+  v.literal("In Progress"), // ✅ Has the space!
   v.literal("Paused"),
   v.literal("Completed"),
   v.literal("Invoiced"),
   v.literal("Cancelled")
-)
+),
 ```
 
-### ~~Create Proposal Conversion Mutation~~ ✅ DONE
+### ✅ Create Proposal Conversion Mutation - DONE!
 ~~Add to `/convex/workOrders.ts`~~ - **COMPLETED!**
 
 The `createFromProposal` mutation has been implemented and includes:
@@ -102,9 +101,10 @@ The `createFromProposal` mutation has been implemented and includes:
 - [ ] Complete checklist items (partially works)
 
 ## 🎯 NEXT PRIORITIES
-1. Fix status enum mismatch (5 min) - Update schema to use "In Progress" with space
+1. ~~Fix status enum mismatch~~ ✅ DONE
 2. ~~Build createFromProposal mutation~~ ✅ DONE
-3. Test full workflow: Lead → Proposal → Work Order → Invoice
-4. ~~Add proposal acceptance button to proposals page~~ ✅ DONE (with conversion dialog)
-5. Smooth out time tracking UX
-6. Test proposal→work order conversion end-to-end
+3. ~~Add proposal acceptance button to proposals page~~ ✅ DONE
+4. Test full workflow: Lead → Proposal → Work Order → Invoice
+5. Test proposal→work order conversion end-to-end
+6. Smooth out time tracking UX
+7. Build invoice generation from completed work orders
