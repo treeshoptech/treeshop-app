@@ -204,8 +204,8 @@ export default function MulchingCalculator({
 
     const lineItemData = {
       serviceType: "Forestry Mulching",
-      description: `${acres} acres, ${dbhPackage}" DBH package - ${baseScore.toFixed(1)} inch-acres${selectedFactorDetails.length > 0 ? ` (${selectedFactorDetails.length} AFISS factors)` : ""}`,
-      formulaUsed: `Acres × DBH Package = ${acres} × ${dbhPackage}`,
+      description: `${acres.toFixed(2)} acres, ${dbhPackage}" DBH package${selectedFactorDetails.length > 0 ? ` (${selectedFactorDetails.length} AFISS factors)` : ""}`,
+      formulaUsed: `TreeShop Score = ${acres.toFixed(2)} acres × ${dbhPackage}" DBH${productionMultiplier !== 1 || timeMultiplier !== 1 ? ` × ${(productionMultiplier * timeMultiplier).toFixed(2)} AFISS` : ""}`,
       workVolumeInputs: { acres, dbhPackage },
       baseScore: baseScore,
       complexityMultiplier: productionMultiplier * timeMultiplier,
@@ -383,7 +383,7 @@ export default function MulchingCalculator({
         <>
           <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              Work Volume: <strong>{baseScore.toFixed(1)} inch-acres</strong>
+              Mulching Score: <strong>{baseScore.toFixed(1)} points</strong>
             </Typography>
             {timeEstimate && (
               <Typography variant="body2" color="text.secondary">

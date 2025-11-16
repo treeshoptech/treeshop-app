@@ -480,7 +480,7 @@ function NewProposalPageContent() {
                                 Estimated Time
                               </Typography>
                               <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                                {item.totalEstimatedHours?.toFixed(1) || '0.0'} hrs
+                                {(item.totalEstimatedHours && !isNaN(item.totalEstimatedHours)) ? item.totalEstimatedHours.toFixed(1) : '0.0'} hrs
                               </Typography>
                             </Box>
                           </Box>
