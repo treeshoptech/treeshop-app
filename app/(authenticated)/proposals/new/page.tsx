@@ -318,8 +318,8 @@ function NewProposalPageContent() {
           bufferHours: item.bufferHours || 0,
           totalEstimatedHours: item.totalEstimatedHours || 0,
           pricingMethod: item.pricingMethod || "Calculated",
-          totalCost: item.totalCost || 0,
-          totalPrice: item.totalPrice || 0,
+          totalCost: item.lineItemCost || item.totalCost || 0,
+          totalPrice: item.lineItemPrice || item.totalPrice || 0,
           profit: item.profit || 0,
           marginPercent: item.marginPercent || 0,
         });
