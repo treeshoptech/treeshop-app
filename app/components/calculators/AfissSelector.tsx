@@ -22,7 +22,8 @@ import {
 export type AfissFactor = {
   id: string;
   label: string;
-  impact: number; // Keep for internal calculation only - NEVER show to user
+  impactType: "production" | "time"; // production = slows machine, time = adds overhead
+  impactPercent: number; // Negative percentage (e.g., -25 for 25% slower/longer)
   description?: string;
 };
 
