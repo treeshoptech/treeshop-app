@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -234,6 +235,21 @@ export default function ProposalDetailPage() {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Stack spacing={3}>
+        {/* Locked Banner */}
+        {proposal.isLocked && (
+          <Alert severity="warning" variant="filled">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                This proposal is locked
+              </Typography>
+              <Typography variant="body2">
+                - {proposal.lockedReason || "Cannot be edited"}
+                {proposal.lockedAt && ` on ${new Date(proposal.lockedAt).toLocaleDateString()}`}
+              </Typography>
+            </Box>
+          </Alert>
+        )}
+
         {/* Header */}
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -252,7 +268,7 @@ export default function ProposalDetailPage() {
               label={proposal.proposalStatus || "Draft"}
               color={STATUS_COLORS[proposal.proposalStatus as ProposalStatus] || "default"}
             />
-            {proposal.proposalStatus === "Accepted" && (
+            {proposal.proposalStatus === "Accepted" && !proposal.isLocked && (
               <Button
                 variant="contained"
                 color="success"
@@ -328,11 +344,11 @@ export default function ProposalDetailPage() {
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Typography variant="h5">Customer Information</Typography>
-            {!editMode ? (
+            {!editMode && !proposal.isLocked ? (
               <IconButton onClick={() => setEditMode(true)}>
                 <EditIcon />
               </IconButton>
-            ) : (
+            ) : !proposal.isLocked ? (
               <Stack direction="row" spacing={1}>
                 <Button onClick={() => setEditMode(false)} startIcon={<CloseIcon />}>
                   Cancel
@@ -422,7 +438,7 @@ export default function ProposalDetailPage() {
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Typography variant="h5">Line Items</Typography>
-            {!addLineItemMode && (
+            {!addLineItemMode && !proposal.isLocked && (
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -530,13 +546,15 @@ export default function ProposalDetailPage() {
                           </TableCell>
                           <TableCell>{item.marginPercent.toFixed(1)}%</TableCell>
                           <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleRemoveLineItem(item._id)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
+                            {!proposal.isLocked && (
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleRemoveLineItem(item._id)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -577,7 +595,7 @@ export default function ProposalDetailPage() {
         </Paper>
 
         {/* Actions */}
-        {!addLineItemMode && (
+        {!addLineItemMode && !proposal.isLocked && (
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Proposal Actions

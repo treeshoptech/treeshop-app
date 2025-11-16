@@ -338,6 +338,10 @@ export const complete = mutation({
 export const createFromProposal = mutation({
   args: {
     proposalId: v.id("projects"), // This is actually a project ID with status="Proposal"
+    scheduledDate: v.optional(v.number()),
+    scheduledStartTime: v.optional(v.string()),
+    specialInstructions: v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -356,6 +360,22 @@ export const createFromProposal = mutation({
     // Verify this is actually a proposal
     if (project.status !== "Proposal") {
       throw new Error("Project is not a proposal");
+    }
+
+    // Verify proposal has been accepted
+    if (project.proposalStatus !== "Accepted") {
+      throw new Error("Proposal must be accepted before creating a work order");
+    }
+
+    // Check if work order already exists for this proposal
+    const existingWorkOrder = await ctx.db
+      .query("workOrders")
+      .withIndex("by_project", (q) => q.eq("projectId", args.proposalId))
+      .filter((q) => q.eq(q.field("organizationId"), org._id))
+      .first();
+
+    if (existingWorkOrder) {
+      throw new Error("A work order has already been created for this proposal");
     }
 
     // 2. Get customer (may not exist for leads)
@@ -407,8 +427,8 @@ export const createFromProposal = mutation({
       ? primaryLineItem.serviceType
       : `${primaryLineItem.serviceType} + ${lineItems.length - 1} more`;
 
-    // 6. Calculate contract amount from line items total
-    const contractAmount = lineItems.reduce((sum, li) => sum + (li.estimatedPrice || 0), 0);
+    // 6. Calculate contract amount from line items total (use same fallback as proposal save)
+    const contractAmount = lineItems.reduce((sum, li) => sum + (li.totalPrice || li.estimatedPrice || 0), 0);
     const estimatedHours = lineItems.reduce((sum, li) => sum + (li.totalEstimatedHours || 0), 0);
 
     // 7. Determine customer name (from customer record or project fields)
@@ -429,8 +449,13 @@ export const createFromProposal = mutation({
       propertyCoordinates: undefined, // Projects don't store coordinates yet
       serviceType,
       contractAmount,
-      estimatedHours,
+      estimatedDuration: estimatedHours,
       primaryLoadoutId,
+      // Scheduling data from conversion dialog
+      scheduledDate: args.scheduledDate,
+      scheduledStartTime: args.scheduledStartTime,
+      specialInstructions: args.specialInstructions,
+      notes: args.notes,
       status: "Scheduled",
       createdAt: now,
       updatedAt: now,
@@ -471,10 +496,13 @@ export const createFromProposal = mutation({
       });
     }
 
-    // 10. Update project status to "Work Order"
+    // 10. Update project status to "Work Order" and LOCK the proposal
     await ctx.db.patch(args.proposalId, {
       status: "Work Order",
       workOrderStatus: "Scheduled",
+      isLocked: true,
+      lockedAt: now,
+      lockedReason: "Work order created",
       updatedAt: now,
     });
 

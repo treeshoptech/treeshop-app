@@ -246,6 +246,10 @@ export default defineSchema({
     afissFactors: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
     estimatedValue: v.optional(v.number()),
+    // Locking (prevent edits after work order created)
+    isLocked: v.optional(v.boolean()),
+    lockedAt: v.optional(v.number()),
+    lockedReason: v.optional(v.string()), // "Work order created", "Invoiced", etc.
     createdAt: v.number(),
     updatedAt: v.number(),
   })
