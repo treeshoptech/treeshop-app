@@ -525,30 +525,18 @@ function LoadoutsPageContent() {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <MoneyIcon sx={{ color: '#34C759' }} />
                         <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#34C759' }}>
-                          Revenue Targets
+                          Revenue Potential
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
-                        <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Daily (8hrs)</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${(kpis?.dailyRevenue || 0).toFixed(0)}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
+                        <Grid item xs={6}>
                           <Typography variant="caption" color="text.secondary">Weekly (40hrs)</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${(kpis?.weeklyRevenue || 0).toFixed(0)}
+                            ${((kpis?.weeklyRevenue || 0) / 1000).toFixed(1)}k
                           </Typography>
                         </Grid>
-                        <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Monthly (160hrs)</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${((kpis?.monthlyRevenue || 0) / 1000).toFixed(1)}k
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Annual Potential</Typography>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">Annual (2000hrs)</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
                             ${((kpis?.annualRevenuePotential || 0) / 1000).toFixed(0)}k
                           </Typography>
@@ -556,75 +544,7 @@ function LoadoutsPageContent() {
                       </Grid>
                     </Paper>
 
-                    {/* Margin Breakdown */}
-                    <Paper sx={{ p: 2, bgcolor: '#2C2C2E', mb: 3 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <ProductionIcon sx={{ color: '#007AFF' }} />
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                          Billing Rates at Different Margins
-                        </Typography>
-                      </Box>
-                      <Grid container spacing={2}>
-                        <Grid item xs={6} sm={2.4}>
-                          <Typography variant="caption" color="text.secondary">30% Margin</Typography>
-                          <Typography variant="body2">${(kpis?.billingRates?.margin30 || 0).toFixed(0)}/hr</Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={2.4}>
-                          <Typography variant="caption" color="text.secondary">40% Margin</Typography>
-                          <Typography variant="body2">${(kpis?.billingRates?.margin40 || 0).toFixed(0)}/hr</Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={2.4}>
-                          <Typography variant="caption" sx={{ color: '#34C759' }}>50% Margin</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
-                            ${(kpis?.billingRates?.margin50 || 0).toFixed(0)}/hr
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={2.4}>
-                          <Typography variant="caption" color="text.secondary">60% Margin</Typography>
-                          <Typography variant="body2">${(kpis?.billingRates?.margin60 || 0).toFixed(0)}/hr</Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={2.4}>
-                          <Typography variant="caption" color="text.secondary">70% Margin</Typography>
-                          <Typography variant="body2">${(kpis?.billingRates?.margin70 || 0).toFixed(0)}/hr</Typography>
-                        </Grid>
-                      </Grid>
-                    </Paper>
 
-                    {/* Historical Performance */}
-                    <Paper sx={{ p: 2, bgcolor: '#2C2C2E', mb: 3 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <KpiIcon sx={{ color: '#FF9500' }} />
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                          Historical Performance
-                        </Typography>
-                      </Box>
-                      <Grid container spacing={2}>
-                        <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Jobs Completed</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {kpis.totalJobsCompleted}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Total Hours</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {kpis.totalHoursWorked.toLocaleString()}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Revenue Generated</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#34C759' }}>
-                            ${((kpis?.totalRevenueGenerated || 0) / 1000).toFixed(0)}k
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Avg Revenue/Job</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            ${(kpis?.avgRevenuePerJob || 0).toFixed(0)}
-                          </Typography>
-                        </Grid>
-                      </Grid>
-                    </Paper>
 
                     {/* Production & Safety */}
                     <Grid container spacing={2}>
