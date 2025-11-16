@@ -54,12 +54,12 @@ export const get = query({
     const workOrder = await ctx.db.get(args.id);
 
     if (!workOrder) {
-      throw new Error("Work order not found");
+      return null;
     }
 
     // Verify belongs to current organization
     if (workOrder.organizationId !== org._id) {
-      throw new Error("Work order not found");
+      return null;
     }
 
     return workOrder;
