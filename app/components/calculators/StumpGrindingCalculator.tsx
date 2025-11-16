@@ -45,16 +45,28 @@ interface StumpGrindingCalculatorProps {
   loadout?: {
     _id: string;
     name: string;
-    productionRatePPH: number;
-    costPerHour: number;
-    targetMargin: number;
+    productionRate: number;
+    totalCostPerHour: number;
+    billingRates: {
+      margin30: number;
+      margin40: number;
+      margin50: number;
+      margin60: number;
+      margin70: number;
+    };
   };
   loadouts?: Array<{
     _id: string;
     name: string;
-    productionRatePPH: number;
-    costPerHour: number;
-    targetMargin: number;
+    productionRate: number;
+    totalCostPerHour: number;
+    billingRates: {
+      margin30: number;
+      margin40: number;
+      margin50: number;
+      margin60: number;
+      margin70: number;
+    };
   }>;
   driveTimeMinutes?: number;
   onLineItemCreate?: (lineItemData: any) => void;
@@ -117,7 +129,7 @@ export default function StumpGrindingCalculator({
   const timeEstimate = loadout
     ? calculateTimeEstimate({
         adjustedScore: scoreResult.adjustedScore,
-        productionRatePPH: loadout.productionRatePPH,
+        productionRatePPH: loadout.productionRate,
         driveTimeMinutes,
         transportRate: TRANSPORT_RATES["Stump Grinding"],
         minimumHours: MINIMUM_HOURS["Stump Grinding"],
@@ -128,8 +140,8 @@ export default function StumpGrindingCalculator({
   const pricing = loadout && timeEstimate
     ? calculatePricing({
         totalEstimatedHours: timeEstimate.totalEstimatedHours,
-        costPerHour: loadout.costPerHour,
-        targetMargin: loadout.targetMargin,
+        costPerHour: loadout.totalCostPerHour,
+        targetMargin: 50,
       })
     : null;
 
@@ -147,10 +159,10 @@ export default function StumpGrindingCalculator({
       termsAndConditions: STUMP_GRINDING_TERMS,
       loadoutId: loadout._id,
       loadoutName: loadout.name,
-      productionRatePPH: loadout.productionRatePPH,
-      costPerHour: loadout.costPerHour,
+      productionRatePPH: loadout.productionRate,
+      costPerHour: loadout.totalCostPerHour,
       billingRatePerHour: pricing.totalPrice / timeEstimate.totalEstimatedHours,
-      targetMargin: loadout.targetMargin,
+      targetMargin: 50,
       productionHours: timeEstimate.productionHours,
       transportHours: timeEstimate.transportHours,
       bufferHours: timeEstimate.bufferHours,
@@ -182,7 +194,7 @@ export default function StumpGrindingCalculator({
             >
               {loadouts.map((l) => (
                 <MenuItem key={l._id} value={l._id}>
-                  {l.name} - {l.productionRatePPH} PpH @ {formatCurrency(l.costPerHour)}/hr
+                  {l.name} - {l.productionRate} PpH @ {formatCurrency(l.totalCostPerHour)}/hr
                 </MenuItem>
               ))}
             </Select>

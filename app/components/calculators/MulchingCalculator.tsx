@@ -31,16 +31,28 @@ interface MulchingCalculatorProps {
   loadout?: {
     _id: string;
     name: string;
-    productionRatePPH: number;
-    costPerHour: number;
-    targetMargin: number;
+    productionRate: number;
+    totalCostPerHour: number;
+    billingRates: {
+      margin30: number;
+      margin40: number;
+      margin50: number;
+      margin60: number;
+      margin70: number;
+    };
   };
   loadouts?: Array<{
     _id: string;
     name: string;
-    productionRatePPH: number;
-    costPerHour: number;
-    targetMargin: number;
+    productionRate: number;
+    totalCostPerHour: number;
+    billingRates: {
+      margin30: number;
+      margin40: number;
+      margin50: number;
+      margin60: number;
+      margin70: number;
+    };
   }>;
   driveTimeMinutes?: number;
   onLineItemCreate?: (lineItemData: any) => void;
@@ -155,7 +167,7 @@ export default function MulchingCalculator({
   const timeEstimate = loadout
     ? (() => {
         // Step 1: Apply production impact to production rate
-        const adjustedProductionRate = loadout.productionRatePPH * productionMultiplier;
+        const adjustedProductionRate = loadout.productionRate * productionMultiplier;
 
         // Step 2: Calculate work hours with adjusted rate
         const workHours = baseScore / adjustedProductionRate;
@@ -178,8 +190,8 @@ export default function MulchingCalculator({
   const pricing = loadout && timeEstimate
     ? calculatePricing({
         totalEstimatedHours: timeEstimate.totalWorkHours,
-        costPerHour: loadout.costPerHour,
-        targetMargin: loadout.targetMargin,
+        costPerHour: loadout.totalCostPerHour,
+        targetMargin: 50, // Use 50% margin as default
       })
     : null;
 
@@ -210,11 +222,11 @@ export default function MulchingCalculator({
       })),
       loadoutId: loadout._id,
       loadoutName: loadout.name,
-      productionRatePPH: loadout.productionRatePPH,
+      productionRatePPH: loadout.productionRate,
       adjustedProductionRate: timeEstimate.adjustedProductionRate,
-      costPerHour: loadout.costPerHour,
+      costPerHour: loadout.totalCostPerHour,
       billingRatePerHour: pricing.totalPrice / timeEstimate.totalWorkHours,
-      targetMargin: loadout.targetMargin,
+      targetMargin: 50,
       workHours: timeEstimate.workHours,
       timeOverheadHours: timeEstimate.timeOverheadHours,
       totalWorkHours: timeEstimate.totalWorkHours,
@@ -245,7 +257,7 @@ export default function MulchingCalculator({
             >
               {loadouts.map((l) => (
                 <MenuItem key={l._id} value={l._id}>
-                  {l.name} - {l.productionRatePPH} PpH @ {formatCurrency(l.costPerHour)}/hr
+                  {l.name} - {l.productionRate} PpH @ {formatCurrency(l.totalCostPerHour)}/hr
                 </MenuItem>
               ))}
             </Select>

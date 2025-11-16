@@ -428,7 +428,7 @@ function NewProposalPageContent() {
                 >
                   {loadouts?.map((loadout) => (
                     <MenuItem key={loadout._id} value={loadout._id}>
-                      {loadout.name} - {loadout.productionRatePPH || 0} PpH @ ${(loadout.costPerHour || 0).toFixed(2)}/hr
+                      {loadout.name} - {loadout.productionRate || 0} PpH @ ${(loadout.totalCostPerHour || 0).toFixed(2)}/hr
                     </MenuItem>
                   ))}
                 </Select>
@@ -439,9 +439,9 @@ function NewProposalPageContent() {
                     const selectedLoadout = loadouts.find(l => l._id === selectedLoadoutId);
                     return selectedLoadout ? (
                       <>
-                        <Typography variant="body2"><strong>Production Rate:</strong> {selectedLoadout.productionRatePPH || 0} points per hour</Typography>
-                        <Typography variant="body2"><strong>Cost Per Hour:</strong> ${(selectedLoadout.costPerHour || 0).toFixed(2)}</Typography>
-                        <Typography variant="body2"><strong>Target Margin:</strong> {selectedLoadout.targetMargin || 0}%</Typography>
+                        <Typography variant="body2"><strong>Production Rate:</strong> {selectedLoadout.productionRate || 0} points per hour</Typography>
+                        <Typography variant="body2"><strong>Cost Per Hour:</strong> ${(selectedLoadout.totalCostPerHour || 0).toFixed(2)}</Typography>
+                        <Typography variant="body2"><strong>Billing Rates:</strong> ${(selectedLoadout.billingRates?.margin50 || 0).toFixed(2)}/hr (50% margin)</Typography>
                       </>
                     ) : null;
                   })()}
