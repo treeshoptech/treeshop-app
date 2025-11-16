@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -25,6 +25,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Grid,
+  Tabs,
+  Tab,
+  OutlinedInput,
+  Checkbox,
+  ListItemText,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -32,6 +38,14 @@ import {
   ExpandMore as ExpandMoreIcon,
   PersonAdd as PersonAddIcon,
   Send as SendIcon,
+  Close as CloseIcon,
+  Person as PersonIcon,
+  ContactMail as ContactMailIcon,
+  Home as HomeIcon,
+  Receipt as ReceiptIcon,
+  Business as BusinessIcon,
+  LocalOffer as TagIcon,
+  Note as NoteIcon,
 } from "@mui/icons-material";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -41,12 +55,33 @@ import {
 } from "@/app/components/calculators";
 import { Id } from "@/convex/_generated/dataModel";
 
+const CUSTOMER_SOURCES = ['Referral', 'Website', 'Google Search', 'Social Media', 'Repeat Customer', 'Door Hanger', 'Yard Sign', 'Vehicle Wrap', 'Other'];
+const CUSTOMER_TYPES = ['Residential', 'Commercial', 'Municipal', 'HOA', 'Property Management', 'Real Estate'];
+const CONTACT_METHODS = ['Phone', 'Email', 'Text', 'Any'];
+const AVAILABLE_TAGS = ['VIP', 'Repeat Customer', 'High Value', 'Quick Pay', 'Difficult Access', 'Gated Community', 'Large Property', 'Preferred'];
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div role="tabpanel" hidden={value !== index} {...other}>
+      {value === index && <Box sx={{ py: 2 }}>{children}</Box>}
+    </div>
+  );
+}
+
 // Inner component that uses useSearchParams
 function NewProposalPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [lineItems, setLineItems] = useState<any[]>([]);
   const [leadId, setLeadId] = useState<Id<"projects"> | null>(null);
+  const customerCreatedRef = useRef(false);
 
   // Proposal data
   const [selectedCustomerId, setSelectedCustomerId] = useState<Id<"customers"> | "">("");
@@ -63,22 +98,20 @@ function NewProposalPageContent() {
   const [sitePlansExpanded, setSitePlansExpanded] = useState(false);
   const [statusExpanded, setStatusExpanded] = useState(false);
 
-  // New customer form
-  const [newCustomerName, setNewCustomerName] = useState("");
-  const [newCustomerEmail, setNewCustomerEmail] = useState("");
-  const [newCustomerPhone, setNewCustomerPhone] = useState("");
-  const [newCustomerAddress, setNewCustomerAddress] = useState("");
+  // Active service calculator
+  const [activeCalculator, setActiveCalculator] = useState<string | null>(null);
 
-  // Pre-fill form from URL parameters (from lead)
-  useEffect(() => {
-    const address = searchParams.get("propertyAddress");
-    const id = searchParams.get("leadId");
+  // New customer form - matches customers page
+  const [formTab, setFormTab] = useState(0);
+  const [formData, setFormData] = useState({
+    firstName: '', lastName: '', email: '', phone: '', secondaryPhone: '', company: '',
+    propertyAddress: '', propertyCity: '', propertyState: 'FL', propertyZip: '',
+    billingAddress: '', billingCity: '', billingState: 'FL', billingZip: '',
+    source: 'Website', referredBy: '', customerType: 'Residential', preferredContactMethod: 'Phone',
+    tags: [] as string[], notes: '',
+  });
 
-    if (address) setScopeOfWork(`Work to be performed at: ${address}`);
-    if (id) setLeadId(id as Id<"projects">);
-  }, [searchParams]);
-
-  // Fetch data
+  // Fetch data FIRST
   const loadouts = useQuery(api.loadouts.list);
   const customers = useQuery(api.customers.list);
 
@@ -88,8 +121,52 @@ function NewProposalPageContent() {
   const createLineItem = useMutation(api.lineItems.create);
   const createCustomer = useMutation(api.customers.create);
 
+  // Pre-fill form from URL parameters (from lead)
+  useEffect(() => {
+    const name = searchParams.get("customerName");
+    const email = searchParams.get("customerEmail");
+    const phone = searchParams.get("customerPhone");
+    const address = searchParams.get("propertyAddress");
+    const id = searchParams.get("leadId");
+
+    if (address) setScopeOfWork(`Work to be performed at: ${address}`);
+    if (id) setLeadId(id as Id<"projects">);
+
+    // Auto-fill customer form from lead
+    if (name && !customerCreatedRef.current) {
+      customerCreatedRef.current = true;
+      const nameParts = name.trim().split(" ");
+      setFormData({
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(" ") || "",
+        email: email || "",
+        phone: phone || "",
+        secondaryPhone: "",
+        company: "",
+        propertyAddress: address || "",
+        propertyCity: "",
+        propertyState: "FL",
+        propertyZip: "",
+        billingAddress: "",
+        billingCity: "",
+        billingState: "FL",
+        billingZip: "",
+        source: "Website",
+        referredBy: "",
+        customerType: "Residential",
+        preferredContactMethod: "Phone",
+        tags: [],
+        notes: "",
+      });
+      setFormTab(0);
+      setShowNewCustomerDialog(true);
+    }
+  }, [searchParams, customers, createCustomer]);
+
   const handleLineItemCreate = (lineItemData: any) => {
     setLineItems([...lineItems, { ...lineItemData, id: crypto.randomUUID() }]);
+    // Close calculator and return to accordion
+    setActiveCalculator(null);
   };
 
   const handleRemoveLineItem = (id: string) => {
@@ -97,19 +174,25 @@ function NewProposalPageContent() {
   };
 
   const handleCreateCustomer = async () => {
+    if (!formData.firstName || !formData.lastName || !formData.propertyAddress) {
+      alert('Please fill in required fields (First Name, Last Name, Property Address)');
+      return;
+    }
+
     try {
-      const customerId = await createCustomer({
-        name: newCustomerName,
-        email: newCustomerEmail || undefined,
-        phone: newCustomerPhone || undefined,
-        propertyAddress: newCustomerAddress || undefined,
-      });
+      const customerId = await createCustomer(formData);
       setSelectedCustomerId(customerId);
       setShowNewCustomerDialog(false);
-      setNewCustomerName("");
-      setNewCustomerEmail("");
-      setNewCustomerPhone("");
-      setNewCustomerAddress("");
+      setFormData({
+        firstName: '', lastName: '', email: '', phone: '', secondaryPhone: '', company: '',
+        propertyAddress: '', propertyCity: '', propertyState: 'FL', propertyZip: '',
+        billingAddress: '', billingCity: '', billingState: 'FL', billingZip: '',
+        source: 'Website', referredBy: '', customerType: 'Residential', preferredContactMethod: 'Phone',
+        tags: [], notes: '',
+      });
+      // Expand line items section after customer is created
+      setCustomerExpanded(false);
+      setLineItemsExpanded(true);
     } catch (error) {
       console.error("Error creating customer:", error);
     }
@@ -192,6 +275,12 @@ function NewProposalPageContent() {
   const totalValue = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const selectedCustomer = customers?.find((c) => c._id === selectedCustomerId);
 
+  // Auto-aggregate unique terms from all line items
+  const aggregatedTerms = useMemo(() => {
+    const allTerms = lineItems.flatMap(item => item.termsAndConditions || []);
+    return [...new Set(allTerms)]; // Remove duplicates
+  }, [lineItems]);
+
   const SectionHeader = ({ title, expanded, onToggle }: any) => (
     <Box
       sx={{
@@ -215,7 +304,7 @@ function NewProposalPageContent() {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="md" sx={{ py: 2, px: { xs: 2, sm: 3 } }}>
       <Stack spacing={2}>
         {/* Header */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
@@ -247,7 +336,7 @@ function NewProposalPageContent() {
                     >
                       {customers?.map((customer) => (
                         <MenuItem key={customer._id} value={customer._id}>
-                          {customer.name} {customer.propertyAddress && `- ${customer.propertyAddress}`}
+                          {customer.firstName} {customer.lastName} {customer.propertyAddress && `- ${customer.propertyAddress}`}
                         </MenuItem>
                       ))}
                     </Select>
@@ -263,7 +352,7 @@ function NewProposalPageContent() {
 
                 {selectedCustomer && (
                   <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
-                    <Typography variant="body2"><strong>Name:</strong> {selectedCustomer.name}</Typography>
+                    <Typography variant="body2"><strong>Name:</strong> {selectedCustomer.firstName} {selectedCustomer.lastName}</Typography>
                     {selectedCustomer.email && (
                       <Typography variant="body2"><strong>Email:</strong> {selectedCustomer.email}</Typography>
                     )}
@@ -314,26 +403,36 @@ function NewProposalPageContent() {
               {lineItems.length > 0 && (
                 <Stack spacing={2} sx={{ mb: 3 }}>
                   {lineItems.map((item, index) => (
-                    <Card key={item.id} variant="outlined">
-                      <CardContent>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                              <Typography variant="h6">
-                                {index + 1}. {item.serviceType}
-                              </Typography>
-                              {item.baseScore > 0 && (
-                                <Chip
-                                  label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : 'Inch-Acres'}`}
-                                  size="small"
-                                  color="primary"
-                                />
-                              )}
-                            </Stack>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description}
+                    <Paper key={item.id} elevation={2}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          p: 2,
+                        }}
+                      >
+                        <Box sx={{ flex: 1 }}>
+                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                            <Typography variant="subtitle1" fontWeight={600}>
+                              {index + 1}. {item.serviceType}
                             </Typography>
-                          </Box>
+                            {item.baseScore > 0 && (
+                              <Chip
+                                label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : item.serviceType === 'Forestry Mulching' ? 'Mulching Score' : 'Score'}`}
+                                size="small"
+                                color="primary"
+                              />
+                            )}
+                          </Stack>
+                        </Box>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="h6" color="primary" fontWeight={700}>
+                            {new Intl.NumberFormat("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(item.totalPrice)}
+                          </Typography>
                           <IconButton
                             size="small"
                             color="error"
@@ -341,9 +440,9 @@ function NewProposalPageContent() {
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                        </Box>
-                      </CardContent>
-                    </Card>
+                        </Stack>
+                      </Box>
+                    </Paper>
                   ))}
                   <Box sx={{ p: 2, bgcolor: "primary.dark", borderRadius: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -361,48 +460,32 @@ function NewProposalPageContent() {
 
               <Divider sx={{ my: 3 }} />
 
-              {/* Add Service Items */}
+              {/* Service Selection Buttons */}
               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-                Add Services
+                Add Service
               </Typography>
-
-              <Stack spacing={3}>
-                {/* Stump Grinding */}
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                    Stump Grinding
-                  </Typography>
-                  <StumpGrindingCalculator
-                    loadout={loadouts?.[0]}
-                    onLineItemCreate={handleLineItemCreate}
-                  />
-                </Box>
-
-                <Divider />
-
-                {/* Forestry Mulching */}
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                    Forestry Mulching
-                  </Typography>
-                  <MulchingCalculator
-                    loadout={loadouts?.[0]}
-                    onLineItemCreate={handleLineItemCreate}
-                  />
-                </Box>
-
-                <Divider />
-
-                {/* Land Clearing */}
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                    Land Clearing
-                  </Typography>
-                  <LandClearingCalculator
-                    loadout={loadouts?.[0]}
-                    onLineItemCreate={handleLineItemCreate}
-                  />
-                </Box>
+              <Stack direction="row" spacing={2} flexWrap="wrap" gap={2}>
+                <Button
+                  variant="contained"
+                  onClick={() => setActiveCalculator("Stump Grinding")}
+                  size="large"
+                >
+                  Stump Grinding
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => setActiveCalculator("Forestry Mulching")}
+                  size="large"
+                >
+                  Forestry Mulching
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => setActiveCalculator("Land Clearing")}
+                  size="large"
+                >
+                  Land Clearing
+                </Button>
               </Stack>
             </Box>
           </Collapse>
@@ -439,10 +522,20 @@ function NewProposalPageContent() {
           <Collapse in={termsExpanded}>
             <Box sx={{ p: 3, pt: 0 }}>
               <Stack spacing={2}>
+                {aggregatedTerms.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>Service-Specific Terms</Typography>
+                    {aggregatedTerms.map((term, index) => (
+                      <Typography key={index} variant="body2" color="text.secondary">
+                        • {term}
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>Environmental Responsibility</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Tree Shop is committed to environmental stewardship and will not impact federally protected wetlands.
+                    • Tree Shop is committed to environmental stewardship and will not impact federally protected wetlands
                   </Typography>
                 </Box>
                 <Box>
@@ -518,46 +611,221 @@ function NewProposalPageContent() {
       </Stack>
 
       {/* New Customer Dialog */}
-      <Dialog open={showNewCustomerDialog} onClose={() => setShowNewCustomerDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Customer</DialogTitle>
+      <Dialog open={showNewCustomerDialog} onClose={() => setShowNewCustomerDialog(false)} maxWidth="md" fullWidth PaperProps={{ sx: { backgroundColor: '#1C1C1E', border: '1px solid #2C2C2E' } }}>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Add New Customer
+            </Typography>
+            <IconButton onClick={() => setShowNewCustomerDialog(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <Tabs value={formTab} onChange={(_, v) => setFormTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
+          <Tab label="Basic Info" />
+          <Tab label="Addresses" />
+          <Tab label="Details" />
+        </Tabs>
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
-            <TextField
-              label="Customer Name"
-              value={newCustomerName}
-              onChange={(e) => setNewCustomerName(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Email"
-              type="email"
-              value={newCustomerEmail}
-              onChange={(e) => setNewCustomerEmail(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Phone"
-              value={newCustomerPhone}
-              onChange={(e) => setNewCustomerPhone(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Property Address"
-              value={newCustomerAddress}
-              onChange={(e) => setNewCustomerAddress(e.target.value)}
-              fullWidth
-              multiline
-              rows={2}
-            />
-          </Stack>
+          <TabPanel value={formTab} index={0}>
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <PersonIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Personal Information</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={6}><TextField fullWidth label="First Name" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required /></Grid>
+                <Grid item xs={6}><TextField fullWidth label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Company" value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 3, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <ContactMailIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Contact</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12}><TextField fullWidth label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></Grid>
+                <Grid item xs={6}><TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></Grid>
+                <Grid item xs={6}><TextField fullWidth label="Secondary Phone" value={formData.secondaryPhone} onChange={(e) => setFormData({ ...formData, secondaryPhone: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+          </TabPanel>
+
+          <TabPanel value={formTab} index={1}>
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <HomeIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Property Address</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Property Address"
+                    value={formData.propertyAddress}
+                    onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
+                    fullWidth
+                    required
+                    placeholder="123 Main St"
+                  />
+                </Grid>
+                <Grid item xs={5}><TextField fullWidth label="City" value={formData.propertyCity} onChange={(e) => setFormData({ ...formData, propertyCity: e.target.value })} /></Grid>
+                <Grid item xs={3}><TextField fullWidth label="State" value={formData.propertyState} onChange={(e) => setFormData({ ...formData, propertyState: e.target.value })} /></Grid>
+                <Grid item xs={4}><TextField fullWidth label="ZIP" value={formData.propertyZip} onChange={(e) => setFormData({ ...formData, propertyZip: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 3, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <ReceiptIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Billing Address</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>(if different)</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12}><TextField fullWidth label="Street Address" value={formData.billingAddress} onChange={(e) => setFormData({ ...formData, billingAddress: e.target.value })} /></Grid>
+                <Grid item xs={5}><TextField fullWidth label="City" value={formData.billingCity} onChange={(e) => setFormData({ ...formData, billingCity: e.target.value })} /></Grid>
+                <Grid item xs={3}><TextField fullWidth label="State" value={formData.billingState} onChange={(e) => setFormData({ ...formData, billingState: e.target.value })} /></Grid>
+                <Grid item xs={4}><TextField fullWidth label="ZIP" value={formData.billingZip} onChange={(e) => setFormData({ ...formData, billingZip: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+          </TabPanel>
+
+          <TabPanel value={formTab} index={2}>
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <BusinessIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Customer Details</Typography>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Customer Type</InputLabel>
+                    <Select value={formData.customerType} label="Customer Type" onChange={(e) => setFormData({ ...formData, customerType: e.target.value })}>
+                      {CUSTOMER_TYPES.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Source</InputLabel>
+                    <Select value={formData.source} label="Source" onChange={(e) => setFormData({ ...formData, source: e.target.value })}>
+                      {CUSTOMER_SOURCES.map(source => <MenuItem key={source} value={source}>{source}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Preferred Contact Method</InputLabel>
+                    <Select value={formData.preferredContactMethod} label="Preferred Contact Method" onChange={(e) => setFormData({ ...formData, preferredContactMethod: e.target.value })}>
+                      {CONTACT_METHODS.map(method => <MenuItem key={method} value={method}>{method}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}><TextField fullWidth label="Referred By" value={formData.referredBy} onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })} /></Grid>
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 3, mb: 2, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <TagIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Tags</Typography>
+              </Box>
+              <FormControl fullWidth>
+                <InputLabel>Select Tags</InputLabel>
+                <Select
+                  multiple
+                  value={formData.tags}
+                  onChange={(e) => setFormData({ ...formData, tags: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value })}
+                  input={<OutlinedInput label="Select Tags" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (<Chip key={value} label={value} size="small" />))}
+                    </Box>
+                  )}
+                >
+                  {AVAILABLE_TAGS.map((tag) => (
+                    <MenuItem key={tag} value={tag}>
+                      <Checkbox checked={formData.tags.indexOf(tag) > -1} />
+                      <ListItemText primary={tag} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Paper>
+
+            <Paper sx={{ p: 3, bgcolor: '#2C2C2E' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <NoteIcon sx={{ mr: 1, color: '#007AFF' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Notes</Typography>
+              </Box>
+              <TextField fullWidth multiline rows={4} label="Customer Notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Add any notes about this customer..." />
+            </Paper>
+          </TabPanel>
         </DialogContent>
-        <DialogActions>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setShowNewCustomerDialog(false)}>Cancel</Button>
-          <Button onClick={handleCreateCustomer} variant="contained" disabled={!newCustomerName}>
-            Create Customer
+          <Button onClick={handleCreateCustomer} variant="contained" disabled={!formData.firstName || !formData.lastName || !formData.propertyAddress}>
+            Add Customer
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Calculator Dialogs */}
+      <Dialog
+        open={activeCalculator === "Stump Grinding"}
+        onClose={() => setActiveCalculator(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Stump Grinding Calculator</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <StumpGrindingCalculator
+              loadout={loadouts?.[0]}
+              loadouts={loadouts}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={activeCalculator === "Forestry Mulching"}
+        onClose={() => setActiveCalculator(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Forestry Mulching Calculator</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <MulchingCalculator
+              loadout={loadouts?.[0]}
+              loadouts={loadouts}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={activeCalculator === "Land Clearing"}
+        onClose={() => setActiveCalculator(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Land Clearing Calculator</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <LandClearingCalculator
+              loadout={loadouts?.[0]}
+              loadouts={loadouts}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
+        </DialogContent>
       </Dialog>
     </Container>
   );
