@@ -41,7 +41,6 @@ import {
 } from "@mui/icons-material";
 import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
-import TimeTracker from "./[id]/components/TimeTracker";
 
 type WorkOrderStatus = "Scheduled" | "In Progress" | "Completed" | "Invoiced";
 
@@ -418,7 +417,7 @@ export default function WorkOrdersPage() {
                             </Grid>
                           )}
 
-                          {/* Time Tracking Section */}
+                          {/* Time Tracking Section - Show basic info, link to full dashboard */}
                           {workOrder.workOrderStatus === "In Progress" && (
                             <Grid item xs={12}>
                               <Divider sx={{ my: 2 }} />
@@ -426,7 +425,19 @@ export default function WorkOrdersPage() {
                                 <TimerIcon color="primary" />
                                 <Typography variant="h6">Time Tracking</Typography>
                               </Box>
-                              <TimeTracker workOrderId={workOrder._id} />
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Track crew time on the full work order dashboard
+                              </Typography>
+                              <Button
+                                variant="outlined"
+                                startIcon={<TimerIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/dashboard/work-orders/${workOrder._id}`);
+                                }}
+                              >
+                                Open Time Tracker
+                              </Button>
                             </Grid>
                           )}
 
