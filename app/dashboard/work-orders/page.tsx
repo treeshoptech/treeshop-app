@@ -65,25 +65,24 @@ export default function WorkOrdersPage() {
   }, [ensureDevOrg]);
 
   // Fetch data
-  const allProjects = useQuery(api.projects.list);
-  const workOrderProjects = allProjects?.filter((p) => p.status === "Work Order") || [];
+  const allWorkOrders = useQuery(api.workOrders.list);
   const loadouts = useQuery(api.loadouts.list);
   const employees = useQuery(api.employees.list);
+  const customers = useQuery(api.customers.list);
 
   // Filter by status
   const filteredWorkOrders = statusFilter === "All"
-    ? workOrderProjects
-    : workOrderProjects.filter((wo) => wo.workOrderStatus === statusFilter);
+    ? (allWorkOrders || [])
+    : (allWorkOrders || []).filter((wo) => wo.status === statusFilter);
 
   // Mutations
-  const updateProject = useMutation(api.projects.update);
+  const updateWorkOrder = useMutation(api.workOrders.update);
+  const startWork = useMutation(api.workOrders.startWork);
+  const completeWork = useMutation(api.workOrders.complete);
 
   const handleStartWork = async (workOrder: any) => {
     try {
-      await updateProject({
-        id: workOrder._id,
-        workOrderStatus: "In Progress",
-      });
+      await startWork({ id: workOrder._id });
     } catch (error) {
       console.error("Error starting work order:", error);
     }
@@ -91,10 +90,7 @@ export default function WorkOrdersPage() {
 
   const handleCompleteWork = async (workOrder: any) => {
     try {
-      await updateProject({
-        id: workOrder._id,
-        workOrderStatus: "Completed",
-      });
+      await completeWork({ id: workOrder._id });
     } catch (error) {
       console.error("Error completing work order:", error);
     }
@@ -102,10 +98,9 @@ export default function WorkOrdersPage() {
 
   const handleConvertToInvoice = async (workOrder: any) => {
     try {
-      await updateProject({
+      await updateWorkOrder({
         id: workOrder._id,
-        status: "Invoice",
-        workOrderStatus: "Invoiced",
+        status: "Invoiced",
       });
     } catch (error) {
       console.error("Error converting to invoice:", error);
@@ -113,10 +108,10 @@ export default function WorkOrdersPage() {
   };
 
   const stats = {
-    total: workOrderProjects.length,
-    scheduled: workOrderProjects.filter((wo) => wo.workOrderStatus === "Scheduled" || !wo.workOrderStatus).length,
-    inProgress: workOrderProjects.filter((wo) => wo.workOrderStatus === "In Progress").length,
-    completed: workOrderProjects.filter((wo) => wo.workOrderStatus === "Completed").length,
+    total: allWorkOrders?.length || 0,
+    scheduled: allWorkOrders?.filter((wo) => wo.status === "Scheduled" || !wo.status).length || 0,
+    inProgress: allWorkOrders?.filter((wo) => wo.status === "In Progress").length || 0,
+    completed: allWorkOrders?.filter((wo) => wo.status === "Completed").length || 0,
   };
 
   return (
@@ -231,7 +226,8 @@ export default function WorkOrdersPage() {
           <Stack spacing={2}>
             {filteredWorkOrders.map((workOrder) => {
               const isExpanded = expandedWorkOrder === workOrder._id;
-              const loadout = loadouts?.find(l => l._id === workOrder.loadoutId);
+              const loadout = loadouts?.find(l => l._id === workOrder.primaryLoadoutId);
+              const customer = customers?.find(c => c._id === workOrder.customerId);
 
               return (
                 <Card
@@ -254,11 +250,11 @@ export default function WorkOrdersPage() {
                       {/* Customer & Status */}
                       <Box sx={{ minWidth: 200, flex: 1 }}>
                         <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          {workOrder.customerName || "Unknown Customer"}
+                          {customer?.name || workOrder.projectName || "Unknown Customer"}
                         </Typography>
                         <Chip
-                          label={workOrder.workOrderStatus || "Scheduled"}
-                          color={STATUS_COLORS[workOrder.workOrderStatus as WorkOrderStatus] || "info"}
+                          label={workOrder.status || "Scheduled"}
+                          color={STATUS_COLORS[workOrder.status as WorkOrderStatus] || "info"}
                           size="small"
                           sx={{ mt: 0.5 }}
                         />
@@ -292,7 +288,7 @@ export default function WorkOrdersPage() {
                       {/* Quick Actions - Only when NOT expanded */}
                       {!isExpanded && (
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                          {(!workOrder.workOrderStatus || workOrder.workOrderStatus === "Scheduled") && (
+                          {(!workOrder.status || workOrder.status === "Scheduled") && (
                             <Button
                               size="small"
                               variant="contained"
@@ -306,7 +302,7 @@ export default function WorkOrdersPage() {
                               Start
                             </Button>
                           )}
-                          {workOrder.workOrderStatus === "In Progress" && (
+                          {workOrder.status === "In Progress" && (
                             <Button
                               size="small"
                               variant="contained"
@@ -340,10 +336,10 @@ export default function WorkOrdersPage() {
                             </Typography>
                             <Stack spacing={1}>
                               <Typography variant="body2">
-                                <strong>Customer:</strong> {workOrder.customerName || "Unknown"}
+                                <strong>Customer:</strong> {customer?.name || workOrder.projectName || "Unknown"}
                               </Typography>
                               <Typography variant="body2">
-                                <strong>Service:</strong> {workOrder.serviceType}
+                                <strong>Service:</strong> {workOrder.serviceType || "N/A"}
                               </Typography>
                               <Typography variant="body2">
                                 <strong>Address:</strong> {workOrder.propertyAddress || 'Not provided'}
@@ -379,11 +375,11 @@ export default function WorkOrdersPage() {
                                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                                     <PersonIcon fontSize="small" color="action" />
                                     <Typography variant="body2">
-                                      <strong>Crew Size:</strong> {loadout.employeeIds?.length || 0} members
+                                      <strong>Crew Size:</strong> {workOrder.crewMemberIds?.length || 0} members
                                     </Typography>
                                   </Box>
                                   <Typography variant="body2">
-                                    <strong>Equipment:</strong> {loadout.equipmentIds?.length || 0} items
+                                    <strong>Equipment:</strong> {workOrder.equipmentIds?.length || 0} items
                                   </Typography>
                                 </>
                               ) : (
@@ -418,7 +414,7 @@ export default function WorkOrdersPage() {
                           )}
 
                           {/* Time Tracking Section - Show basic info, link to full dashboard */}
-                          {workOrder.workOrderStatus === "In Progress" && (
+                          {workOrder.status === "In Progress" && (
                             <Grid item xs={12}>
                               <Divider sx={{ my: 2 }} />
                               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
@@ -456,7 +452,7 @@ export default function WorkOrdersPage() {
                                 View Full Dashboard
                               </Button>
 
-                              {(!workOrder.workOrderStatus || workOrder.workOrderStatus === "Scheduled") && (
+                              {(!workOrder.status || workOrder.status === "Scheduled") && (
                                 <Button
                                   variant="contained"
                                   color="primary"
@@ -470,7 +466,7 @@ export default function WorkOrdersPage() {
                                 </Button>
                               )}
 
-                              {workOrder.workOrderStatus === "In Progress" && (
+                              {workOrder.status === "In Progress" && (
                                 <Button
                                   variant="contained"
                                   color="success"
@@ -484,7 +480,7 @@ export default function WorkOrdersPage() {
                                 </Button>
                               )}
 
-                              {workOrder.workOrderStatus === "Completed" && (
+                              {workOrder.status === "Completed" && (
                                 <Button
                                   variant="contained"
                                   color="primary"
