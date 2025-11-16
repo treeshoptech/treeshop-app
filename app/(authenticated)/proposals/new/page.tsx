@@ -163,8 +163,9 @@ function NewProposalPageContent() {
   const searchParams = useSearchParams();
   const [activeStep, setActiveStep] = useState(0);
   const [lineItems, setLineItems] = useState<any[]>([]);
+  const [showServiceCatalog, setShowServiceCatalog] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceType>("Stump Grinding");
+  const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [leadId, setLeadId] = useState<Id<"projects"> | null>(null);
 
   // Form data
@@ -200,6 +201,19 @@ function NewProposalPageContent() {
   const handleLineItemCreate = (lineItemData: any) => {
     setLineItems([...lineItems, { ...lineItemData, id: crypto.randomUUID() }]);
     setShowCalculator(false);
+    setShowServiceCatalog(false);
+    setSelectedService(null);
+  };
+
+  const handleServiceSelect = (service: ServiceType) => {
+    setSelectedService(service);
+    setShowServiceCatalog(false);
+    setShowCalculator(true);
+  };
+
+  const handleCancelCalculator = () => {
+    setShowCalculator(false);
+    setSelectedService(null);
   };
 
   const handleRemoveLineItem = (id: string) => {
@@ -373,213 +387,173 @@ function NewProposalPageContent() {
           <Stack spacing={3}>
             {/* Line Items List */}
             {lineItems.length > 0 && (
-              <Paper>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Line</TableCell>
-                        <TableCell>Service</TableCell>
-                        <TableCell>Description</TableCell>
-                        <TableCell>Hours</TableCell>
-                        <TableCell align="right">Price</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {lineItems.map((item, index) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell>{item.serviceType}</TableCell>
-                          <TableCell>{item.description}</TableCell>
-                          <TableCell>{item.totalEstimatedHours.toFixed(1)} hrs</TableCell>
-                          <TableCell align="right">
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            }).format(item.totalPrice)}
-                          </TableCell>
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleRemoveLineItem(item.id)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow>
-                        <TableCell colSpan={4} align="right">
-                          <Typography variant="h6">Total:</Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="h6">
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            }).format(totalValue)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell />
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Line Items
+                </Typography>
+                <Stack spacing={2}>
+                  {lineItems.map((item, index) => (
+                    <Card key={item.id} variant="outlined">
+                      <CardContent>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
+                              <Typography variant="h6">
+                                {index + 1}. {item.serviceType}
+                              </Typography>
+                              {item.baseScore && (
+                                <Chip
+                                  label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : 'Inch-Acres'}`}
+                                  size="small"
+                                  color="primary"
+                                />
+                              )}
+                              {item.afissFactors?.length > 0 && (
+                                <Chip
+                                  label={`${item.afissFactors.length} AFISS factors`}
+                                  size="small"
+                                  color="warning"
+                                />
+                              )}
+                            </Stack>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              {item.description}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Estimated time: {item.totalEstimatedHours.toFixed(1)} hours
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleRemoveLineItem(item.id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Stack>
               </Paper>
             )}
 
-            {/* Add Line Item Section */}
-            {!showCalculator ? (
+            {/* Add Service Item Button */}
+            {!showCalculator && !showServiceCatalog && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setShowServiceCatalog(true)}
+                size="large"
+                fullWidth
+                sx={{ maxWidth: 300 }}
+              >
+                + Service Item
+              </Button>
+            )}
+
+            {/* Service Catalog Modal */}
+            {showServiceCatalog && (
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  Add Line Item
+                  Select Service to Add
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Select a service type to add to this proposal
+                  Choose a service type from the catalog
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6} md={4}>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      size="large"
-                      onClick={() => {
-                        setSelectedService("Stump Grinding");
-                        setShowCalculator(true);
-                      }}
-                      sx={{
-                        py: 2,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                      }}
+                    <Card
+                      sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
+                      onClick={() => handleServiceSelect("Stump Grinding")}
                     >
-                      <Typography variant="h6">Stump Grinding</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Individual stump removal
-                      </Typography>
-                    </Button>
+                      <CardContent>
+                        <Typography variant="h6">Stump Grinding</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Individual stump removal
+                        </Typography>
+                      </CardContent>
+                    </Card>
                   </Grid>
                   <Grid item xs={12} sm={6} md={4}>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      size="large"
-                      onClick={() => {
-                        setSelectedService("Forestry Mulching");
-                        setShowCalculator(true);
-                      }}
-                      sx={{
-                        py: 2,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                      }}
+                    <Card
+                      sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
+                      onClick={() => handleServiceSelect("Forestry Mulching")}
                     >
-                      <Typography variant="h6">Forestry Mulching</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Acreage-based clearing
-                      </Typography>
-                    </Button>
+                      <CardContent>
+                        <Typography variant="h6">Forestry Mulching</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Acreage-based clearing
+                        </Typography>
+                      </CardContent>
+                    </Card>
                   </Grid>
                   <Grid item xs={12} sm={6} md={4}>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      size="large"
-                      onClick={() => {
-                        setSelectedService("Land Clearing");
-                        setShowCalculator(true);
-                      }}
-                      sx={{
-                        py: 2,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                      }}
+                    <Card
+                      sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
+                      onClick={() => handleServiceSelect("Land Clearing")}
                     >
-                      <Typography variant="h6">Land Clearing</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Heavy equipment work
-                      </Typography>
-                    </Button>
+                      <CardContent>
+                        <Typography variant="h6">Land Clearing</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Heavy equipment work
+                        </Typography>
+                      </CardContent>
+                    </Card>
                   </Grid>
                   <Grid item xs={12} sm={6} md={4}>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      size="large"
-                      onClick={() => {
-                        setSelectedService("Tree Removal");
-                        setShowCalculator(true);
-                      }}
-                      sx={{
-                        py: 2,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                      }}
+                    <Card
+                      sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
+                      onClick={() => handleServiceSelect("Tree Removal")}
                     >
-                      <Typography variant="h6">Tree Removal</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Full tree takedown
-                      </Typography>
-                    </Button>
+                      <CardContent>
+                        <Typography variant="h6">Tree Removal</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Full tree takedown
+                        </Typography>
+                      </CardContent>
+                    </Card>
                   </Grid>
                   <Grid item xs={12} sm={6} md={4}>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      size="large"
-                      onClick={() => {
-                        setSelectedService("Tree Trimming");
-                        setShowCalculator(true);
-                      }}
-                      sx={{
-                        py: 2,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                      }}
+                    <Card
+                      sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}
+                      onClick={() => handleServiceSelect("Tree Trimming")}
                     >
-                      <Typography variant="h6">Tree Trimming</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Pruning & maintenance
-                      </Typography>
-                    </Button>
+                      <CardContent>
+                        <Typography variant="h6">Tree Trimming</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Pruning & maintenance
+                        </Typography>
+                      </CardContent>
+                    </Card>
                   </Grid>
                   <Grid item xs={12} sm={6} md={4}>
-                    <Button
+                    <Card
+                      sx={{ cursor: "pointer", "&:hover": { bgcolor: "action.hover", borderStyle: "dashed" } }}
+                      onClick={() => handleServiceSelect("Custom")}
                       variant="outlined"
-                      fullWidth
-                      size="large"
-                      onClick={() => {
-                        setSelectedService("Custom");
-                        setShowCalculator(true);
-                      }}
-                      sx={{
-                        py: 2,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                        borderStyle: "dashed",
-                      }}
                     >
-                      <Typography variant="h6">Custom Line Item</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Manual entry for special items
-                      </Typography>
-                    </Button>
+                      <CardContent>
+                        <Typography variant="h6">Custom Line Item</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Manual entry
+                        </Typography>
+                      </CardContent>
+                    </Card>
                   </Grid>
                 </Grid>
+                <Box sx={{ mt: 3 }}>
+                  <Button onClick={() => setShowServiceCatalog(false)}>Cancel</Button>
+                </Box>
               </Paper>
-            ) : (
+            )}
+
+            {/* Calculator Form */}
+            {showCalculator && selectedService && (
               <Paper sx={{ p: 3 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
                   <Typography variant="h6">{selectedService} Calculator</Typography>
-                  <Button onClick={() => setShowCalculator(false)}>Cancel</Button>
+                  <Button onClick={handleCancelCalculator}>Cancel</Button>
                 </Box>
                 <Divider sx={{ mb: 3 }} />
                 {selectedService === "Stump Grinding" && (
