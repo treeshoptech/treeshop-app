@@ -164,7 +164,12 @@ export default function LeadsPage() {
   };
 
   const handleEditLead = async () => {
-    if (!selectedLead) return;
+    if (!selectedLead) {
+      console.error("No selected lead");
+      return;
+    }
+
+    console.log("Updating lead:", selectedLead._id, formData);
 
     try {
       await updateProject({
@@ -181,10 +186,28 @@ export default function LeadsPage() {
         notes: formData.notes || undefined,
       });
 
+      console.log("Lead updated successfully");
+
       setEditDialogOpen(false);
       setSelectedLead(null);
+      setFormData({
+        firstName: "",
+        lastName: "",
+        customerEmail: "",
+        customerPhone: "",
+        propertyAddress: "",
+        parcelId: "",
+        latitude: "",
+        longitude: "",
+        serviceType: "Stump Grinding",
+        estimatedValue: "",
+        leadSource: "",
+        notes: "",
+        leadStatus: "New",
+      });
     } catch (error) {
       console.error("Error updating lead:", error);
+      alert("Failed to update lead: " + (error as Error).message);
     }
   };
 
@@ -200,7 +223,7 @@ export default function LeadsPage() {
 
   const handleConvertToProposal = (lead: any) => {
     // Navigate to proposal creation page with lead data
-    router.push(`/dashboard/proposals/new?leadId=${lead._id}`);
+    router.push(`/proposals/new?leadId=${lead._id}`);
   };
 
   const openEditDialog = (lead: any) => {
@@ -246,7 +269,25 @@ export default function LeadsPage() {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setAddDialogOpen(true)}
+            onClick={() => {
+              // Reset form data when opening add dialog
+              setFormData({
+                firstName: "",
+                lastName: "",
+                customerEmail: "",
+                customerPhone: "",
+                propertyAddress: "",
+                parcelId: "",
+                latitude: "",
+                longitude: "",
+                serviceType: "Stump Grinding",
+                estimatedValue: "",
+                leadSource: "",
+                notes: "",
+                leadStatus: "New",
+              });
+              setAddDialogOpen(true);
+            }}
             size="large"
           >
             New Lead
@@ -334,7 +375,25 @@ export default function LeadsPage() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => setAddDialogOpen(true)}
+              onClick={() => {
+                // Reset form data when opening add dialog
+                setFormData({
+                  firstName: "",
+                  lastName: "",
+                  customerEmail: "",
+                  customerPhone: "",
+                  propertyAddress: "",
+                  parcelId: "",
+                  latitude: "",
+                  longitude: "",
+                  serviceType: "Stump Grinding",
+                  estimatedValue: "",
+                  leadSource: "",
+                  notes: "",
+                  leadStatus: "New",
+                });
+                setAddDialogOpen(true);
+              }}
             >
               Add First Lead
             </Button>
@@ -467,14 +526,6 @@ export default function LeadsPage() {
                         {/* Action Buttons */}
                         <Grid item xs={12}>
                           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              startIcon={<ArrowForwardIcon />}
-                              onClick={() => handleConvertToProposal(lead)}
-                            >
-                              Create Proposal
-                            </Button>
                             <Button
                               variant="outlined"
                               startIcon={<PhoneIcon />}
@@ -756,7 +807,13 @@ export default function LeadsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleEditLead} variant="contained">
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              handleEditLead();
+            }}
+            variant="contained"
+          >
             Save Changes
           </Button>
         </DialogActions>

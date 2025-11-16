@@ -312,42 +312,46 @@ export default function WorkOrdersPage() {
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <IconButton
+                        <Button
                           size="small"
-                          onClick={() => router.push(`/work-orders/${workOrder._id}`)}
-                          title="View Work Order"
+                          variant="outlined"
+                          startIcon={<VisibilityIcon />}
+                          onClick={() => router.push(`/dashboard/work-orders/${workOrder._id}`)}
                         >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
+                          View
+                        </Button>
                         {(!workOrder.workOrderStatus || workOrder.workOrderStatus === "Scheduled") && (
-                          <IconButton
+                          <Button
                             size="small"
+                            variant="contained"
                             color="primary"
+                            startIcon={<StartIcon />}
                             onClick={() => handleStartWork(workOrder)}
-                            title="Start Work"
                           >
-                            <StartIcon fontSize="small" />
-                          </IconButton>
+                            Start Work
+                          </Button>
                         )}
                         {workOrder.workOrderStatus === "In Progress" && (
-                          <IconButton
+                          <Button
                             size="small"
+                            variant="contained"
                             color="success"
+                            startIcon={<StopIcon />}
                             onClick={() => handleCompleteWork(workOrder)}
-                            title="Complete Work"
                           >
-                            <StopIcon fontSize="small" />
-                          </IconButton>
+                            Complete
+                          </Button>
                         )}
                         {workOrder.workOrderStatus === "Completed" && (
-                          <IconButton
+                          <Button
                             size="small"
-                            color="success"
+                            variant="contained"
+                            color="primary"
+                            startIcon={<ArrowForwardIcon />}
                             onClick={() => handleConvertToInvoice(workOrder)}
-                            title="Convert to Invoice"
                           >
-                            <ArrowForwardIcon fontSize="small" />
-                          </IconButton>
+                            Create Invoice
+                          </Button>
                         )}
                       </Stack>
                     </TableCell>

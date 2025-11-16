@@ -114,9 +114,31 @@ export const start = mutation({
   handler: async (ctx, args) => {
     const org = await getOrganization(ctx);
 
+    // Get employee info for denormalization
+    const employee = await ctx.db.get(args.employeeId);
+    const employeeName = employee
+      ? `${employee.firstName} ${employee.lastName}`
+      : "Unknown";
+
+    // Get line item info for denormalization
+    const lineItem = args.lineItemId ? await ctx.db.get(args.lineItemId) : null;
+    const serviceType = lineItem?.serviceType;
+
+    // Get project ID from work order
+    const workOrder = await ctx.db.get(args.workOrderId);
+    const projectId = workOrder?.projectId;
+
+    // Get loadout info if provided
+    const loadout = args.loadoutId ? await ctx.db.get(args.loadoutId) : null;
+    const loadoutName = loadout?.name;
+
     const timeEntryId = await ctx.db.insert("timeEntries", {
       organizationId: org._id,
       ...args,
+      employeeName,
+      projectId,
+      serviceType,
+      loadoutName,
       startTime: Date.now(),
       recordedBy: "Employee",
       timestampRecorded: Date.now(),
@@ -162,11 +184,65 @@ export const stop = mutation({
     const durationMinutes = Math.round(durationMs / (1000 * 60));
     const durationHours = durationMinutes / 60;
 
+    // Calculate labor cost
+    const employee = await ctx.db.get(timeEntry.employeeId);
+    let laborCost = 0;
+    let employeeHourlyRate = 0;
+    let employeeBurdenMultiplier = 1.7; // Default burden
+
+    if (employee) {
+      employeeHourlyRate = employee.baseHourlyRate;
+      const trueCostPerHour = employeeHourlyRate * employeeBurdenMultiplier;
+      laborCost = durationHours * trueCostPerHour;
+    }
+
+    // Calculate equipment cost (if equipment assigned) and denormalize data
+    let equipmentCost = 0;
+    const equipmentNames: string[] = [];
+    const equipmentHourlyRates: number[] = [];
+
+    if (timeEntry.equipmentIds && timeEntry.equipmentIds.length > 0) {
+      for (const equipmentId of timeEntry.equipmentIds) {
+        const equipment = await ctx.db.get(equipmentId);
+        if (equipment) {
+          // Calculate equipment hourly cost
+          const ownershipCost = equipment.purchasePrice / (equipment.usefulLifeYears * equipment.annualHours);
+          const financeCost = ((equipment.financeRate || 0) * equipment.purchasePrice / 100) / equipment.annualHours;
+          const insuranceCost = (equipment.insuranceCost || 0) / equipment.annualHours;
+          const registrationCost = (equipment.registrationCost || 0) / equipment.annualHours;
+
+          const ownershipPerHour = ownershipCost + financeCost + insuranceCost + registrationCost;
+
+          const fuelCost = (equipment.fuelConsumptionGPH || 0) * (equipment.fuelPricePerGallon || 0);
+          const maintenanceCost = (equipment.maintenanceCostAnnual || 0) / equipment.annualHours;
+          const repairCost = (equipment.repairCostAnnual || 0) / equipment.annualHours;
+
+          const operatingPerHour = fuelCost + maintenanceCost + repairCost;
+
+          const totalEquipmentPerHour = ownershipPerHour + operatingPerHour;
+          equipmentCost += durationHours * totalEquipmentPerHour;
+
+          // Denormalize for reporting
+          equipmentNames.push(equipment.nickname || `${equipment.make} ${equipment.model}`);
+          equipmentHourlyRates.push(totalEquipmentPerHour);
+        }
+      }
+    }
+
+    const totalCost = laborCost + equipmentCost;
+
     await ctx.db.patch(id, {
       ...updates,
       endTime,
       durationMinutes,
       durationHours,
+      employeeHourlyRate,
+      employeeBurdenMultiplier,
+      laborCost,
+      equipmentCost,
+      equipmentNames: equipmentNames.length > 0 ? equipmentNames : undefined,
+      equipmentHourlyRates: equipmentHourlyRates.length > 0 ? equipmentHourlyRates : undefined,
+      totalCost,
     });
 
     return id;

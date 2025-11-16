@@ -155,3 +155,65 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+// Transition project to Work Order stage (called when proposal accepted)
+export const transitionToWorkOrder = mutation({
+  args: {
+    id: v.id("projects"),
+    scheduledDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    const project = await ctx.db.get(args.id);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Verify belongs to current organization
+    if (project.organizationId !== org._id) {
+      throw new Error("Project not found");
+    }
+
+    // Update project status
+    await ctx.db.patch(args.id, {
+      status: "Work Order",
+      proposalStatus: "Accepted",
+      workOrderStatus: "Scheduled",
+      scheduledDate: args.scheduledDate,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+// Transition project to Invoice stage (called when work order completed)
+export const transitionToInvoice = mutation({
+  args: { id: v.id("projects") },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    const project = await ctx.db.get(args.id);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Verify belongs to current organization
+    if (project.organizationId !== org._id) {
+      throw new Error("Project not found");
+    }
+
+    // Update project status
+    await ctx.db.patch(args.id, {
+      status: "Invoice",
+      workOrderStatus: "Invoiced",
+      invoiceStatus: "Draft",
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});

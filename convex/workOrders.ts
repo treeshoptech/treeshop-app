@@ -602,3 +602,189 @@ export const listDirect = query({
       .collect();
   },
 });
+
+// ============================================
+// HELPER MUTATIONS
+// ============================================
+
+/**
+ * Assign crew members to work order
+ */
+export const assignCrew = mutation({
+  args: {
+    id: v.id("workOrders"),
+    crewMemberIds: v.array(v.id("employees")),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const workOrder = await ctx.db.get(args.id);
+
+    if (!workOrder) {
+      throw new Error("Work order not found");
+    }
+
+    if (workOrder.organizationId !== org._id) {
+      throw new Error("Work order not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      crewMemberIds: args.crewMemberIds,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+/**
+ * Assign equipment to work order
+ */
+export const assignEquipment = mutation({
+  args: {
+    id: v.id("workOrders"),
+    equipmentIds: v.array(v.id("equipment")),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const workOrder = await ctx.db.get(args.id);
+
+    if (!workOrder) {
+      throw new Error("Work order not found");
+    }
+
+    if (workOrder.organizationId !== org._id) {
+      throw new Error("Work order not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      equipmentIds: args.equipmentIds,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+/**
+ * Add photos to work order (before, during, or after)
+ */
+export const addPhotos = mutation({
+  args: {
+    id: v.id("workOrders"),
+    category: v.union(v.literal("before"), v.literal("during"), v.literal("after")),
+    photoUrls: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const workOrder = await ctx.db.get(args.id);
+
+    if (!workOrder) {
+      throw new Error("Work order not found");
+    }
+
+    if (workOrder.organizationId !== org._id) {
+      throw new Error("Work order not found");
+    }
+
+    const { category, photoUrls } = args;
+    const updates: Record<string, string[]> = {};
+
+    if (category === "before") {
+      updates.photosBefore = [...(workOrder.photosBefore || []), ...photoUrls];
+    } else if (category === "during") {
+      updates.photosDuring = [...(workOrder.photosDuring || []), ...photoUrls];
+    } else if (category === "after") {
+      updates.photosAfter = [...(workOrder.photosAfter || []), ...photoUrls];
+    }
+
+    await ctx.db.patch(args.id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+/**
+ * Schedule a work order
+ */
+export const scheduleWorkOrder = mutation({
+  args: {
+    id: v.id("workOrders"),
+    scheduledDate: v.number(),
+    scheduledStartTime: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const workOrder = await ctx.db.get(args.id);
+
+    if (!workOrder) {
+      throw new Error("Work order not found");
+    }
+
+    if (workOrder.organizationId !== org._id) {
+      throw new Error("Work order not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      scheduledDate: args.scheduledDate,
+      scheduledStartTime: args.scheduledStartTime,
+      status: "Scheduled",
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+/**
+ * Update completion checklist item
+ */
+export const updateCompletionChecklist = mutation({
+  args: {
+    id: v.id("workOrders"),
+    allLineItemsComplete: v.optional(v.boolean()),
+    finalPhotosUploaded: v.optional(v.boolean()),
+    customerWalkthroughComplete: v.optional(v.boolean()),
+    debrisRemoved: v.optional(v.boolean()),
+    siteRestored: v.optional(v.boolean()),
+    equipmentCleaned: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const { id, ...updates } = args;
+    const workOrder = await ctx.db.get(id);
+
+    if (!workOrder) {
+      throw new Error("Work order not found");
+    }
+
+    if (workOrder.organizationId !== org._id) {
+      throw new Error("Work order not found");
+    }
+
+    await ctx.db.patch(id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
+    return id;
+  },
+});
+
+/**
+ * Get work orders by project
+ */
+export const listByProject = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    return await ctx.db
+      .query("workOrders")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .filter((q) => q.eq(q.field("organizationId"), org._id))
+      .collect();
+  },
+});

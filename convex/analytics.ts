@@ -1,1176 +1,434 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query } from "./_generated/server";
 import { getOrganization } from "./lib/auth";
-import { Doc, Id } from "./_generated/dataModel";
 
-/**
- * Analytics queries for the Strategic Command Dashboard
- * Real-time business intelligence and performance metrics
- */
+// 📊 EMPLOYEE PERFORMANCE ANALYTICS
 
-// Helper to get start of current month
-function getStartOfMonth() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-}
-
-// Helper to get start of last month
-function getStartOfLastMonth() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
-}
-
-// Helper to get date N months ago
-function getMonthsAgo(months: number) {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() - months, 1).getTime();
-}
-
-/**
- * Get monthly revenue tracking
- */
-export const getMonthlyRevenue = query({
-  handler: async (ctx) => {
-    const org = await getOrganization(ctx);
-    const startOfMonth = getStartOfMonth();
-
-    // Get completed projects this month (using totalPrice as revenue)
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .filter((q) =>
-        q.and(
-          q.gte(q.field("createdAt"), startOfMonth),
-          q.or(
-            q.eq(q.field("status"), "Invoice"),
-            q.eq(q.field("invoiceStatus"), "Paid")
-          )
-        )
-      )
-      .collect();
-
-    const current = projects.reduce((sum, p) => sum + (p.estimatedValue || 0), 0);
-
-    // Get last month's revenue
-    const lastMonthStart = getStartOfLastMonth();
-    const lastMonthProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .filter((q) =>
-        q.and(
-          q.gte(q.field("createdAt"), lastMonthStart),
-          q.lt(q.field("createdAt"), startOfMonth),
-          q.or(
-            q.eq(q.field("status"), "Invoice"),
-            q.eq(q.field("invoiceStatus"), "Paid")
-          )
-        )
-      )
-      .collect();
-
-    const lastMonth = lastMonthProjects.reduce((sum, p) => sum + (p.estimatedValue || 0), 0);
-
-    // No target - show actual revenue only
-    return { current, lastMonth };
-  },
-});
-
-/**
- * Get pipeline value and metrics
- */
-export const getPipeline = query({
-  handler: async (ctx) => {
-    const org = await getOrganization(ctx);
-
-    // Get all proposals
-    const proposals = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .filter((q) => q.eq(q.field("status"), "Proposal"))
-      .collect();
-
-    const totalValue = proposals.reduce((sum, p) => sum + (p.estimatedValue || 0), 0);
-    const proposalCount = proposals.length;
-
-    // Calculate actual win rate from historical data
-    const allProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .collect();
-
-    const wonProjects = allProjects.filter((p) =>
-      p.status === "Work Order" || p.status === "Invoice" || p.workOrderStatus === "Completed"
-    ).length;
-
-    const totalProposals = allProjects.filter((p) => p.status === "Proposal").length + wonProjects;
-    const winRate = totalProposals > 0 ? Math.round((wonProjects / totalProposals) * 100) : 0;
-
-    // Expected value = total × win rate
-    const expectedValue = totalValue * (winRate / 100);
-
-    return {
-      totalValue,
-      proposalCount,
-      winRate,
-      expectedValue,
-    };
-  },
-});
-
-/**
- * Get crew utilization percentage
- */
-export const getCrewUtilization = query({
-  handler: async (ctx) => {
-    const org = await getOrganization(ctx);
-
-    // Get all employees
-    const employees = await ctx.db
-      .query("employees")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .collect();
-
-    // Calculate available hours (30 days × 8 hrs × employee count)
-    const totalAvailableHours = employees.length * 30 * 8;
-
-    // Get projects in progress this month
-    const startOfMonth = getStartOfMonth();
-    const activeProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .filter((q) =>
-        q.and(
-          q.gte(q.field("createdAt"), startOfMonth),
-          q.eq(q.field("status"), "Work Order")
-        )
-      )
-      .collect();
-
-    // Estimate hours used (would track actual hours in real system)
-    // For now, assume each active project uses average 40 hours
-    const estimatedHoursUsed = activeProjects.length * 40;
-
-    const utilization = totalAvailableHours > 0
-      ? Math.min((estimatedHoursUsed / totalAvailableHours) * 100, 100)
-      : 0;
-
-    return {
-      utilization: Math.round(utilization),
-      availableHours: totalAvailableHours,
-      usedHours: estimatedHoursUsed,
-    };
-  },
-});
-
-/**
- * Get map data for territory intelligence
- */
-export const getMapData = query({
-  handler: async (ctx) => {
-    const org = await getOrganization(ctx);
-
-    // Use organization coordinates or default to New Smyrna Beach, FL
-    const center = org.coordinates || { lat: 29.0258, lng: -80.9270 };
-
-    // Get completed projects with location data
-    const completedProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .filter((q) =>
-        q.or(
-          q.eq(q.field("status"), "Invoice"),
-          q.eq(q.field("workOrderStatus"), "Completed")
-        )
-      )
-      .collect();
-
-    // Filter projects with coordinates only (real data)
-    const projectsWithCoords = completedProjects.filter((p) => p.coordinates);
-    const revenueHeatmap = projectsWithCoords.map((p) => ({
-      lat: p.coordinates!.lat,
-      lng: p.coordinates!.lng,
-      revenue: p.estimatedValue || 0,
-    }));
-
-    // Get active projects with coordinates
-    const activeProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .filter((q) => q.eq(q.field("status"), "Work Order"))
-      .collect();
-
-    const activeJobs = activeProjects
-      .filter((p) => p.coordinates)
-      .map((p) => ({
-        id: p._id,
-        lat: p.coordinates!.lat,
-        lng: p.coordinates!.lng,
-        customerName: p.customerName || "Unknown",
-        revenue: p.estimatedValue || 0,
-        status: p.workOrderStatus || "In Progress",
-      }));
-
-    // Create 100-mile radius service area from organization location
-    // 100 miles ≈ 160,934 meters
-    const serviceAreaRadius = 160934;
-
-    // No mock data - show real service area or nothing
-    const serviceAreas = [];
-
-    // No mock opportunity zones - these would be calculated from actual data
-    const opportunityZones: any[] = [];
-
-    return {
-      center,
-      revenueHeatmap,
-      activeJobs,
-      serviceAreas,
-      opportunityZones,
-      serviceAreaRadius, // 100 miles in meters
-      stats: {
-        completedJobs: completedProjects.length,
-        activeJobs: activeProjects.length,
-        opportunityZones: 0,
-      },
-    };
-  },
-});
-
-/**
- * Get revenue forecast data
- */
-export const getRevenueForecast = query({
-  handler: async (ctx) => {
-    const org = await getOrganization(ctx);
-
-    // Get last 12 months of revenue
-    const twelveMonthsAgo = getMonthsAgo(12);
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .filter((q) =>
-        q.and(
-          q.gte(q.field("createdAt"), twelveMonthsAgo),
-          q.or(
-            q.eq(q.field("status"), "Invoice"),
-            q.eq(q.field("invoiceStatus"), "Paid")
-          )
-        )
-      )
-      .collect();
-
-    // Group by month
-    const monthlyData = new Map<string, number>();
-    projects.forEach((p) => {
-      const date = new Date(p.createdAt);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      monthlyData.set(key, (monthlyData.get(key) || 0) + (p.estimatedValue || 0));
-    });
-
-    // Build chart data
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const now = new Date();
-    const chartData = [];
-
-    // Last 6 months (actual)
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      chartData.push({
-        month: months[date.getMonth()],
-        actual: monthlyData.get(key) || 0,
-        forecast: null,
-        forecastHigh: null,
-        forecastLow: null,
-      });
-    }
-
-    // Next 6 months (forecast)
-    const avgRevenue = Array.from(monthlyData.values()).reduce((a, b) => a + b, 0) / monthlyData.size;
-    const growthRate = 0.05; // 5% growth assumption
-
-    for (let i = 1; i <= 6; i++) {
-      const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-      const forecastValue = avgRevenue * Math.pow(1 + growthRate, i);
-      chartData.push({
-        month: months[date.getMonth()],
-        actual: null,
-        forecast: forecastValue,
-        forecastHigh: forecastValue * 1.15,
-        forecastLow: forecastValue * 0.85,
-      });
-    }
-
-    return {
-      chartData,
-      confidence: 87,
-      nextMonth: chartData[6]?.forecast || 0,
-      sixMonth: chartData.slice(6).reduce((sum, d) => sum + (d.forecast || 0), 0),
-      trend: 'growing',
-    };
-  },
-});
-
-/**
- * Get loadout performance metrics
- */
-export const getLoadoutPerformance = query({
-  handler: async (ctx) => {
-    const org = await getOrganization(ctx);
-
-    const loadouts = await ctx.db
-      .query("loadouts")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .collect();
-
-    // Get projects completed in last 30 days
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const recentProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .filter((q) =>
-        q.and(
-          q.gte(q.field("createdAt"), thirtyDaysAgo),
-          q.or(
-            q.eq(q.field("status"), "Invoice"),
-            q.eq(q.field("workOrderStatus"), "Completed")
-          )
-        )
-      )
-      .collect();
-
-    return loadouts.map((loadout) => {
-      // Calculate actual performance from real project data
-      const loadoutProjects = recentProjects.filter((p) => p.loadoutId === loadout._id);
-      const jobCount = loadoutProjects.length;
-      const revenueGenerated = loadoutProjects.reduce((sum, p) => sum + (p.estimatedValue || 0), 0);
-
-      // Calculate utilization (would need time tracking data)
-      const estimatedHoursUsed = loadoutProjects.reduce((sum, p) => sum + (p.estimatedHours || 0), 0);
-      const availableHours = 30 * 8; // 30 days × 8 hours
-      const utilization = availableHours > 0 ? Math.min((estimatedHoursUsed / availableHours) * 100, 100) : 0;
-
-      // Calculate average margin (would come from actual cost tracking)
-      const avgMargin = loadoutProjects.length > 0
-        ? loadoutProjects.reduce((sum, p) => sum + (p.profitMargin || 0), 0) / loadoutProjects.length
-        : 0;
-
-      const actualPPH = loadout.productionRatePPH; // Would calculate from actual time tracking
-
-      return {
-        id: loadout._id,
-        name: loadout.name,
-        serviceTypes: [loadout.serviceType],
-        utilization: Math.round(utilization),
-        utilizationTrend: 0, // Would calculate from historical data
-        revenueGenerated,
-        avgMargin,
-        actualPPH,
-        estimatedPPH: loadout.productionRatePPH,
-        pphPerformance: 0, // Would calculate from actual vs estimated
-        roi: 0, // Would calculate from revenue vs costs
-        jobsCompleted: jobCount,
-        recommendation: {
-          label: jobCount === 0 ? 'No Data' : utilization >= 85 ? '🚀 Scale Up' : utilization < 60 ? '⚠️ Underutilized' : '✅ Performing',
-          type: jobCount === 0 ? 'default' : utilization >= 85 ? 'success' : utilization < 60 ? 'warning' : 'info',
-        },
-      };
-    });
-  },
-});
-
-/**
- * Get growth opportunities (AI-powered recommendations)
- */
-export const getGrowthOpportunities = query({
-  handler: async (ctx) => {
-    const org = await getOrganization(ctx);
-
-    // Real data-driven opportunities (would be ML-powered in production)
-    const opportunities: any[] = [];
-
-    // Get all projects to analyze patterns
-    const allProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .collect();
-
-    // Analyze service type demand
-    const serviceTypeCounts: Record<string, number> = {};
-    allProjects.forEach((p) => {
-      if (p.serviceType) {
-        serviceTypeCounts[p.serviceType] = (serviceTypeCounts[p.serviceType] || 0) + 1;
-      }
-    });
-
-    // Get loadouts to see what services are covered
-    const loadouts = await ctx.db
-      .query("loadouts")
-      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
-      .collect();
-
-    const coveredServices = new Set(loadouts.map((l) => l.serviceType));
-
-    // Check for high-demand services without dedicated loadout
-    Object.entries(serviceTypeCounts).forEach(([serviceType, count]) => {
-      if (count >= 5 && !coveredServices.has(serviceType)) {
-        opportunities.push({
-          title: `Add Dedicated ${serviceType} Loadout`,
-          description: `${count} ${serviceType} projects in your history, but no dedicated loadout configured. Adding specialized equipment could increase efficiency.`,
-          impact: "Medium",
-          projectedRevenue: count * 500, // Conservative estimate
-          category: "Service Expansion",
-          confidence: 75,
-        });
-      }
-    });
-
-    return opportunities;
-  },
-});
-
-// ============================================================================
-// JOB PERFORMANCE METRICS - Track Actual vs Estimated
-// ============================================================================
-
-/**
- * Create job performance metrics entry when work order completes
- * Captures actual vs estimated for time, cost, and profitability
- */
-export const createJobPerformanceMetrics = mutation({
-  args: {
-    projectId: v.id("projects"),
-    loadoutId: v.id("loadouts"),
-
-    // Time variance
-    estimatedProductionHours: v.number(),
-    actualProductionHours: v.number(),
-    estimatedTransportHours: v.number(),
-    actualTransportHours: v.number(),
-    estimatedBufferHours: v.number(),
-    actualBufferHours: v.number(),
-    estimatedTotalHours: v.number(),
-    actualTotalHours: v.number(),
-    productionVariancePercent: v.number(),
-
-    // Cost variance
-    estimatedLaborCost: v.number(),
-    actualLaborCost: v.number(),
-    estimatedEquipmentCost: v.number(),
-    actualEquipmentCost: v.number(),
-    estimatedOverheadCost: v.number(),
-    actualOverheadCost: v.number(),
-    estimatedTotalCost: v.number(),
-    actualTotalCost: v.number(),
-    totalCostVariancePercent: v.number(),
-
-    // Profitability
-    estimatedRevenue: v.number(),
-    actualRevenue: v.number(),
-    targetMargin: v.number(),
-    actualMargin: v.number(),
-    targetProfit: v.number(),
-    actualProfit: v.number(),
-    profitVariancePercent: v.number(),
-
-    // TreeShop Score accuracy
-    estimatedTreeShopScore: v.number(),
-    actualTreeShopScore: v.optional(v.number()),
-
-    // Site conditions
-    weatherCondition: v.optional(v.string()),
-    temperature: v.optional(v.number()),
-    windSpeed: v.optional(v.number()),
-    precipitation: v.optional(v.number()),
-    siteAccessDifficulty: v.optional(v.number()), // 1-5 scale
-    groundCondition: v.optional(v.string()),
-    unexpectedObstacles: v.optional(v.string()),
-    customerAvailability: v.optional(v.string()),
-
-    // Quality metrics
-    reworkRequired: v.optional(v.boolean()),
-    customerSatisfaction: v.optional(v.number()), // 1-5 scale
-    safetyIncidents: v.optional(v.number()),
-
-    // ML scores (auto-calculated)
-    accuracyScore: v.number(), // 0-100
-    efficiencyScore: v.number(), // 0-100
-    profitabilityScore: v.number(), // 0-100
-    overallPerformanceScore: v.number(), // 0-100
-
-    // Training data quality
-    includeInTraining: v.boolean(),
-    notes: v.optional(v.string()),
-  },
-
-  handler: async (ctx, args) => {
-    const metricsId = await ctx.db.insert("jobPerformanceMetrics", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    // Trigger ML training data generation (async)
-    ctx.scheduler.runAfter(0, "analytics:generateMLTrainingData" as any, {
-      jobMetricsId: metricsId,
-    });
-
-    return metricsId;
-  },
-});
-
-/**
- * Get job performance metrics for a project
- */
-export const getJobPerformanceMetrics = query({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("jobPerformanceMetrics")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-  },
-});
-
-/**
- * Get all job performance metrics for analytics dashboard
- */
-export const getAllJobPerformanceMetrics = query({
-  args: {
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
-    minAccuracyScore: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    let results = await ctx.db.query("jobPerformanceMetrics").collect();
-
-    if (args.startDate) {
-      results = results.filter(m => m.createdAt >= args.startDate!);
-    }
-
-    if (args.endDate) {
-      results = results.filter(m => m.createdAt <= args.endDate!);
-    }
-
-    if (args.minAccuracyScore !== undefined) {
-      results = results.filter(m => m.accuracyScore >= args.minAccuracyScore!);
-    }
-
-    return results;
-  },
-});
-
-// ============================================================================
-// EQUIPMENT UTILIZATION LOGS - Track Equipment Usage Per Job
-// ============================================================================
-
-/**
- * Create equipment utilization log for each piece of equipment on a job
- */
-export const createEquipmentUtilizationLog = mutation({
-  args: {
-    projectId: v.id("projects"),
-    loadoutId: v.id("loadouts"),
-    equipmentId: v.id("equipment"),
-
-    // Time tracking
-    startTime: v.number(),
-    endTime: v.number(),
-    totalHours: v.number(),
-    productiveHours: v.number(),
-    idleHours: v.number(),
-    maintenanceHours: v.number(),
-    transportHours: v.number(),
-    utilizationRate: v.number(), // productive / total
-
-    // Production metrics
-    actualProductionRate: v.optional(v.number()),
-    expectedProductionRate: v.optional(v.number()),
-    efficiencyRatio: v.optional(v.number()),
-
-    // Fuel tracking
-    fuelGallonsUsed: v.optional(v.number()),
-    fuelCost: v.optional(v.number()),
-    fuelEfficiencyGPH: v.optional(v.number()),
-
-    // Financial performance
-    equipmentCostPerHour: v.number(),
-    totalEquipmentCost: v.number(),
-    revenueGenerated: v.number(),
-    profitGenerated: v.number(),
-    roi: v.number(),
-
-    // Conditions
-    operatorId: v.optional(v.id("employees")),
-    weatherCondition: v.optional(v.string()),
-    terrainType: v.optional(v.string()),
-
-    // Issues
-    mechanicalIssues: v.optional(v.string()),
-    downtimeMinutes: v.optional(v.number()),
-    maintenanceRequired: v.optional(v.boolean()),
-
-    notes: v.optional(v.string()),
-  },
-
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("equipmentUtilizationLogs", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-/**
- * Get equipment utilization logs for a project
- */
-export const getEquipmentUtilizationLogs = query({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    const logs = await ctx.db
-      .query("equipmentUtilizationLogs")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-
-    // Enrich with equipment details
-    return await Promise.all(logs.map(async (log) => {
-      const equipment = await ctx.db.get(log.equipmentId);
-      return { ...log, equipment };
-    }));
-  },
-});
-
-/**
- * Get equipment utilization analytics by equipment ID
- */
-export const getEquipmentUtilizationAnalytics = query({
-  args: {
-    equipmentId: v.id("equipment"),
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    let logs = await ctx.db
-      .query("equipmentUtilizationLogs")
-      .withIndex("by_equipment", (q) => q.eq("equipmentId", args.equipmentId))
-      .collect();
-
-    if (args.startDate) {
-      logs = logs.filter(l => l.createdAt >= args.startDate!);
-    }
-
-    if (args.endDate) {
-      logs = logs.filter(l => l.createdAt <= args.endDate!);
-    }
-
-    const totalHours = logs.reduce((sum, l) => sum + l.totalHours, 0);
-    const productiveHours = logs.reduce((sum, l) => sum + l.productiveHours, 0);
-    const idleHours = logs.reduce((sum, l) => sum + l.idleHours, 0);
-    const totalCost = logs.reduce((sum, l) => sum + l.totalEquipmentCost, 0);
-    const totalRevenue = logs.reduce((sum, l) => sum + l.revenueGenerated, 0);
-    const totalProfit = logs.reduce((sum, l) => sum + l.profitGenerated, 0);
-    const avgUtilization = logs.length > 0
-      ? logs.reduce((sum, l) => sum + l.utilizationRate, 0) / logs.length
-      : 0;
-
-    return {
-      equipmentId: args.equipmentId,
-      jobCount: logs.length,
-      totalHours,
-      productiveHours,
-      idleHours,
-      avgUtilization,
-      totalCost,
-      totalRevenue,
-      totalProfit,
-      roi: totalCost > 0 ? (totalProfit / totalCost) * 100 : 0,
-      logs,
-    };
-  },
-});
-
-// ============================================================================
-// EMPLOYEE PRODUCTIVITY LOGS - Track Individual Performance
-// ============================================================================
-
-/**
- * Create employee productivity log for each employee on a job
- */
-export const createEmployeeProductivityLog = mutation({
-  args: {
-    projectId: v.id("projects"),
-    loadoutId: v.id("loadouts"),
-    employeeId: v.id("employees"),
-
-    // Time tracking
-    startTime: v.number(),
-    endTime: v.number(),
-    totalHours: v.number(),
-    productiveHours: v.number(),
-    breakHours: v.number(),
-    travelHours: v.number(),
-    trainingHours: v.optional(v.number()),
-
-    // Role and responsibilities
-    role: v.string(), // "Operator", "Ground Crew", "Climber", etc.
-    primaryTask: v.optional(v.string()),
-    equipmentOperated: v.optional(v.array(v.id("equipment"))),
-
-    // Performance metrics
-    workQualityScore: v.optional(v.number()), // 1-5 scale
-    safetyScore: v.optional(v.number()), // 1-5 scale
-    teamworkScore: v.optional(v.number()), // 1-5 scale
-    efficiencyScore: v.optional(v.number()), // 1-5 scale
-
-    // Production metrics (service-specific)
-    treesRemoved: v.optional(v.number()),
-    stumpsGround: v.optional(v.number()),
-    acresMulched: v.optional(v.number()),
-
-    // Financial performance
-    hourlyRate: v.number(),
-    laborCost: v.number(),
-    revenueGenerated: v.number(),
-    profitGenerated: v.number(),
-    profitPerHour: v.number(),
-
-    // Issues and notes
-    safetyIncidents: v.optional(v.number()),
-    performanceIssues: v.optional(v.string()),
-    positiveNotes: v.optional(v.string()),
-    trainingNeeds: v.optional(v.string()),
-
-    notes: v.optional(v.string()),
-  },
-
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("employeeProductivityLogs", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-/**
- * Get employee productivity logs for a project
- */
-export const getEmployeeProductivityLogs = query({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    const logs = await ctx.db
-      .query("employeeProductivityLogs")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-
-    // Enrich with employee details
-    return await Promise.all(logs.map(async (log) => {
-      const employee = await ctx.db.get(log.employeeId);
-      return { ...log, employee };
-    }));
-  },
-});
-
-/**
- * Get employee productivity analytics by employee ID
- */
-export const getEmployeeProductivityAnalytics = query({
+// Get employee production rate by service type
+export const getEmployeeProductionRate = query({
   args: {
     employeeId: v.id("employees"),
+    serviceType: v.string(),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let logs = await ctx.db
-      .query("employeeProductivityLogs")
-      .withIndex("by_employee", (q) => q.eq("employeeId", args.employeeId))
+    const org = await getOrganization(ctx);
+
+    // Get all production time entries for this employee
+    const entries = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_org_employee", (q) =>
+        q.eq("organizationId", org._id).eq("employeeId", args.employeeId)
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("serviceType"), args.serviceType),
+          q.eq(q.field("activityCategory"), "Production Time")
+        )
+      )
       .collect();
 
-    if (args.startDate) {
-      logs = logs.filter(l => l.createdAt >= args.startDate!);
+    // Filter by date range if provided
+    const filteredEntries = entries.filter((entry) => {
+      if (args.startDate && entry.startTime < args.startDate) return false;
+      if (args.endDate && entry.startTime > args.endDate) return false;
+      return true;
+    });
+
+    const totalProductionHours = filteredEntries.reduce(
+      (sum, e) => sum + (e.durationHours || 0),
+      0
+    );
+
+    // Calculate units completed (from line items)
+    let unitsCompleted = 0;
+    let unitType = "";
+
+    if (args.serviceType.includes("Forestry Mulching")) {
+      // Get acres from associated line items
+      const lineItemIds = new Set(filteredEntries.map((e) => e.lineItemId).filter(Boolean));
+      for (const lineItemId of lineItemIds) {
+        const lineItem = await ctx.db.get(lineItemId!);
+        if (lineItem?.acreage) {
+          unitsCompleted += lineItem.acreage;
+          unitType = "acres";
+        }
+      }
+    } else if (args.serviceType.includes("Stump Grinding")) {
+      const lineItemIds = new Set(filteredEntries.map((e) => e.lineItemId).filter(Boolean));
+      for (const lineItemId of lineItemIds) {
+        const lineItem = await ctx.db.get(lineItemId!);
+        if (lineItem?.quantity) {
+          unitsCompleted += lineItem.quantity;
+          unitType = "stumps";
+        }
+      }
     }
 
-    if (args.endDate) {
-      logs = logs.filter(l => l.createdAt <= args.endDate!);
-    }
-
-    const totalHours = logs.reduce((sum, l) => sum + l.totalHours, 0);
-    const productiveHours = logs.reduce((sum, l) => sum + l.productiveHours, 0);
-    const totalCost = logs.reduce((sum, l) => sum + l.laborCost, 0);
-    const totalRevenue = logs.reduce((sum, l) => sum + l.revenueGenerated, 0);
-    const totalProfit = logs.reduce((sum, l) => sum + l.profitGenerated, 0);
-
-    const avgQuality = logs.filter(l => l.workQualityScore).length > 0
-      ? logs.filter(l => l.workQualityScore).reduce((sum, l) => sum + l.workQualityScore!, 0) / logs.filter(l => l.workQualityScore).length
-      : 0;
-
-    const avgSafety = logs.filter(l => l.safetyScore).length > 0
-      ? logs.filter(l => l.safetyScore).reduce((sum, l) => sum + l.safetyScore!, 0) / logs.filter(l => l.safetyScore).length
-      : 0;
+    const productionRate =
+      totalProductionHours > 0 ? unitsCompleted / totalProductionHours : 0;
 
     return {
       employeeId: args.employeeId,
-      jobCount: logs.length,
-      totalHours,
-      productiveHours,
-      utilizationRate: totalHours > 0 ? (productiveHours / totalHours) * 100 : 0,
-      totalCost,
-      totalRevenue,
-      totalProfit,
-      profitPerHour: totalHours > 0 ? totalProfit / totalHours : 0,
-      avgQualityScore: avgQuality,
-      avgSafetyScore: avgSafety,
-      logs,
+      serviceType: args.serviceType,
+      totalProductionHours,
+      unitsCompleted,
+      unitType,
+      productionRate, // units per hour
+      jobsCompleted: new Set(filteredEntries.map((e) => e.workOrderId)).size,
     };
   },
 });
 
-// ============================================================================
-// WEATHER DATA LOGS - Historical Weather for ML Correlation
-// ============================================================================
-
-/**
- * Create weather data log for a project (typically at job start)
- */
-export const createWeatherDataLog = mutation({
+// Get employee cost efficiency (production time vs total time)
+export const getEmployeeCostEfficiency = query({
   args: {
-    projectId: v.id("projects"),
-    timestamp: v.number(),
-    latitude: v.number(),
-    longitude: v.number(),
-
-    // Core weather metrics
-    temperatureF: v.number(),
-    feelsLikeF: v.optional(v.number()),
-    precipitationInches: v.number(),
-    precipitationType: v.optional(v.string()), // "rain", "snow", "sleet"
-    windSpeedMPH: v.number(),
-    windGustMPH: v.optional(v.number()),
-    windDirection: v.optional(v.string()),
-    humidity: v.number(), // 0-100%
-    cloudCover: v.optional(v.number()), // 0-100%
-    visibility: v.optional(v.number()), // miles
-    uvIndex: v.optional(v.number()),
-
-    // Conditions
-    condition: v.string(), // "Clear", "Cloudy", "Rain", etc.
-    isExtremeHeat: v.boolean(), // >95°F
-    isExtremeCold: v.boolean(), // <32°F
-    isHighWind: v.boolean(), // >25mph
-    isHeavyRain: v.boolean(), // >0.1in/hr
-    isSevereWeather: v.boolean(), // storms, extreme conditions
-
-    // Air quality
-    airQualityIndex: v.optional(v.number()),
-
-    // Source
-    dataSource: v.optional(v.string()), // "OpenWeatherMap", "NOAA", "Manual"
-
-    notes: v.optional(v.string()),
+    employeeId: v.id("employees"),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
   },
-
   handler: async (ctx, args) => {
-    return await ctx.db.insert("weatherDataLogs", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
+    const org = await getOrganization(ctx);
 
-/**
- * Get weather data for a project
- */
-export const getWeatherDataLogs = query({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("weatherDataLogs")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+    const entries = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_org_employee", (q) =>
+        q.eq("organizationId", org._id).eq("employeeId", args.employeeId)
+      )
       .collect();
+
+    // Filter by date range
+    const filteredEntries = entries.filter((entry) => {
+      if (args.startDate && entry.startTime < args.startDate) return false;
+      if (args.endDate && entry.startTime > args.endDate) return false;
+      return true;
+    });
+
+    const totalHours = filteredEntries.reduce((sum, e) => sum + (e.durationHours || 0), 0);
+    const productionHours = filteredEntries
+      .filter((e) => e.activityCategory === "Production Time")
+      .reduce((sum, e) => sum + (e.durationHours || 0), 0);
+    const totalLaborCost = filteredEntries.reduce((sum, e) => sum + (e.laborCost || 0), 0);
+
+    const efficiencyRatio = totalHours > 0 ? (productionHours / totalHours) * 100 : 0;
+
+    // Break down by task category
+    const byCategory = filteredEntries.reduce((acc, entry) => {
+      const category = entry.activityCategory || "Unknown";
+      if (!acc[category]) {
+        acc[category] = { hours: 0, cost: 0, entries: 0 };
+      }
+      acc[category].hours += entry.durationHours || 0;
+      acc[category].cost += entry.laborCost || 0;
+      acc[category].entries += 1;
+      return acc;
+    }, {} as Record<string, { hours: number; cost: number; entries: number }>);
+
+    return {
+      employeeId: args.employeeId,
+      totalHours,
+      productionHours,
+      efficiencyRatio, // % of time spent on revenue work
+      totalLaborCost,
+      byCategory,
+    };
   },
 });
 
-// ============================================================================
-// CUSTOMER BEHAVIOR LOGS - Track Customer Interaction Patterns
-// ============================================================================
+// 🚜 EQUIPMENT PERFORMANCE ANALYTICS
 
-/**
- * Create customer behavior log (called on various customer events)
- */
-export const createCustomerBehaviorLog = mutation({
+// Get equipment operating cost and production rate
+export const getEquipmentPerformance = query({
   args: {
-    customerId: v.id("customers"),
-    projectId: v.optional(v.id("projects")),
-
-    eventType: v.string(), // "Lead Created", "Proposal Viewed", "Quote Accepted", etc.
-    eventTimestamp: v.number(),
-
-    // Response metrics
-    responseTimeHours: v.optional(v.number()), // Time to respond to outreach
-    decisionTimeHours: v.optional(v.number()), // Time from proposal to decision
-
-    // Engagement
-    proposalViewCount: v.optional(v.number()),
-    proposalViewDuration: v.optional(v.number()), // seconds
-    questionsAsked: v.optional(v.number()),
-    priceNegotiation: v.optional(v.boolean()),
-
-    // Channel
-    communicationChannel: v.optional(v.string()), // "Phone", "Email", "Text", "In-Person"
-
-    // Engagement score (auto-calculated)
-    engagementScore: v.optional(v.number()), // 0-100
-
-    // Customer lifetime metrics (at time of event)
-    totalProjectsToDate: v.number(),
-    totalRevenueToDate: v.number(),
-    avgProjectValue: v.optional(v.number()),
-    customerLifetimeDays: v.number(),
-
-    // Referral tracking
-    referralSource: v.optional(v.string()),
-    referredOthers: v.optional(v.number()),
-
-    notes: v.optional(v.string()),
+    equipmentId: v.id("equipment"),
+    serviceType: v.optional(v.string()),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
   },
-
   handler: async (ctx, args) => {
-    return await ctx.db.insert("customerBehaviorLogs", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
+    const org = await getOrganization(ctx);
 
-/**
- * Get customer behavior logs for a customer
- */
-export const getCustomerBehaviorLogs = query({
-  args: { customerId: v.id("customers") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("customerBehaviorLogs")
-      .withIndex("by_customer", (q) => q.eq("customerId", args.customerId))
+    // Get all time entries using this equipment
+    const allEntries = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
       .collect();
+
+    const entries = allEntries.filter((entry) => {
+      // Check if this equipment was used
+      if (!entry.equipmentIds?.includes(args.equipmentId)) return false;
+
+      // Filter by service type if provided
+      if (args.serviceType && entry.serviceType !== args.serviceType) return false;
+
+      // Filter by date range
+      if (args.startDate && entry.startTime < args.startDate) return false;
+      if (args.endDate && entry.startTime > args.endDate) return false;
+
+      return true;
+    });
+
+    const totalHours = entries.reduce((sum, e) => sum + (e.durationHours || 0), 0);
+    const totalEquipmentCost = entries.reduce((sum, e) => sum + (e.equipmentCost || 0), 0);
+    const productionHours = entries
+      .filter((e) => e.activityCategory === "Production Time")
+      .reduce((sum, e) => sum + (e.durationHours || 0), 0);
+
+    // Calculate units completed
+    let unitsCompleted = 0;
+    const lineItemIds = new Set(entries.map((e) => e.lineItemId).filter(Boolean));
+    for (const lineItemId of lineItemIds) {
+      const lineItem = await ctx.db.get(lineItemId!);
+      if (lineItem?.acreage) {
+        unitsCompleted += lineItem.acreage;
+      } else if (lineItem?.quantity) {
+        unitsCompleted += lineItem.quantity;
+      }
+    }
+
+    const productionRate = productionHours > 0 ? unitsCompleted / productionHours : 0;
+    const costPerUnit = unitsCompleted > 0 ? totalEquipmentCost / unitsCompleted : 0;
+    const avgCostPerHour = totalHours > 0 ? totalEquipmentCost / totalHours : 0;
+
+    return {
+      equipmentId: args.equipmentId,
+      serviceType: args.serviceType,
+      totalHours,
+      productionHours,
+      totalEquipmentCost,
+      unitsCompleted,
+      productionRate, // units per hour
+      costPerUnit,
+      avgCostPerHour,
+      jobsCompleted: new Set(entries.map((e) => e.workOrderId)).size,
+      utilizationRate: totalHours > 0 ? (productionHours / totalHours) * 100 : 0,
+    };
   },
 });
 
-/**
- * Get customer behavior analytics
- */
-export const getCustomerBehaviorAnalytics = query({
+// ⏱️ TASK-LEVEL ANALYTICS
+
+// Get average time and cost by task type for a service
+export const getTaskAverages = query({
+  args: {
+    serviceType: v.string(),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    const entries = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .filter((q) => q.eq(q.field("serviceType"), args.serviceType))
+      .collect();
+
+    // Filter by date range
+    const filteredEntries = entries.filter((entry) => {
+      if (args.startDate && entry.startTime < args.startDate) return false;
+      if (args.endDate && entry.startTime > args.endDate) return false;
+      return true;
+    });
+
+    // Group by task type
+    const byTaskType = filteredEntries.reduce((acc, entry) => {
+      const taskType = entry.activityType || "Unknown";
+      if (!acc[taskType]) {
+        acc[taskType] = {
+          taskType,
+          category: entry.activityCategory,
+          count: 0,
+          totalHours: 0,
+          totalLaborCost: 0,
+          totalEquipmentCost: 0,
+          totalCost: 0,
+          minHours: Infinity,
+          maxHours: 0,
+        };
+      }
+
+      acc[taskType].count += 1;
+      acc[taskType].totalHours += entry.durationHours || 0;
+      acc[taskType].totalLaborCost += entry.laborCost || 0;
+      acc[taskType].totalEquipmentCost += entry.equipmentCost || 0;
+      acc[taskType].totalCost += entry.totalCost || 0;
+      acc[taskType].minHours = Math.min(acc[taskType].minHours, entry.durationHours || 0);
+      acc[taskType].maxHours = Math.max(acc[taskType].maxHours, entry.durationHours || 0);
+
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Calculate averages
+    const taskAverages = Object.values(byTaskType).map((task: any) => ({
+      ...task,
+      avgHours: task.count > 0 ? task.totalHours / task.count : 0,
+      avgLaborCost: task.count > 0 ? task.totalLaborCost / task.count : 0,
+      avgEquipmentCost: task.count > 0 ? task.totalEquipmentCost / task.count : 0,
+      avgTotalCost: task.count > 0 ? task.totalCost / task.count : 0,
+    }));
+
+    // Calculate cost distribution
+    const totalCost = filteredEntries.reduce((sum, e) => sum + (e.totalCost || 0), 0);
+    const totalHours = filteredEntries.reduce((sum, e) => sum + (e.durationHours || 0), 0);
+
+    const costDistribution = taskAverages.map((task) => ({
+      taskType: task.taskType,
+      category: task.category,
+      percentOfTime: totalHours > 0 ? (task.totalHours / totalHours) * 100 : 0,
+      percentOfCost: totalCost > 0 ? (task.totalCost / totalCost) * 100 : 0,
+    }));
+
+    return {
+      serviceType: args.serviceType,
+      taskAverages,
+      costDistribution,
+      totalEntries: filteredEntries.length,
+    };
+  },
+});
+
+// 🎯 FORMULA VALIDATION
+
+// Compare estimated vs actual for TreeScore validation
+export const getTreeScoreAccuracy = query({
+  args: {
+    serviceType: v.string(),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    // Get all completed line items for this service type
+    const allLineItems = await ctx.db
+      .query("lineItems")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("serviceType"), args.serviceType),
+          q.eq(q.field("status"), "Completed")
+        )
+      )
+      .collect();
+
+    // Filter by date range
+    const lineItems = allLineItems.filter((li) => {
+      if (args.startDate && li.createdAt < args.startDate) return false;
+      if (args.endDate && li.createdAt > args.endDate) return false;
+      return true;
+    });
+
+    const comparisons = lineItems.map((lineItem) => {
+      const estimatedHours = lineItem.totalEstimatedHours || 0;
+      const actualHours = lineItem.totalActualHours || 0;
+      const variance = actualHours - estimatedHours;
+      const variancePercent = estimatedHours > 0 ? (variance / estimatedHours) * 100 : 0;
+
+      return {
+        lineItemId: lineItem._id,
+        description: lineItem.description,
+        treeShopScore: lineItem.treeShopScore,
+        estimatedHours,
+        actualHours,
+        variance,
+        variancePercent,
+        estimatedCost: lineItem.totalCost,
+        actualCost: lineItem.actualTotalCost || 0,
+        price: lineItem.totalPrice,
+        estimatedMargin: lineItem.marginPercent,
+        actualMargin: lineItem.actualMargin || 0,
+      };
+    });
+
+    const avgVariancePercent =
+      comparisons.reduce((sum, c) => sum + c.variancePercent, 0) / comparisons.length || 0;
+
+    const overestimated = comparisons.filter((c) => c.variance < 0).length;
+    const underestimated = comparisons.filter((c) => c.variance > 0).length;
+    const accurate = comparisons.filter((c) => Math.abs(c.variancePercent) < 10).length;
+
+    return {
+      serviceType: args.serviceType,
+      totalJobs: comparisons.length,
+      avgVariancePercent,
+      overestimated,
+      underestimated,
+      accurate,
+      accuracyRate: comparisons.length > 0 ? (accurate / comparisons.length) * 100 : 0,
+      comparisons,
+    };
+  },
+});
+
+// 💰 PROFITABILITY ANALYTICS
+
+// Get profitability by service type
+export const getServiceTypeProfitability = query({
   args: {
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let logs = await ctx.db.query("customerBehaviorLogs").collect();
+    const org = await getOrganization(ctx);
 
-    if (args.startDate) {
-      logs = logs.filter(l => l.createdAt >= args.startDate!);
-    }
+    // Get all completed line items
+    const lineItems = await ctx.db
+      .query("lineItems")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .filter((q) => q.eq(q.field("status"), "Completed"))
+      .collect();
 
-    if (args.endDate) {
-      logs = logs.filter(l => l.createdAt <= args.endDate!);
-    }
+    // Filter by date range
+    const filteredLineItems = lineItems.filter((li) => {
+      if (args.startDate && li.createdAt < args.startDate) return false;
+      if (args.endDate && li.createdAt > args.endDate) return false;
+      return true;
+    });
 
-    const avgResponseTime = logs.filter(l => l.responseTimeHours).length > 0
-      ? logs.filter(l => l.responseTimeHours).reduce((sum, l) => sum + l.responseTimeHours!, 0) / logs.filter(l => l.responseTimeHours).length
-      : 0;
+    // Group by service type
+    const byServiceType = filteredLineItems.reduce((acc, lineItem) => {
+      const serviceType = lineItem.serviceType || "Unknown";
+      if (!acc[serviceType]) {
+        acc[serviceType] = {
+          serviceType,
+          jobCount: 0,
+          totalRevenue: 0,
+          totalEstimatedCost: 0,
+          totalActualCost: 0,
+          totalEstimatedProfit: 0,
+          totalActualProfit: 0,
+        };
+      }
 
-    const avgDecisionTime = logs.filter(l => l.decisionTimeHours).length > 0
-      ? logs.filter(l => l.decisionTimeHours).reduce((sum, l) => sum + l.decisionTimeHours!, 0) / logs.filter(l => l.decisionTimeHours).length
-      : 0;
+      acc[serviceType].jobCount += 1;
+      acc[serviceType].totalRevenue += lineItem.totalPrice || 0;
+      acc[serviceType].totalEstimatedCost += lineItem.totalCost || 0;
+      acc[serviceType].totalActualCost += lineItem.actualTotalCost || 0;
+      acc[serviceType].totalEstimatedProfit += (lineItem.totalPrice || 0) - (lineItem.totalCost || 0);
+      acc[serviceType].totalActualProfit += lineItem.actualProfit || 0;
+
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Calculate averages and margins
+    const profitability = Object.values(byServiceType).map((service: any) => ({
+      ...service,
+      avgRevenue: service.jobCount > 0 ? service.totalRevenue / service.jobCount : 0,
+      avgEstimatedCost: service.jobCount > 0 ? service.totalEstimatedCost / service.jobCount : 0,
+      avgActualCost: service.jobCount > 0 ? service.totalActualCost / service.jobCount : 0,
+      estimatedMargin:
+        service.totalRevenue > 0
+          ? (service.totalEstimatedProfit / service.totalRevenue) * 100
+          : 0,
+      actualMargin:
+        service.totalRevenue > 0 ? (service.totalActualProfit / service.totalRevenue) * 100 : 0,
+    }));
 
     return {
-      totalEvents: logs.length,
-      avgResponseTime,
-      avgDecisionTime,
-      eventsByType: logs.reduce((acc, log) => {
-        acc[log.eventType] = (acc[log.eventType] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      logs,
+      profitability,
+      totalJobs: filteredLineItems.length,
     };
-  },
-});
-
-// ============================================================================
-// ML PREDICTIONS - Store and Track Predictions
-// ============================================================================
-
-/**
- * Create ML prediction (called when model makes a prediction)
- */
-export const createMLPrediction = mutation({
-  args: {
-    projectId: v.optional(v.id("projects")),
-    modelVersion: v.string(),
-    predictionType: v.string(), // "JobHours", "JobCost", "CustomerLTV", etc.
-
-    predictedValue: v.number(),
-    confidenceScore: v.number(), // 0-100
-
-    // Input features used
-    inputFeatures: v.any(),
-
-    // Top contributing features (for explainability)
-    topFeatures: v.optional(v.array(v.object({
-      featureName: v.string(),
-      importance: v.number(),
-      value: v.any(),
-    }))),
-
-    // Actual value (filled in later for accuracy tracking)
-    actualValue: v.optional(v.number()),
-    predictionError: v.optional(v.number()),
-    absoluteError: v.optional(v.number()),
-
-    notes: v.optional(v.string()),
-  },
-
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("mlPredictions", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-/**
- * Update ML prediction with actual value (after job completes)
- */
-export const updateMLPrediction = mutation({
-  args: {
-    predictionId: v.id("mlPredictions"),
-    actualValue: v.number(),
-  },
-
-  handler: async (ctx, args) => {
-    const prediction = await ctx.db.get(args.predictionId);
-    if (!prediction) throw new Error("Prediction not found");
-
-    const predictionError = args.actualValue - prediction.predictedValue;
-    const absoluteError = Math.abs(predictionError);
-
-    await ctx.db.patch(args.predictionId, {
-      actualValue: args.actualValue,
-      predictionError,
-      absoluteError,
-      updatedAt: Date.now(),
-    });
-
-    return { predictionError, absoluteError };
-  },
-});
-
-/**
- * Get ML predictions for a project
- */
-export const getMLPredictions = query({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("mlPredictions")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-  },
-});
-
-// ============================================================================
-// ML MODEL PERFORMANCE - Track Model Accuracy Over Time
-// ============================================================================
-
-/**
- * Create or update ML model performance metrics
- */
-export const updateMLModelPerformance = mutation({
-  args: {
-    modelVersion: v.string(),
-    modelType: v.string(), // "JobHours", "JobCost", etc.
-
-    // Training metrics
-    accuracy: v.number(),
-    precision: v.optional(v.number()),
-    recall: v.optional(v.number()),
-    f1Score: v.optional(v.number()),
-
-    // Error metrics
-    maeError: v.number(), // Mean Absolute Error
-    rmseError: v.number(), // Root Mean Squared Error
-    mapeError: v.number(), // Mean Absolute Percentage Error
-
-    // Real-world performance (from actual predictions)
-    realWorldAccuracy: v.optional(v.number()),
-    predictionCount: v.number(),
-
-    // Training details
-    trainingDataCount: v.number(),
-    featureCount: v.number(),
-    hyperparameters: v.optional(v.any()),
-
-    status: v.string(), // "Training", "Testing", "Deployed", "Deprecated"
-
-    notes: v.optional(v.string()),
-  },
-
-  handler: async (ctx, args) => {
-    // Check if model version already exists
-    const existing = await ctx.db
-      .query("mlModelPerformance")
-      .withIndex("by_model_version", (q) =>
-        q.eq("modelVersion", args.modelVersion).eq("modelType", args.modelType)
-      )
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        ...args,
-        updatedAt: Date.now(),
-      });
-      return existing._id;
-    } else {
-      return await ctx.db.insert("mlModelPerformance", {
-        ...args,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
-  },
-});
-
-/**
- * Get all ML model performance metrics
- */
-export const getAllMLModelPerformance = query({
-  args: { status: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    let models = await ctx.db.query("mlModelPerformance").collect();
-
-    if (args.status) {
-      models = models.filter(m => m.status === args.status);
-    }
-
-    return models;
-  },
-});
-
-/**
- * Get latest ML model performance by type
- */
-export const getLatestMLModelPerformance = query({
-  args: { modelType: v.string() },
-  handler: async (ctx, args) => {
-    const models = await ctx.db
-      .query("mlModelPerformance")
-      .withIndex("by_model_type", (q) => q.eq("modelType", args.modelType))
-      .collect();
-
-    // Return the most recently updated model
-    return models.sort((a, b) => b.updatedAt - a.updatedAt)[0] || null;
   },
 });

@@ -318,8 +318,27 @@ export default defineSchema({
 
     // Time Tracking (activated when Work Order created)
     timeTrackingEnabled: v.boolean(),
+    actualStartTime: v.optional(v.number()),
+    actualEndTime: v.optional(v.number()),
     totalActualHours: v.optional(v.number()),
     varianceHours: v.optional(v.number()),
+
+    // Crew Time Entries (who worked on this line item)
+    crewTimeEntries: v.optional(v.array(v.object({
+      employeeId: v.id("employees"),
+      employeeName: v.string(),
+      clockIn: v.number(),
+      clockOut: v.optional(v.number()),
+      hoursWorked: v.optional(v.number()),
+      laborCost: v.optional(v.number()), // hours × employee true cost/hr
+    }))),
+
+    // Actual Costs (calculated from time entries)
+    actualLaborCost: v.optional(v.number()),
+    actualEquipmentCost: v.optional(v.number()),
+    actualTotalCost: v.optional(v.number()),
+    actualProfit: v.optional(v.number()), // totalPrice - actualTotalCost
+    actualMargin: v.optional(v.number()), // (actualProfit / totalPrice) × 100
 
     // Status
     status: v.string(), // "Pending", "In Progress", "Completed", "Invoiced"
@@ -453,11 +472,15 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     workOrderId: v.id("workOrders"),
     lineItemId: v.optional(v.id("lineItems")), // Optional for direct work orders
+    projectId: v.optional(v.id("projects")), // Denormalized for rollup reporting
+    serviceType: v.optional(v.string()), // Denormalized from lineItem for easier querying
 
     // Employee & Loadout
     employeeId: v.id("employees"),
     employeeCode: v.optional(v.string()), // e.g., "STG3+E2" - Made optional
+    employeeName: v.optional(v.string()), // Denormalized for reporting speed
     loadoutId: v.optional(v.id("loadouts")),
+    loadoutName: v.optional(v.string()), // Denormalized for reporting
 
     // NEW: Activity Type System (for direct work orders)
     activityTypeId: v.optional(v.id("activityTypes")),
@@ -492,6 +515,8 @@ export default defineSchema({
 
     // Equipment (Enhanced)
     equipmentIds: v.optional(v.array(v.id("equipment"))), // NEW - multiple equipment support
+    equipmentNames: v.optional(v.array(v.string())), // Denormalized for reporting
+    equipmentHourlyRates: v.optional(v.array(v.number())), // Snapshot of each equipment's rate
 
     // NEW: Cost Tracking (calculated and cached)
     employeeHourlyRate: v.optional(v.number()), // Snapshot at time of entry

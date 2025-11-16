@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 import { calculateEquipmentCost } from '@/lib/equipment-cost';
 import { calculateEmployeeCompensation } from '@/lib/employee-compensation';
+import TimeCostAnalytics from '@/app/components/dashboard/TimeCostAnalytics';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -203,6 +204,7 @@ function ReportsPageContent() {
         <Tab icon={<Assessment />} label="Project Analytics" iconPosition="start" />
         <Tab icon={<ShowChart />} label="Financial Dashboard" iconPosition="start" />
         <Tab icon={<PieChart />} label="Pipeline Tracking" iconPosition="start" />
+        <Tab icon={<Speed />} label="Time & Cost Analytics" iconPosition="start" />
       </Tabs>
 
       {/* REPORT 1: Equipment Utilization */}
@@ -1320,6 +1322,11 @@ function ReportsPageContent() {
             </Grid>
           )}
         </Grid>
+      </TabPanel>
+
+      {/* REPORT 7: Time & Cost Analytics */}
+      <TabPanel value={activeTab} index={6}>
+        <TimeCostAnalytics />
       </TabPanel>
     </Box>
   );

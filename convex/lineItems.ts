@@ -284,3 +284,263 @@ export const listByStatus = query({
       .collect();
   },
 });
+
+// Start working on a line item (begin time tracking)
+export const startLineItem = mutation({
+  args: { id: v.id("lineItems") },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const lineItem = await ctx.db.get(args.id);
+
+    if (!lineItem) {
+      throw new Error("Line item not found");
+    }
+
+    if (lineItem.organizationId !== org._id) {
+      throw new Error("Line item not found");
+    }
+
+    if (lineItem.status === "Completed") {
+      throw new Error("Cannot start a completed line item");
+    }
+
+    await ctx.db.patch(args.id, {
+      status: "In Progress",
+      actualStartTime: Date.now(),
+      timeTrackingEnabled: true,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+// Complete a line item and calculate actual costs
+export const completeLineItem = mutation({
+  args: { id: v.id("lineItems") },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const lineItem = await ctx.db.get(args.id);
+
+    if (!lineItem) {
+      throw new Error("Line item not found");
+    }
+
+    if (lineItem.organizationId !== org._id) {
+      throw new Error("Line item not found");
+    }
+
+    if (lineItem.status === "Completed") {
+      throw new Error("Line item already completed");
+    }
+
+    const now = Date.now();
+    const startTime = lineItem.actualStartTime || now;
+    const actualHours = (now - startTime) / (1000 * 60 * 60);
+    const variance = actualHours - lineItem.totalEstimatedHours;
+
+    // Calculate actual costs from crew time entries and time entries table
+    let actualLaborCost = 0;
+    let actualEquipmentCost = 0;
+
+    // Sum up crew time entries (if tracked at line item level)
+    if (lineItem.crewTimeEntries && lineItem.crewTimeEntries.length > 0) {
+      for (const entry of lineItem.crewTimeEntries) {
+        actualLaborCost += entry.laborCost || 0;
+      }
+    }
+
+    // Get all time entries for this line item
+    const timeEntries = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_line_item", (q) => q.eq("lineItemId", args.id))
+      .filter((q) => q.eq(q.field("organizationId"), org._id))
+      .collect();
+
+    // Sum time entry costs
+    for (const entry of timeEntries) {
+      actualLaborCost += entry.laborCost || 0;
+      actualEquipmentCost += entry.equipmentCost || 0;
+    }
+
+    const actualTotalCost = actualLaborCost + actualEquipmentCost;
+    const actualProfit = lineItem.totalPrice - actualTotalCost;
+    const actualMargin = lineItem.totalPrice > 0 ? (actualProfit / lineItem.totalPrice) * 100 : 0;
+
+    await ctx.db.patch(args.id, {
+      status: "Completed",
+      actualEndTime: now,
+      totalActualHours: actualHours,
+      varianceHours: variance,
+      actualLaborCost,
+      actualEquipmentCost,
+      actualTotalCost,
+      actualProfit,
+      actualMargin,
+      updatedAt: now,
+    });
+
+    return args.id;
+  },
+});
+
+// Recalculate actual costs from time entries (can be called anytime)
+export const recalculateActualCosts = mutation({
+  args: { id: v.id("lineItems") },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const lineItem = await ctx.db.get(args.id);
+
+    if (!lineItem) {
+      throw new Error("Line item not found");
+    }
+
+    if (lineItem.organizationId !== org._id) {
+      throw new Error("Line item not found");
+    }
+
+    let actualLaborCost = 0;
+    let actualEquipmentCost = 0;
+
+    // Sum up crew time entries
+    if (lineItem.crewTimeEntries && lineItem.crewTimeEntries.length > 0) {
+      for (const entry of lineItem.crewTimeEntries) {
+        actualLaborCost += entry.laborCost || 0;
+      }
+    }
+
+    // Get all time entries for this line item
+    const timeEntries = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_line_item", (q) => q.eq("lineItemId", args.id))
+      .filter((q) => q.eq(q.field("organizationId"), org._id))
+      .collect();
+
+    // Sum time entry costs
+    for (const entry of timeEntries) {
+      actualLaborCost += entry.laborCost || 0;
+      actualEquipmentCost += entry.equipmentCost || 0;
+    }
+
+    const actualTotalCost = actualLaborCost + actualEquipmentCost;
+    const actualProfit = lineItem.totalPrice - actualTotalCost;
+    const actualMargin = lineItem.totalPrice > 0 ? (actualProfit / lineItem.totalPrice) * 100 : 0;
+
+    await ctx.db.patch(args.id, {
+      actualLaborCost,
+      actualEquipmentCost,
+      actualTotalCost,
+      actualProfit,
+      actualMargin,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+// Add crew member to line item
+export const addCrewMember = mutation({
+  args: {
+    id: v.id("lineItems"),
+    employeeId: v.id("employees"),
+    employeeName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const lineItem = await ctx.db.get(args.id);
+
+    if (!lineItem) {
+      throw new Error("Line item not found");
+    }
+
+    if (lineItem.organizationId !== org._id) {
+      throw new Error("Line item not found");
+    }
+
+    const existingEntries = lineItem.crewTimeEntries || [];
+
+    // Check if employee already clocked in
+    const alreadyExists = existingEntries.some(
+      (entry) => entry.employeeId === args.employeeId && !entry.clockOut
+    );
+
+    if (alreadyExists) {
+      throw new Error("Employee already clocked in on this line item");
+    }
+
+    const newEntry = {
+      employeeId: args.employeeId,
+      employeeName: args.employeeName,
+      clockIn: Date.now(),
+    };
+
+    await ctx.db.patch(args.id, {
+      crewTimeEntries: [...existingEntries, newEntry],
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+// Clock out crew member from line item
+export const clockOutCrewMember = mutation({
+  args: {
+    id: v.id("lineItems"),
+    employeeId: v.id("employees"),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+    const lineItem = await ctx.db.get(args.id);
+
+    if (!lineItem) {
+      throw new Error("Line item not found");
+    }
+
+    if (lineItem.organizationId !== org._id) {
+      throw new Error("Line item not found");
+    }
+
+    const existingEntries = lineItem.crewTimeEntries || [];
+
+    // Find the active entry for this employee
+    const entryIndex = existingEntries.findIndex(
+      (entry) => entry.employeeId === args.employeeId && !entry.clockOut
+    );
+
+    if (entryIndex === -1) {
+      throw new Error("No active clock-in found for this employee");
+    }
+
+    // Get employee to calculate labor cost
+    const employee = await ctx.db.get(args.employeeId);
+    if (!employee) {
+      throw new Error("Employee not found");
+    }
+
+    const now = Date.now();
+    const clockIn = existingEntries[entryIndex].clockIn;
+    const hoursWorked = (now - clockIn) / (1000 * 60 * 60);
+
+    // Calculate labor cost (base rate × burden multiplier)
+    const burdenMultiplier = 1.7; // Default burden multiplier
+    const trueCostPerHour = employee.baseHourlyRate * burdenMultiplier;
+    const laborCost = hoursWorked * trueCostPerHour;
+
+    // Update the entry
+    existingEntries[entryIndex] = {
+      ...existingEntries[entryIndex],
+      clockOut: now,
+      hoursWorked,
+      laborCost,
+    };
+
+    await ctx.db.patch(args.id, {
+      crewTimeEntries: existingEntries,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
