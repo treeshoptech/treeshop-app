@@ -161,7 +161,7 @@ export default function LeadsPage() {
       propertyAddress: lead.propertyAddress || "",
       leadId: lead._id,
     });
-    window.location.href = `/dashboard/proposals/new?${params.toString()}`;
+    window.location.href = `/proposals/new?${params.toString()}`;
   };
 
   const openEditDialog = (lead: any) => {
