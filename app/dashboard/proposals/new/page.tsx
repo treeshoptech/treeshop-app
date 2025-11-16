@@ -40,7 +40,6 @@ import {
   LandClearingCalculator,
 } from "@/app/components/calculators";
 import { Id } from "@/convex/_generated/dataModel";
-import { formatCurrency } from "@/lib/scoring-formulas";
 
 // Inner component that uses useSearchParams
 function NewProposalPageContent() {
@@ -84,28 +83,16 @@ function NewProposalPageContent() {
     if (address) setScopeOfWork(`Work to be performed at: ${address}`);
     if (id) setLeadId(id as Id<"projects">);
 
-    // Auto-create customer from lead (only if customers query has loaded)
-    if (name && !selectedCustomerId && customers !== undefined) {
-      const nameParts = name.trim().split(" ");
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-
-      createCustomer({
-        firstName,
-        lastName,
-        email: email || undefined,
-        phone: phone || undefined,
-        propertyAddress: address || "",
-      }).then((customerId) => {
-        setSelectedCustomerId(customerId);
-        // Expand line items section after customer is created
-        setCustomerExpanded(false);
-        setLineItemsExpanded(true);
-      }).catch((error) => {
-        console.error("Error auto-creating customer from lead:", error);
-      });
+    // Auto-fill new customer form if coming from lead
+    if (name) {
+      setNewCustomerName(name);
+      setNewCustomerEmail(email || "");
+      setNewCustomerPhone(phone || "");
+      setNewCustomerAddress(address || "");
+      // Auto-open customer dialog
+      setShowNewCustomerDialog(true);
     }
-  }, [searchParams, createCustomer, selectedCustomerId, customers]);
+  }, [searchParams]);
 
   // Fetch data
   const loadouts = useQuery(api.loadouts.list);
@@ -261,7 +248,7 @@ function NewProposalPageContent() {
   );
 
   return (
-    <Container maxWidth="md" sx={{ py: 2, px: { xs: 2, sm: 3 } }}>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={2}>
         {/* Header */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
@@ -360,36 +347,26 @@ function NewProposalPageContent() {
               {lineItems.length > 0 && (
                 <Stack spacing={2} sx={{ mb: 3 }}>
                   {lineItems.map((item, index) => (
-                    <Paper key={item.id} elevation={2} sx={{ overflow: "hidden" }}>
-                      {/* Collapsed View - Default */}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          p: 2,
-                          bgcolor: "background.paper",
-                        }}
-                      >
-                        <Box sx={{ flex: 1 }}>
-                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                            <Typography variant="subtitle1" fontWeight={600}>
-                              {index + 1}. {item.serviceType}
+                    <Card key={item.id} variant="outlined">
+                      <CardContent>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
+                              <Typography variant="h6">
+                                {index + 1}. {item.serviceType}
+                              </Typography>
+                              {item.baseScore > 0 && (
+                                <Chip
+                                  label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : 'Inch-Acres'}`}
+                                  size="small"
+                                  color="primary"
+                                />
+                              )}
+                            </Stack>
+                            <Typography variant="body2" color="text.secondary">
+                              {item.description}
                             </Typography>
-                            {item.baseScore > 0 && (
-                              <Chip
-                                label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : item.serviceType === 'Forestry Mulching' ? 'Mulching Score' : 'Score'}`}
-                                size="small"
-                                color="primary"
-                                variant="filled"
-                              />
-                            )}
-                          </Stack>
-                        </Box>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="h6" color="primary" fontWeight={700}>
-                            {formatCurrency(item.totalPrice)}
-                          </Typography>
+                          </Box>
                           <IconButton
                             size="small"
                             color="error"
@@ -397,15 +374,18 @@ function NewProposalPageContent() {
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                        </Stack>
-                      </Box>
-                    </Paper>
+                        </Box>
+                      </CardContent>
+                    </Card>
                   ))}
                   <Box sx={{ p: 2, bgcolor: "primary.dark", borderRadius: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <Typography variant="h6">Total</Typography>
                       <Typography variant="h4">
-                        {formatCurrency(totalValue)}
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(totalValue)}
                       </Typography>
                     </Box>
                   </Box>
