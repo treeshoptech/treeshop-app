@@ -248,7 +248,7 @@ function NewProposalPageContent() {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="md" sx={{ py: 2, px: { xs: 2, sm: 3 } }}>
       <Stack spacing={2}>
         {/* Header */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
