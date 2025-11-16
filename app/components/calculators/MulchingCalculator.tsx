@@ -47,6 +47,14 @@ const DBH_PACKAGES = [
   { value: 15, label: '15" - Very large trees (specialized equipment)' },
 ];
 
+// Service-specific Terms & Conditions
+const MULCHING_TERMS = [
+  "All vegetation up to specified DBH will be mulched in place",
+  "Stumps will be cut flush with ground level but not removed",
+  "Mulched material will remain on property as ground cover",
+  "Property boundaries must be clearly marked before work begins",
+];
+
 // AFISS Factor Database for Forestry Mulching
 const AFISS_CATEGORIES: AfissCategory[] = [
   {
@@ -185,6 +193,7 @@ export default function MulchingCalculator({
       formulaUsed: `Acres × DBH Package = ${acres} × ${dbhPackage}`,
       workVolumeInputs: { acres, dbhPackage },
       baseScore: baseScore,
+      termsAndConditions: MULCHING_TERMS,
       afissFactors: selectedFactorDetails.map((f) => ({
         id: f.id,
         label: f.label,

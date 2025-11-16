@@ -306,6 +306,9 @@ export default defineSchema({
       selected: v.boolean(),
     }))),
 
+    // Terms & Conditions specific to this service
+    termsAndConditions: v.optional(v.array(v.string())),
+
     // Time Tracking (activated when Work Order created)
     timeTrackingEnabled: v.boolean(),
     totalActualHours: v.optional(v.number()),

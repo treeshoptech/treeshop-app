@@ -94,6 +94,7 @@ export const create = mutation({
       price: v.number(),
       selected: v.boolean(),
     }))),
+    termsAndConditions: v.optional(v.array(v.string())),
     timeTrackingEnabled: v.optional(v.boolean()),
     status: v.optional(v.string()),
   },
