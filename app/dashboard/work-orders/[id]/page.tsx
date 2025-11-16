@@ -115,11 +115,34 @@ export default function WorkOrderDetailPage() {
   const completeLineItem = useMutation(api.lineItems.completeLineItem);
   const transitionToInvoice = useMutation(api.projects.transitionToInvoice);
 
-  if (!workOrder || !lineItems) {
+  // Loading state
+  if (workOrder === undefined || lineItems === undefined) {
     return (
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <LinearProgress />
         <Typography sx={{ mt: 2 }}>Loading work order...</Typography>
+      </Container>
+    );
+  }
+
+  // Error state - work order not found
+  if (workOrder === null) {
+    return (
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h5" gutterBottom color="error">
+            Work Order Not Found
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            The work order you're looking for doesn't exist or you don't have access to it.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => router.push('/dashboard/work-orders')}
+          >
+            Back to Work Orders
+          </Button>
+        </Paper>
       </Container>
     );
   }
