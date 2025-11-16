@@ -27,6 +27,15 @@
    - Now uses "In Progress" with space (matches UI exactly)
    - All status values properly typed: "Created", "PreScheduled", "Scheduled", "In Progress", "Paused", "Completed", "Invoiced", "Cancelled"
 
+9. **Proposals List Page Rebuilt** - Modern expandable card UI!
+   - Replaced old table with expandable cards (matching work orders design)
+   - "Create Work Order" button in both collapsed and expanded views
+   - Opens scheduling dialog with proper mutation call
+   - Calculates value from line items (not estimatedValue field)
+   - Status change workflow: Draft → Sent → Accepted/Rejected
+   - Smooth DOC workflow: Lead → Proposal → Work Order → Invoice
+   - Redirects to work order detail after conversion
+
 ## ⚠️ STILL NEEDS WORK
 
 ### 1. Work Order Status Flow - ✅ RESOLVED
