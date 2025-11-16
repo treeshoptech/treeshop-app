@@ -29,9 +29,7 @@ import {
 import {
   Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon,
-  Save as SaveIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
   PersonAdd as PersonAddIcon,
   Send as SendIcon,
 } from "@mui/icons-material";
@@ -56,9 +54,14 @@ function NewProposalPageContent() {
   const [notes, setNotes] = useState("");
   const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
 
-  // Collapsible sections
+  // Expanded sections
+  const [customerExpanded, setCustomerExpanded] = useState(true);
+  const [scopeExpanded, setScopeExpanded] = useState(false);
+  const [lineItemsExpanded, setLineItemsExpanded] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
   const [termsExpanded, setTermsExpanded] = useState(false);
-  const [mapsExpanded, setMapsExpanded] = useState(false);
+  const [sitePlansExpanded, setSitePlansExpanded] = useState(false);
+  const [statusExpanded, setStatusExpanded] = useState(false);
 
   // New customer form
   const [newCustomerName, setNewCustomerName] = useState("");
@@ -189,309 +192,329 @@ function NewProposalPageContent() {
   const totalValue = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const selectedCustomer = customers?.find((c) => c._id === selectedCustomerId);
 
+  const SectionHeader = ({ title, expanded, onToggle }: any) => (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        p: 2,
+        cursor: "pointer",
+        "&:hover": { bgcolor: "action.hover" },
+      }}
+      onClick={onToggle}
+    >
+      <Typography variant="h6">{title}</Typography>
+      <ExpandMoreIcon
+        sx={{
+          transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+          transition: "transform 0.3s",
+        }}
+      />
+    </Box>
+  );
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack spacing={4}>
+      <Stack spacing={2}>
         {/* Header */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
           <IconButton onClick={() => router.push("/proposals")}>
             <ArrowBackIcon />
           </IconButton>
           <Box>
             <Typography variant="h4">New Proposal</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Create a professional proposal for your customer
-            </Typography>
           </Box>
         </Box>
 
-        {/* Customer Information */}
-        <Paper sx={{ p: 3 }}>
-          <Stack spacing={2}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography variant="h6">Customer Information</Typography>
-              <Button
-                startIcon={<PersonAddIcon />}
-                onClick={() => setShowNewCustomerDialog(true)}
-                size="small"
-              >
-                New Customer
-              </Button>
-            </Box>
-            <FormControl fullWidth required>
-              <InputLabel>Select Customer</InputLabel>
-              <Select
-                value={selectedCustomerId}
-                label="Select Customer"
-                onChange={(e) => setSelectedCustomerId(e.target.value as Id<"customers">)}
-              >
-                {customers?.map((customer) => (
-                  <MenuItem key={customer._id} value={customer._id}>
-                    {customer.name} {customer.propertyAddress && `- ${customer.propertyAddress}`}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {selectedCustomer && (
-              <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
-                <Typography variant="body2"><strong>Name:</strong> {selectedCustomer.name}</Typography>
-                {selectedCustomer.email && (
-                  <Typography variant="body2"><strong>Email:</strong> {selectedCustomer.email}</Typography>
-                )}
-                {selectedCustomer.phone && (
-                  <Typography variant="body2"><strong>Phone:</strong> {selectedCustomer.phone}</Typography>
-                )}
-                {selectedCustomer.propertyAddress && (
-                  <Typography variant="body2"><strong>Address:</strong> {selectedCustomer.propertyAddress}</Typography>
-                )}
-              </Box>
-            )}
-          </Stack>
-        </Paper>
-
-        {/* Scope of Work */}
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Scope of Work
-          </Typography>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Describe the work to be performed in plain English
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={scopeOfWork}
-            onChange={(e) => setScopeOfWork(e.target.value)}
-            placeholder="e.g., Forestry Mulch the highlighted area (1.69 Acres) at the 4&quot; DBH Package to open up the land for access and reduce the amount of overgrowth throughout the pasture per the attached site plan."
-            sx={{ mt: 2 }}
+        {/* 1. Customer Information */}
+        <Paper>
+          <SectionHeader
+            title="1. Customer Information"
+            expanded={customerExpanded}
+            onToggle={() => setCustomerExpanded(!customerExpanded)}
           />
-        </Paper>
+          <Collapse in={customerExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <Stack spacing={2}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <FormControl fullWidth required sx={{ mr: 2 }}>
+                    <InputLabel>Select Customer</InputLabel>
+                    <Select
+                      value={selectedCustomerId}
+                      label="Select Customer"
+                      onChange={(e) => setSelectedCustomerId(e.target.value as Id<"customers">)}
+                    >
+                      {customers?.map((customer) => (
+                        <MenuItem key={customer._id} value={customer._id}>
+                          {customer.name} {customer.propertyAddress && `- ${customer.propertyAddress}`}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    startIcon={<PersonAddIcon />}
+                    onClick={() => setShowNewCustomerDialog(true)}
+                    variant="outlined"
+                  >
+                    New Customer
+                  </Button>
+                </Box>
 
-        {/* Pricing & Services */}
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Pricing & Services
-          </Typography>
-
-          {/* Line Items List */}
-          {lineItems.length > 0 && (
-            <Stack spacing={2} sx={{ mb: 3 }}>
-              {lineItems.map((item, index) => (
-                <Card key={item.id} variant="outlined">
-                  <CardContent>
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <Box sx={{ flex: 1 }}>
-                        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                          <Typography variant="h6">
-                            {index + 1}. {item.serviceType}
-                          </Typography>
-                          {item.baseScore > 0 && (
-                            <Chip
-                              label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : 'Inch-Acres'}`}
-                              size="small"
-                              color="primary"
-                            />
-                          )}
-                          {item.afissFactors?.length > 0 && (
-                            <Chip
-                              label={`${item.afissFactors.length} AFISS factors`}
-                              size="small"
-                              color="warning"
-                            />
-                          )}
-                        </Stack>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          {item.description}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Estimated time: {item.totalEstimatedHours.toFixed(1)} hours
-                        </Typography>
-                      </Box>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleRemoveLineItem(item.id)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-            </Stack>
-          )}
-
-          {/* Total */}
-          {lineItems.length > 0 && (
-            <Box sx={{ p: 2, bgcolor: "primary.dark", borderRadius: 1, mb: 3 }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="h6">Proposal Total (USD)</Typography>
-                <Typography variant="h4">
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(totalValue)}
-                </Typography>
-              </Box>
+                {selectedCustomer && (
+                  <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+                    <Typography variant="body2"><strong>Name:</strong> {selectedCustomer.name}</Typography>
+                    {selectedCustomer.email && (
+                      <Typography variant="body2"><strong>Email:</strong> {selectedCustomer.email}</Typography>
+                    )}
+                    {selectedCustomer.phone && (
+                      <Typography variant="body2"><strong>Phone:</strong> {selectedCustomer.phone}</Typography>
+                    )}
+                    {selectedCustomer.propertyAddress && (
+                      <Typography variant="body2"><strong>Address:</strong> {selectedCustomer.propertyAddress}</Typography>
+                    )}
+                  </Box>
+                )}
+              </Stack>
             </Box>
-          )}
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* ADD SERVICE ITEMS - ALL ON SAME PAGE */}
-          <Typography variant="h6" gutterBottom>
-            Add Service Items
-          </Typography>
-
-          {/* Stump Grinding */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-              Stump Grinding
-            </Typography>
-            <StumpGrindingCalculator
-              loadout={loadouts?.[0]}
-              onLineItemCreate={handleLineItemCreate}
-            />
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Forestry Mulching */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-              Forestry Mulching
-            </Typography>
-            <MulchingCalculator
-              loadout={loadouts?.[0]}
-              onLineItemCreate={handleLineItemCreate}
-            />
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Land Clearing */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-              Land Clearing
-            </Typography>
-            <LandClearingCalculator
-              loadout={loadouts?.[0]}
-              onLineItemCreate={handleLineItemCreate}
-            />
-          </Box>
-        </Paper>
-
-        {/* Notes */}
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Notes
-          </Typography>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Additional information for the customer (financing, requirements, etc.)
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g., Prefer to pay over time? We offer 0% APR financing up to 24 months..."
-            sx={{ mt: 2 }}
-          />
-        </Paper>
-
-        {/* Terms (Collapsible) */}
-        <Paper sx={{ p: 3 }}>
-          <Box
-            sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-            onClick={() => setTermsExpanded(!termsExpanded)}
-          >
-            <Typography variant="h6">Terms & Conditions</Typography>
-            <IconButton size="small">
-              {termsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </IconButton>
-          </Box>
-          <Collapse in={termsExpanded}>
-            <Stack spacing={2} sx={{ mt: 2 }}>
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Environmental Responsibility</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Tree Shop is committed to environmental stewardship and will not impact federally protected wetlands.
-                  Any necessary changes to the project scope for environmental reasons will be communicated and approved before proceeding.
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Permit Responsibility</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  The landowner is responsible for obtaining all necessary permits. Tree Shop will adhere to all legal and environmental guidelines during the project.
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Change Orders</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Unforeseen conditions may necessitate a change in scope or budget. Any adjustments will be managed through formal change orders.
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Payment Terms</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  • A 25% deposit is required to secure scheduling.<br />
-                  • The remaining balance is due upon project completion.<br />
-                  • A 3% daily fee applies to late payments.<br />
-                  • Notify Tree Shop of any underground utilities or hazards before project begins.<br />
-                  • Estimates are valid for 60 days from the proposal date.
-                </Typography>
-              </Box>
-            </Stack>
           </Collapse>
         </Paper>
 
-        {/* Maps (Collapsible - Coming Soon) */}
-        <Paper sx={{ p: 3 }}>
-          <Box
-            sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-            onClick={() => setMapsExpanded(!mapsExpanded)}
-          >
-            <Typography variant="h6">Maps & Site Plans</Typography>
-            <IconButton size="small">
-              {mapsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </IconButton>
-          </Box>
-          <Collapse in={mapsExpanded}>
-            <Box sx={{ mt: 2, p: 4, bgcolor: "background.default", borderRadius: 1, textAlign: "center" }}>
+        {/* 2. Scope of Work */}
+        <Paper>
+          <SectionHeader
+            title="2. Scope of Work"
+            expanded={scopeExpanded}
+            onToggle={() => setScopeExpanded(!scopeExpanded)}
+          />
+          <Collapse in={scopeExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                value={scopeOfWork}
+                onChange={(e) => setScopeOfWork(e.target.value)}
+                placeholder="Describe the work to be performed..."
+              />
+            </Box>
+          </Collapse>
+        </Paper>
+
+        {/* 3. Service Line Items */}
+        <Paper>
+          <SectionHeader
+            title="3. Service Line Items"
+            expanded={lineItemsExpanded}
+            onToggle={() => setLineItemsExpanded(!lineItemsExpanded)}
+          />
+          <Collapse in={lineItemsExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              {/* Added Line Items */}
+              {lineItems.length > 0 && (
+                <Stack spacing={2} sx={{ mb: 3 }}>
+                  {lineItems.map((item, index) => (
+                    <Card key={item.id} variant="outlined">
+                      <CardContent>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
+                              <Typography variant="h6">
+                                {index + 1}. {item.serviceType}
+                              </Typography>
+                              {item.baseScore > 0 && (
+                                <Chip
+                                  label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : 'Inch-Acres'}`}
+                                  size="small"
+                                  color="primary"
+                                />
+                              )}
+                            </Stack>
+                            <Typography variant="body2" color="text.secondary">
+                              {item.description}
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleRemoveLineItem(item.id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  <Box sx={{ p: 2, bgcolor: "primary.dark", borderRadius: 1 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Typography variant="h6">Total</Typography>
+                      <Typography variant="h4">
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(totalValue)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Stack>
+              )}
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* Add Service Items */}
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                Add Services
+              </Typography>
+
+              <Stack spacing={3}>
+                {/* Stump Grinding */}
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Stump Grinding
+                  </Typography>
+                  <StumpGrindingCalculator
+                    loadout={loadouts?.[0]}
+                    onLineItemCreate={handleLineItemCreate}
+                  />
+                </Box>
+
+                <Divider />
+
+                {/* Forestry Mulching */}
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Forestry Mulching
+                  </Typography>
+                  <MulchingCalculator
+                    loadout={loadouts?.[0]}
+                    onLineItemCreate={handleLineItemCreate}
+                  />
+                </Box>
+
+                <Divider />
+
+                {/* Land Clearing */}
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Land Clearing
+                  </Typography>
+                  <LandClearingCalculator
+                    loadout={loadouts?.[0]}
+                    onLineItemCreate={handleLineItemCreate}
+                  />
+                </Box>
+              </Stack>
+            </Box>
+          </Collapse>
+        </Paper>
+
+        {/* 4. Notes */}
+        <Paper>
+          <SectionHeader
+            title="4. Notes (Internal - for crew)"
+            expanded={notesExpanded}
+            onToggle={() => setNotesExpanded(!notesExpanded)}
+          />
+          <Collapse in={notesExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Internal notes for the crew delivering and completing this work..."
+              />
+            </Box>
+          </Collapse>
+        </Paper>
+
+        {/* 5. Terms & Conditions */}
+        <Paper>
+          <SectionHeader
+            title="5. Terms & Conditions"
+            expanded={termsExpanded}
+            onToggle={() => setTermsExpanded(!termsExpanded)}
+          />
+          <Collapse in={termsExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>Environmental Responsibility</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Tree Shop is committed to environmental stewardship and will not impact federally protected wetlands.
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>Payment Terms</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    • 25% deposit required to secure scheduling<br />
+                    • Remaining balance due upon completion<br />
+                    • 3% daily fee applies to late payments
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+          </Collapse>
+        </Paper>
+
+        {/* 6. Site Plans */}
+        <Paper>
+          <SectionHeader
+            title="6. Site Plans & Maps"
+            expanded={sitePlansExpanded}
+            onToggle={() => setSitePlansExpanded(!sitePlansExpanded)}
+          />
+          <Collapse in={sitePlansExpanded}>
+            <Box sx={{ p: 3, pt: 0, textAlign: "center" }}>
               <Typography variant="h6" color="primary" gutterBottom>
                 🗺️ Coming Soon!
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Visual property drawings and site plans will be available here. We're working on integrating interactive maps and measurement tools.
+                Satellite maps with work area drawings and project details will be available here.
               </Typography>
             </Box>
           </Collapse>
         </Paper>
 
-        {/* Action Buttons */}
-        <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
-          <Button
-            variant="outlined"
-            startIcon={<SaveIcon />}
-            onClick={handleSaveProposal}
-            size="large"
-            disabled={!selectedCustomerId || lineItems.length === 0}
-          >
-            Save Draft
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<SendIcon />}
-            onClick={handleSaveProposal}
-            size="large"
-            disabled={!selectedCustomerId || lineItems.length === 0}
-          >
-            Save & Send
-          </Button>
-        </Box>
+        {/* 7. Status & Actions */}
+        <Paper>
+          <SectionHeader
+            title="7. Status & Actions"
+            expanded={statusExpanded}
+            onToggle={() => setStatusExpanded(!statusExpanded)}
+          />
+          <Collapse in={statusExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <Stack spacing={2}>
+                <Typography variant="body2" color="text.secondary">
+                  Save this proposal as a draft or send it to the customer for review.
+                </Typography>
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={handleSaveProposal}
+                    size="large"
+                    fullWidth
+                    disabled={!selectedCustomerId || lineItems.length === 0}
+                  >
+                    Save Draft
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<SendIcon />}
+                    onClick={handleSaveProposal}
+                    size="large"
+                    fullWidth
+                    disabled={!selectedCustomerId || lineItems.length === 0}
+                  >
+                    Save & Send
+                  </Button>
+                </Box>
+              </Stack>
+            </Box>
+          </Collapse>
+        </Paper>
       </Stack>
 
       {/* New Customer Dialog */}
