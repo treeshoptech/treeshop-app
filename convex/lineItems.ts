@@ -99,7 +99,6 @@ export const create = mutation({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
     const org = await getOrganization(ctx);
 
     const lineItemId = await ctx.db.insert("lineItems", {
@@ -156,7 +155,6 @@ export const update = mutation({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
     const org = await getOrganization(ctx);
 
     const { id, ...updates } = args;
@@ -184,7 +182,6 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("lineItems") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
     const org = await getOrganization(ctx);
 
     const lineItem = await ctx.db.get(args.id);
