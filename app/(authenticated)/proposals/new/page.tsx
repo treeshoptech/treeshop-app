@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -28,6 +28,7 @@ import {
   TableRow,
   TextField,
   Typography,
+  Grid,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -156,7 +157,8 @@ function CustomLineItemForm({ onLineItemCreate }: { onLineItemCreate: (data: any
   );
 }
 
-export default function NewProposalPage() {
+// Inner component that uses useSearchParams
+function NewProposalPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeStep, setActiveStep] = useState(0);
@@ -707,5 +709,18 @@ export default function NewProposalPage() {
         )}
       </Stack>
     </Container>
+  );
+}
+
+// Wrapper component with Suspense boundary
+export default function NewProposalPage() {
+  return (
+    <Suspense fallback={
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Typography>Loading...</Typography>
+      </Container>
+    }>
+      <NewProposalPageContent />
+    </Suspense>
   );
 }
