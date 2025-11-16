@@ -40,6 +40,7 @@ import {
   LandClearingCalculator,
 } from "@/app/components/calculators";
 import { Id } from "@/convex/_generated/dataModel";
+import { formatCurrency } from "@/lib/scoring-formulas";
 
 // Inner component that uses useSearchParams
 function NewProposalPageContent() {
