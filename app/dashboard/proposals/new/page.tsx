@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -191,6 +191,12 @@ function NewProposalPageContent() {
 
   const totalValue = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const selectedCustomer = customers?.find((c) => c._id === selectedCustomerId);
+
+  // Auto-aggregate unique terms from all line items
+  const aggregatedTerms = useMemo(() => {
+    const allTerms = lineItems.flatMap(item => item.termsAndConditions || []);
+    return [...new Set(allTerms)]; // Remove duplicates
+  }, [lineItems]);
 
   const SectionHeader = ({ title, expanded, onToggle }: any) => (
     <Box
@@ -439,10 +445,20 @@ function NewProposalPageContent() {
           <Collapse in={termsExpanded}>
             <Box sx={{ p: 3, pt: 0 }}>
               <Stack spacing={2}>
+                {aggregatedTerms.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>Service-Specific Terms</Typography>
+                    {aggregatedTerms.map((term, index) => (
+                      <Typography key={index} variant="body2" color="text.secondary">
+                        • {term}
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>Environmental Responsibility</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Tree Shop is committed to environmental stewardship and will not impact federally protected wetlands.
+                    • Tree Shop is committed to environmental stewardship and will not impact federally protected wetlands
                   </Typography>
                 </Box>
                 <Box>
