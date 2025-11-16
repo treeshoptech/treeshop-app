@@ -116,6 +116,7 @@ export default function MulchingCalculator({
   onLineItemCreate,
 }: MulchingCalculatorProps) {
   const [acres, setAcres] = useState(1.00);
+  const [acresInput, setAcresInput] = useState("1.00");
   const [dbhPackage, setDbhPackage] = useState(8);
   const [selectedAfissFactors, setSelectedAfissFactors] = useState<string[]>([]);
   const [selectedLoadoutId, setSelectedLoadoutId] = useState<string>(defaultLoadout?._id || loadouts?.[0]?._id || "");
@@ -269,33 +270,51 @@ export default function MulchingCalculator({
           Project Acreage
         </Typography>
         <TextField
-          type="number"
-          value={acres.toFixed(2)}
+          type="text"
+          value={acresInput}
           onChange={(e) => {
-            const val = parseFloat(e.target.value);
-            if (!isNaN(val) && val >= 0.01 && val <= 50) {
+            const input = e.target.value;
+            setAcresInput(input);
+
+            // Parse and validate
+            const val = parseFloat(input);
+            if (!isNaN(val) && val >= 0.01 && val <= 1000) {
               setAcres(val);
             }
           }}
-          onFocus={(e) => e.target.select()}
+          onFocus={(e) => {
+            e.target.select();
+          }}
+          onBlur={() => {
+            // Format to 2 decimals on blur
+            const formatted = acres.toFixed(2);
+            setAcresInput(formatted);
+          }}
           InputProps={{
             inputProps: {
-              min: 0.01,
-              max: 50,
-              step: 0.01,
+              inputMode: 'decimal',
               style: { fontSize: '2rem', fontWeight: 700, textAlign: 'center', padding: '16px' }
             },
-            endAdornment: <Typography variant="h6" color="text.secondary">acres</Typography>,
+            endAdornment: <Typography variant="h6" color="text.secondary" sx={{ pr: 1 }}>acres</Typography>,
           }}
           sx={{
             width: '100%',
             '& .MuiOutlinedInput-root': {
               backgroundColor: 'background.paper',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+              },
+              '&.Mui-focused': {
+                backgroundColor: 'background.paper',
+              }
+            },
+            '& input': {
+              cursor: 'pointer',
             }
           }}
         />
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-          Examples: 1.00, 5.50, 10.25
+          Examples: 1.00, 5.50, 10.25, 75.25
         </Typography>
       </Box>
 
