@@ -247,6 +247,7 @@ function LoadoutsPageContent() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedLoadout, setSelectedLoadout] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [formTab, setFormTab] = useState(0);
 
   const theme = useTheme();
@@ -256,8 +257,9 @@ function LoadoutsPageContent() {
   const equipment = useQuery(api.equipment.list);
   const employees = useQuery(api.employees.list);
 
-  // Mutation for creating loadouts
+  // Mutations for loadouts
   const createLoadout = useMutation(api.loadouts.create);
+  const updateLoadout = useMutation(api.loadouts.update);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -291,7 +293,23 @@ function LoadoutsPageContent() {
   };
 
   const handleEdit = () => {
-    // TODO: Open edit dialog
+    if (!selectedLoadout) return;
+
+    // Populate form with selected loadout data
+    setFormData({
+      name: selectedLoadout.name || '',
+      serviceType: selectedLoadout.serviceType || 'Tree Removal',
+      status: selectedLoadout.status || 'Active',
+      description: selectedLoadout.description || '',
+      selectedEquipment: selectedLoadout.equipmentIds || [],
+      selectedEmployees: selectedLoadout.employeeIds || [],
+      productionRate: selectedLoadout.productionRate || 0,
+      targetMargin: selectedLoadout.targetMargin || 50,
+      overheadCost: selectedLoadout.overheadCost || 0,
+    });
+
+    setIsEditMode(true);
+    setDialogOpen(true);
     handleMenuClose();
   };
 
@@ -312,7 +330,24 @@ function LoadoutsPageContent() {
       {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 600 }}>Loadouts</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+          // Reset form for new loadout
+          setFormData({
+            name: '',
+            serviceType: 'Tree Removal',
+            status: 'Active',
+            description: '',
+            selectedEquipment: [],
+            selectedEmployees: [],
+            productionRate: 0,
+            targetMargin: 50,
+            overheadCost: 0,
+          });
+          setIsEditMode(false);
+          setSelectedLoadout(null);
+          setFormTab(0);
+          setDialogOpen(true);
+        }}>
           New Loadout
         </Button>
       </Box>
@@ -328,7 +363,24 @@ function LoadoutsPageContent() {
             Create your first loadout by combining equipment and crew members.
             Loadouts help you track costs, calculate billing rates, and manage your operations efficiently.
           </Typography>
-          <Button variant="contained" size="large" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
+          <Button variant="contained" size="large" startIcon={<AddIcon />} onClick={() => {
+            // Reset form for new loadout
+            setFormData({
+              name: '',
+              serviceType: 'Tree Removal',
+              status: 'Active',
+              description: '',
+              selectedEquipment: [],
+              selectedEmployees: [],
+              productionRate: 0,
+              targetMargin: 50,
+              overheadCost: 0,
+            });
+            setIsEditMode(false);
+            setSelectedLoadout(null);
+            setFormTab(0);
+            setDialogOpen(true);
+          }}>
             Create Your First Loadout
           </Button>
         </Box>
@@ -661,10 +713,14 @@ function LoadoutsPageContent() {
         <AddIcon />
       </Fab>
 
-      {/* New Loadout Dialog */}
+      {/* New/Edit Loadout Dialog */}
       <Dialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {
+          setDialogOpen(false);
+          setIsEditMode(false);
+          setSelectedLoadout(null);
+        }}
         maxWidth="lg"
         fullWidth
         PaperProps={{
@@ -676,8 +732,14 @@ function LoadoutsPageContent() {
       >
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>Create New Loadout</Typography>
-            <IconButton size="small" onClick={() => setDialogOpen(false)} sx={{ color: '#8E8E93' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {isEditMode ? 'Edit Loadout' : 'Create New Loadout'}
+            </Typography>
+            <IconButton size="small" onClick={() => {
+              setDialogOpen(false);
+              setIsEditMode(false);
+              setSelectedLoadout(null);
+            }} sx={{ color: '#8E8E93' }}>
               <CloseIcon />
             </IconButton>
           </Box>
@@ -1090,7 +1152,11 @@ function LoadoutsPageContent() {
         </DialogContent>
 
         <DialogActions sx={{ p: 2, borderTop: '1px solid #2C2C2E' }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => {
+            setDialogOpen(false);
+            setIsEditMode(false);
+            setSelectedLoadout(null);
+          }}>Cancel</Button>
           <Button
             variant="contained"
             onClick={async () => {
@@ -1113,20 +1179,35 @@ function LoadoutsPageContent() {
               }
 
               try {
-                console.log('Creating loadout with data:', formData);
-                const loadoutId = await createLoadout({
-                  name: formData.name,
-                  serviceType: formData.serviceType,
-                  equipmentIds: formData.selectedEquipment as Id<"equipment">[],
-                  employeeIds: formData.selectedEmployees as Id<"employees">[],
-                  productionRate: formData.productionRate,
-                  status: formData.status,
-                });
+                if (isEditMode && selectedLoadout) {
+                  // Update existing loadout
+                  console.log('Updating loadout with data:', formData);
+                  await updateLoadout({
+                    id: selectedLoadout._id,
+                    name: formData.name,
+                    serviceType: formData.serviceType,
+                    equipmentIds: formData.selectedEquipment as Id<"equipment">[],
+                    employeeIds: formData.selectedEmployees as Id<"employees">[],
+                    productionRate: formData.productionRate,
+                    status: formData.status,
+                  });
 
-                console.log('Loadout created successfully with ID:', loadoutId);
+                  alert(`Loadout "${formData.name}" updated successfully!`);
+                } else {
+                  // Create new loadout
+                  console.log('Creating loadout with data:', formData);
+                  const loadoutId = await createLoadout({
+                    name: formData.name,
+                    serviceType: formData.serviceType,
+                    equipmentIds: formData.selectedEquipment as Id<"equipment">[],
+                    employeeIds: formData.selectedEmployees as Id<"employees">[],
+                    productionRate: formData.productionRate,
+                    status: formData.status,
+                  });
 
-                // Show success message
-                alert(`Loadout "${formData.name}" created successfully!`);
+                  console.log('Loadout created successfully with ID:', loadoutId);
+                  alert(`Loadout "${formData.name}" created successfully!`);
+                }
 
                 // Reset form and close dialog
                 setFormData({
@@ -1141,15 +1222,17 @@ function LoadoutsPageContent() {
                   overheadCost: 0,
                 });
                 setFormTab(0);
+                setIsEditMode(false);
+                setSelectedLoadout(null);
                 setDialogOpen(false);
               } catch (error: any) {
-                console.error('Failed to create loadout:', error);
-                alert(`Failed to create loadout: ${error?.message || 'Unknown error'}. Please try again.`);
+                console.error(`Failed to ${isEditMode ? 'update' : 'create'} loadout:`, error);
+                alert(`Failed to ${isEditMode ? 'update' : 'create'} loadout: ${error?.message || 'Unknown error'}. Please try again.`);
               }
             }}
             disabled={!formData.name || formData.selectedEquipment.length === 0 || formData.selectedEmployees.length === 0 || formData.productionRate <= 0}
           >
-            Create Loadout
+            {isEditMode ? 'Update Loadout' : 'Create Loadout'}
           </Button>
         </DialogActions>
       </Dialog>
