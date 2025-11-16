@@ -428,7 +428,7 @@ function NewProposalPageContent() {
                 >
                   {loadouts?.map((loadout) => (
                     <MenuItem key={loadout._id} value={loadout._id}>
-                      {loadout.name} - {loadout.productionRatePPH} PpH @ ${loadout.costPerHour.toFixed(2)}/hr
+                      {loadout.name} - {loadout.productionRatePPH || 0} PpH @ ${(loadout.costPerHour || 0).toFixed(2)}/hr
                     </MenuItem>
                   ))}
                 </Select>
@@ -439,9 +439,9 @@ function NewProposalPageContent() {
                     const selectedLoadout = loadouts.find(l => l._id === selectedLoadoutId);
                     return selectedLoadout ? (
                       <>
-                        <Typography variant="body2"><strong>Production Rate:</strong> {selectedLoadout.productionRatePPH} points per hour</Typography>
-                        <Typography variant="body2"><strong>Cost Per Hour:</strong> ${selectedLoadout.costPerHour.toFixed(2)}</Typography>
-                        <Typography variant="body2"><strong>Target Margin:</strong> {selectedLoadout.targetMargin}%</Typography>
+                        <Typography variant="body2"><strong>Production Rate:</strong> {selectedLoadout.productionRatePPH || 0} points per hour</Typography>
+                        <Typography variant="body2"><strong>Cost Per Hour:</strong> ${(selectedLoadout.costPerHour || 0).toFixed(2)}</Typography>
+                        <Typography variant="body2"><strong>Target Margin:</strong> {selectedLoadout.targetMargin || 0}%</Typography>
                       </>
                     ) : null;
                   })()}
