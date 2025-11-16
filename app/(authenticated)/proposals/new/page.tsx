@@ -825,6 +825,10 @@ function NewProposalPageContent() {
                     variant="outlined"
                     size="large"
                     fullWidth
+                    onClick={() => {
+                      // TODO: Implement PDF export
+                      alert("Export functionality coming soon!");
+                    }}
                     disabled={!selectedCustomerId || lineItems.length === 0}
                   >
                     Export
