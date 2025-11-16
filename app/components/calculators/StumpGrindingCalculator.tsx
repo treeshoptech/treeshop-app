@@ -146,184 +146,123 @@ export default function StumpGrindingCalculator({
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Stump Grinding Calculator
-      </Typography>
+    <Stack spacing={2}>
+      {/* Stumps */}
+      {stumps.map((stump, index) => (
+        <Card key={stump.id} variant="outlined">
+          <CardContent>
+            <Stack spacing={2}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Typography variant="subtitle1" fontWeight={600}>Stump {index + 1}</Typography>
+                {stumps.length > 1 && (
+                  <IconButton onClick={() => removeStump(stump.id)} color="error" size="small">
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
 
-      <Stack spacing={3}>
-        {/* Stumps */}
-        {stumps.map((stump, index) => (
-          <Card key={stump.id}>
-            <CardContent>
-              <Stack spacing={2}>
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <Typography variant="h6">Stump {index + 1}</Typography>
-                  {stumps.length > 1 && (
-                    <IconButton onClick={() => removeStump(stump.id)} color="error">
-                      <DeleteIcon />
-                    </IconButton>
-                  )}
-                </Box>
-
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="Diameter (inches)"
-                      value={stump.diameter}
-                      onChange={(e) => updateStump(stump.id, { diameter: parseFloat(e.target.value) || 6 })}
-                      InputProps={{ inputProps: { min: 6, max: 60, step: 1 } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="Height Above Grade (ft)"
-                      value={stump.heightAbove}
-                      onChange={(e) => updateStump(stump.id, { heightAbove: parseFloat(e.target.value) || 0 })}
-                      InputProps={{ inputProps: { min: 0, max: 3, step: 0.5 } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="Grind Depth Below (ft)"
-                      value={stump.depthBelow}
-                      onChange={(e) => updateStump(stump.id, { depthBelow: parseFloat(e.target.value) || 0.5 })}
-                      InputProps={{ inputProps: { min: 0.5, max: 1.5, step: 0.25 } }}
-                    />
-                  </Grid>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Diameter (inches)"
+                    value={stump.diameter}
+                    onChange={(e) => updateStump(stump.id, { diameter: parseFloat(e.target.value) || 6 })}
+                    InputProps={{ inputProps: { min: 6, max: 60, step: 1 } }}
+                  />
                 </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Height Above (ft)"
+                    value={stump.heightAbove}
+                    onChange={(e) => updateStump(stump.id, { heightAbove: parseFloat(e.target.value) || 0 })}
+                    InputProps={{ inputProps: { min: 0, max: 3, step: 0.5 } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Depth Below (ft)"
+                    value={stump.depthBelow}
+                    onChange={(e) => updateStump(stump.id, { depthBelow: parseFloat(e.target.value) || 0.5 })}
+                    InputProps={{ inputProps: { min: 0.5, max: 1.5, step: 0.25 } }}
+                  />
+                </Grid>
+              </Grid>
 
-                <Divider />
+              <FormGroup row>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={stump.hardwood}
+                      onChange={(e) => updateStump(stump.id, { hardwood: e.target.checked })}
+                    />
+                  }
+                  label="Hardwood"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={stump.rootFlare}
+                      onChange={(e) => updateStump(stump.id, { rootFlare: e.target.checked })}
+                    />
+                  }
+                  label="Root Flare"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={stump.rotten}
+                      onChange={(e) => updateStump(stump.id, { rotten: e.target.checked })}
+                    />
+                  }
+                  label="Rotten"
+                />
+              </FormGroup>
+            </Stack>
+          </CardContent>
+        </Card>
+      ))}
 
-                <Typography variant="subtitle2">Modifiers</Typography>
-                <FormGroup>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={stump.hardwood}
-                        onChange={(e) => updateStump(stump.id, { hardwood: e.target.checked })}
-                      />
-                    }
-                    label="Hardwood species (oak, hickory) +15%"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={stump.rootFlare}
-                        onChange={(e) => updateStump(stump.id, { rootFlare: e.target.checked })}
-                      />
-                    }
-                    label="Large root flare/buttress +20%"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={stump.rotten}
-                        onChange={(e) => updateStump(stump.id, { rotten: e.target.checked })}
-                      />
-                    }
-                    label="Rotten/deteriorated stump -15%"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={stump.rocks}
-                        onChange={(e) => updateStump(stump.id, { rocks: e.target.checked })}
-                      />
-                    }
-                    label="Rocks in root zone +10%"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={stump.tightSpace}
-                        onChange={(e) => updateStump(stump.id, { tightSpace: e.target.checked })}
-                      />
-                    }
-                    label="Tight landscaping or near foundation +15%"
-                  />
-                </FormGroup>
-              </Stack>
-            </CardContent>
-          </Card>
-        ))}
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={addStump}
+        size="small"
+      >
+        Add Another Stump
+      </Button>
 
+      {/* Results Summary */}
+      <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          Total StumpScore: <strong>{scoreResult.adjustedScore}</strong>
+        </Typography>
+        {timeEstimate && (
+          <Typography variant="body2" color="text.secondary">
+            Estimated Time: <strong>{formatHours(timeEstimate.totalEstimatedHours)}</strong>
+          </Typography>
+        )}
+        {pricing && (
+          <Typography variant="body1" color="primary" sx={{ mt: 1 }}>
+            Price: <strong>{formatCurrency(pricing.totalPrice)}</strong>
+          </Typography>
+        )}
+      </Box>
+
+      {loadout && (
         <Button
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={addStump}
+          variant="contained"
+          onClick={handleCreateLineItem}
           fullWidth
         >
-          Add Another Stump
+          Add to Proposal
         </Button>
-
-        {/* Results */}
-        <Paper sx={{ p: 3, bgcolor: "background.default" }}>
-          <Typography variant="h5" gutterBottom>
-            Calculation Results
-          </Typography>
-
-          <Stack spacing={2}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Total StumpScore Points
-              </Typography>
-              <Typography variant="h4">{scoreResult.adjustedScore}</Typography>
-            </Box>
-
-            {timeEstimate && (
-              <>
-                <Divider />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Time Breakdown
-                  </Typography>
-                  <Typography>Production: {formatHours(timeEstimate.productionHours)}</Typography>
-                  <Typography>Transport: {formatHours(timeEstimate.transportHours)}</Typography>
-                  <Typography>Buffer (10%): {formatHours(timeEstimate.bufferHours)}</Typography>
-                  <Typography variant="h6" sx={{ mt: 1 }}>
-                    Total: {formatHours(timeEstimate.totalEstimatedHours)}
-                  </Typography>
-                </Box>
-              </>
-            )}
-
-            {pricing && (
-              <>
-                <Divider />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Pricing
-                  </Typography>
-                  <Typography>Cost: {formatCurrency(pricing.totalCost)}</Typography>
-                  <Typography>Price: {formatCurrency(pricing.totalPrice)}</Typography>
-                  <Typography>Profit: {formatCurrency(pricing.profit)}</Typography>
-                  <Typography variant="h6" sx={{ mt: 1 }}>
-                    Margin: {pricing.marginPercent.toFixed(1)}%
-                  </Typography>
-                </Box>
-              </>
-            )}
-
-            {loadout && (
-              <Button
-                variant="contained"
-                onClick={handleCreateLineItem}
-                fullWidth
-                size="large"
-              >
-                Create Line Item
-              </Button>
-            )}
-          </Stack>
-        </Paper>
-      </Stack>
-    </Box>
+      )}
+    </Stack>
   );
 }

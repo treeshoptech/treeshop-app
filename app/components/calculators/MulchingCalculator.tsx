@@ -214,130 +214,68 @@ export default function MulchingCalculator({
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Forestry Mulching Calculator
-      </Typography>
-
-      <Stack spacing={3}>
-        {/* Project Inputs */}
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Project Details
-            </Typography>
-            <Stack spacing={3}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label="Acreage"
-                    value={acres}
-                    onChange={(e) => setAcres(parseFloat(e.target.value) || 0.5)}
-                    InputProps={{ inputProps: { min: 0.5, max: 50, step: 0.5 } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>DBH Package</InputLabel>
-                    <Select
-                      value={dbhPackage}
-                      label="DBH Package"
-                      onChange={(e) => setDbhPackage(e.target.value as number)}
-                    >
-                      {DBH_PACKAGES.map((pkg) => (
-                        <MenuItem key={pkg.value} value={pkg.value}>
-                          {pkg.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        {/* AFISS Assessment */}
-        <Box>
-          <Typography variant="h6" gutterBottom sx={{ px: 2 }}>
-            Site Assessment (AFISS)
-          </Typography>
-          <Typography variant="body2" color="text.secondary" gutterBottom sx={{ px: 2, mb: 2 }}>
-            Identify all factors present on this property. These affect production rate and timeline.
-          </Typography>
-          <AfissSelector
-            categories={AFISS_CATEGORIES}
-            selectedFactors={selectedAfissFactors}
-            onFactorsChange={setSelectedAfissFactors}
+    <Stack spacing={2}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth
+            type="number"
+            label="Acreage"
+            value={acres}
+            onChange={(e) => setAcres(parseFloat(e.target.value) || 0.5)}
+            InputProps={{ inputProps: { min: 0.5, max: 50, step: 0.5 } }}
           />
-        </Box>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <FormControl fullWidth>
+            <InputLabel>DBH Package</InputLabel>
+            <Select
+              value={dbhPackage}
+              label="DBH Package"
+              onChange={(e) => setDbhPackage(e.target.value as number)}
+            >
+              {DBH_PACKAGES.map((pkg) => (
+                <MenuItem key={pkg.value} value={pkg.value}>
+                  {pkg.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+      </Grid>
 
-        {/* Results */}
-        <Paper sx={{ p: 3, bgcolor: "background.default" }}>
-          <Typography variant="h5" gutterBottom>
-            Calculation Results
+      <AfissSelector
+        categories={AFISS_CATEGORIES}
+        selectedFactors={selectedAfissFactors}
+        onFactorsChange={setSelectedAfissFactors}
+      />
+
+      {/* Results Summary */}
+      <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          Work Volume: <strong>{baseScore.toFixed(1)} inch-acres</strong>
+        </Typography>
+        {timeEstimate && (
+          <Typography variant="body2" color="text.secondary">
+            Estimated Time: <strong>{formatHours(timeEstimate.totalEstimatedHours)}</strong>
           </Typography>
+        )}
+        {pricing && (
+          <Typography variant="body1" color="primary" sx={{ mt: 1 }}>
+            Price: <strong>{formatCurrency(pricing.totalPrice)}</strong>
+          </Typography>
+        )}
+      </Box>
 
-          <Stack spacing={2}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Work Volume
-              </Typography>
-              <Typography variant="h6">{baseScore.toFixed(1)} inch-acres</Typography>
-            </Box>
-
-            {timeEstimate && (
-              <>
-                <Divider />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Time Breakdown
-                  </Typography>
-                  <Typography>Production: {formatHours(timeEstimate.productionHours)}</Typography>
-                  <Typography>Transport: {formatHours(timeEstimate.transportHours)}</Typography>
-                  {timeEstimate.timeOverheadHours > 0 && (
-                    <Typography>Site Complexity: {formatHours(timeEstimate.timeOverheadHours)}</Typography>
-                  )}
-                  <Typography>Buffer (10%): {formatHours(timeEstimate.bufferHours)}</Typography>
-                  <Typography variant="h6" sx={{ mt: 1 }}>
-                    Total: {formatHours(timeEstimate.totalEstimatedHours)}
-                  </Typography>
-                </Box>
-              </>
-            )}
-
-            {pricing && (
-              <>
-                <Divider />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Pricing
-                  </Typography>
-                  <Typography>Cost: {formatCurrency(pricing.totalCost)}</Typography>
-                  <Typography>Price: {formatCurrency(pricing.totalPrice)}</Typography>
-                  <Typography>Profit: {formatCurrency(pricing.profit)}</Typography>
-                  <Typography variant="h6" sx={{ mt: 1 }}>
-                    Margin: {pricing.marginPercent.toFixed(1)}%
-                  </Typography>
-                </Box>
-              </>
-            )}
-
-            {loadout && (
-              <Button
-                variant="contained"
-                onClick={handleCreateLineItem}
-                fullWidth
-                size="large"
-              >
-                Create Line Item
-              </Button>
-            )}
-          </Stack>
-        </Paper>
-      </Stack>
-    </Box>
+      {loadout && (
+        <Button
+          variant="contained"
+          onClick={handleCreateLineItem}
+          fullWidth
+        >
+          Add to Proposal
+        </Button>
+      )}
+    </Stack>
   );
 }

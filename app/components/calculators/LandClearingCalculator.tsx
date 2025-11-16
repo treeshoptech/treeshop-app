@@ -110,144 +110,82 @@ export default function LandClearingCalculator({
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Land Clearing Calculator
-      </Typography>
+    <Stack spacing={2}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth
+            type="number"
+            label="Acreage"
+            value={acres}
+            onChange={(e) => setAcres(parseFloat(e.target.value) || 0.5)}
+            InputProps={{ inputProps: { min: 0.5, max: 20, step: 0.5 } }}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth
+            type="number"
+            label="AFISS Complexity Multiplier"
+            value={afissMultiplier}
+            onChange={(e) => setAfissMultiplier(parseFloat(e.target.value) || 1.0)}
+            InputProps={{ inputProps: { min: 1.0, max: 2.0, step: 0.05 } }}
+            helperText="Adjust based on utilities, structures, etc."
+          />
+        </Grid>
+      </Grid>
 
-      <Stack spacing={3}>
-        <Card>
-          <CardContent>
-            <Stack spacing={3}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label="Acreage"
-                    value={acres}
-                    onChange={(e) => setAcres(parseFloat(e.target.value) || 0.5)}
-                    InputProps={{ inputProps: { min: 0.5, max: 20, step: 0.5 } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label="AFISS Complexity Multiplier"
-                    value={afissMultiplier}
-                    onChange={(e) => setAfissMultiplier(parseFloat(e.target.value) || 1.0)}
-                    InputProps={{ inputProps: { min: 1.0, max: 2.0, step: 0.05 } }}
-                    helperText="Adjust based on utilities, structures, access restrictions, etc."
-                  />
-                </Grid>
-              </Grid>
+      <FormControl>
+        <Typography variant="subtitle2" gutterBottom>Vegetation Density</Typography>
+        <RadioGroup
+          value={density}
+          onChange={(e) => setDensity(e.target.value as Density)}
+          row
+        >
+          <FormControlLabel
+            value="Light"
+            control={<Radio />}
+            label="Light"
+          />
+          <FormControlLabel
+            value="Average"
+            control={<Radio />}
+            label="Average"
+          />
+          <FormControlLabel
+            value="Heavy"
+            control={<Radio />}
+            label="Heavy"
+          />
+        </RadioGroup>
+      </FormControl>
 
-              <FormControl>
-                <Typography gutterBottom>Vegetation Density</Typography>
-                <RadioGroup
-                  value={density}
-                  onChange={(e) => setDensity(e.target.value as Density)}
-                >
-                  <FormControlLabel
-                    value="Light"
-                    control={<Radio />}
-                    label="Light (0.7x) - Sparse vegetation, basic cleanup"
-                  />
-                  <FormControlLabel
-                    value="Average"
-                    control={<Radio />}
-                    label="Average (1.0x) - Typical residential density"
-                  />
-                  <FormControlLabel
-                    value="Heavy"
-                    control={<Radio />}
-                    label="Heavy (1.3x) - Dense vegetation, extensive work"
-                  />
-                </RadioGroup>
-              </FormControl>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        {/* Results */}
-        <Paper sx={{ p: 3, bgcolor: "background.default" }}>
-          <Typography variant="h5" gutterBottom>
-            Calculation Results
+      {/* Results Summary */}
+      <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          ClearingScore: <strong>{scoreResult.adjustedScore}</strong>
+        </Typography>
+        {timeEstimate && (
+          <Typography variant="body2" color="text.secondary">
+            Estimated Time: <strong>{formatHours(timeEstimate.totalEstimatedHours)}</strong>
           </Typography>
+        )}
+        {pricing && (
+          <Typography variant="body1" color="primary" sx={{ mt: 1 }}>
+            Price: <strong>{formatCurrency(pricing.totalPrice)}</strong>
+          </Typography>
+        )}
+      </Box>
 
-          <Stack spacing={2}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Base Acres
-              </Typography>
-              <Typography variant="h6">{scoreResult.baseScore}</Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Density Multiplier
-              </Typography>
-              <Typography variant="h6">
-                {density} (
-                {density === "Light" ? "0.7x" : density === "Average" ? "1.0x" : "1.3x"})
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Adjusted ClearingScore (with AFISS)
-              </Typography>
-              <Typography variant="h4">{scoreResult.adjustedScore}</Typography>
-            </Box>
-
-            {timeEstimate && (
-              <>
-                <Divider />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Time Breakdown
-                  </Typography>
-                  <Typography>Production: {formatHours(timeEstimate.productionHours)}</Typography>
-                  <Typography>Transport: {formatHours(timeEstimate.transportHours)}</Typography>
-                  <Typography>Buffer (10%): {formatHours(timeEstimate.bufferHours)}</Typography>
-                  <Typography variant="h6" sx={{ mt: 1 }}>
-                    Total: {formatHours(timeEstimate.totalEstimatedHours)}
-                  </Typography>
-                </Box>
-              </>
-            )}
-
-            {pricing && (
-              <>
-                <Divider />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Pricing
-                  </Typography>
-                  <Typography>Cost: {formatCurrency(pricing.totalCost)}</Typography>
-                  <Typography>Price: {formatCurrency(pricing.totalPrice)}</Typography>
-                  <Typography>Profit: {formatCurrency(pricing.profit)}</Typography>
-                  <Typography variant="h6" sx={{ mt: 1 }}>
-                    Margin: {pricing.marginPercent.toFixed(1)}%
-                  </Typography>
-                </Box>
-              </>
-            )}
-
-            {loadout && (
-              <Button
-                variant="contained"
-                onClick={handleCreateLineItem}
-                fullWidth
-                size="large"
-              >
-                Create Line Item
-              </Button>
-            )}
-          </Stack>
-        </Paper>
-      </Stack>
-    </Box>
+      {loadout && (
+        <Button
+          variant="contained"
+          onClick={handleCreateLineItem}
+          fullWidth
+        >
+          Add to Proposal
+        </Button>
+      )}
+    </Stack>
   );
 }
