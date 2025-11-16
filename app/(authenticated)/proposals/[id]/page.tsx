@@ -72,6 +72,13 @@ export default function ProposalDetailPage() {
   const [addLineItemMode, setAddLineItemMode] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceType>("Stump Grinding");
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [convertData, setConvertData] = useState({
+    scheduledDate: "",
+    scheduledStartTime: "",
+    specialInstructions: "",
+    notes: "",
+  });
 
   // Fetch proposal (project)
   const proposal = useQuery(api.projects.get, { id: proposalId });
@@ -90,6 +97,7 @@ export default function ProposalDetailPage() {
   const createLineItem = useMutation(api.lineItems.create);
   const updateLineItem = useMutation(api.lineItems.update);
   const removeLineItem = useMutation(api.lineItems.remove);
+  const createWorkOrderFromProposal = useMutation(api.workOrders.createFromProposal);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -193,14 +201,19 @@ export default function ProposalDetailPage() {
 
   const handleConvertToWorkOrder = async () => {
     try {
-      await updateProject({
-        id: proposalId,
-        status: "Work Order",
-        workOrderStatus: "Scheduled",
+      const workOrderId = await createWorkOrderFromProposal({
+        proposalId,
+        scheduledDate: convertData.scheduledDate ? new Date(convertData.scheduledDate).getTime() : undefined,
+        scheduledStartTime: convertData.scheduledStartTime || undefined,
+        specialInstructions: convertData.specialInstructions || undefined,
+        notes: convertData.notes || undefined,
       });
-      router.push("/work-orders");
+
+      setConvertDialogOpen(false);
+      router.push(`/dashboard/work-orders/${workOrderId}`);
     } catch (error) {
       console.error("Error converting to work order:", error);
+      alert("Failed to convert to work order. Please try again.");
     }
   };
 
@@ -244,7 +257,7 @@ export default function ProposalDetailPage() {
                 variant="contained"
                 color="success"
                 startIcon={<CheckIcon />}
-                onClick={handleConvertToWorkOrder}
+                onClick={() => setConvertDialogOpen(true)}
               >
                 Convert to Work Order
               </Button>
@@ -644,6 +657,85 @@ export default function ProposalDetailPage() {
             onClick={() => handleStatusChange("Sent")}
           >
             Mark as Sent
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Convert to Work Order Dialog */}
+      <Dialog open={convertDialogOpen} onClose={() => setConvertDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Convert Proposal to Work Order</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <Typography>
+              Create a work order from this accepted proposal. All line items will be copied to the work order.
+            </Typography>
+
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Customer
+              </Typography>
+              <Typography variant="body1">{proposal.customerName}</Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Contract Amount
+              </Typography>
+              <Typography variant="h5" color="success.main">
+                {new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                }).format(totalValue)}
+              </Typography>
+            </Box>
+
+            <TextField
+              label="Scheduled Date"
+              type="date"
+              value={convertData.scheduledDate}
+              onChange={(e) => setConvertData({ ...convertData, scheduledDate: e.target.value })}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              label="Scheduled Start Time"
+              type="time"
+              value={convertData.scheduledStartTime}
+              onChange={(e) => setConvertData({ ...convertData, scheduledStartTime: e.target.value })}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              label="Special Instructions"
+              value={convertData.specialInstructions}
+              onChange={(e) => setConvertData({ ...convertData, specialInstructions: e.target.value })}
+              fullWidth
+              multiline
+              rows={2}
+              placeholder="Gate codes, parking instructions, etc."
+            />
+
+            <TextField
+              label="Internal Notes"
+              value={convertData.notes}
+              onChange={(e) => setConvertData({ ...convertData, notes: e.target.value })}
+              fullWidth
+              multiline
+              rows={2}
+              placeholder="Internal notes for crew..."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConvertDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleConvertToWorkOrder}
+          >
+            Create Work Order
           </Button>
         </DialogActions>
       </Dialog>

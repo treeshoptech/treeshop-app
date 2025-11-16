@@ -471,7 +471,16 @@ export default defineSchema({
     completionPhotos: v.optional(v.array(v.string())),
 
     // Status
-    status: v.string(), // "Created", "PreScheduled", "Scheduled", "InProgress", "Paused", "Completed", "Invoiced", "Cancelled"
+    status: v.union(
+      v.literal("Created"),
+      v.literal("PreScheduled"),
+      v.literal("Scheduled"),
+      v.literal("In Progress"),
+      v.literal("Paused"),
+      v.literal("Completed"),
+      v.literal("Invoiced"),
+      v.literal("Cancelled")
+    ),
 
     createdAt: v.number(),
     updatedAt: v.number(),

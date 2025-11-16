@@ -301,7 +301,7 @@ export const startWork = mutation({
 export const complete = mutation({
   args: {
     id: v.id("workOrders"),
-    customerSignature: v.string(),
+    customerSignature: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -331,6 +331,161 @@ export const complete = mutation({
     });
 
     return args.id;
+  },
+});
+
+// Create work order from accepted proposal
+export const createFromProposal = mutation({
+  args: {
+    proposalId: v.id("proposals"),
+    scheduledDate: v.optional(v.number()),
+    scheduledStartTime: v.optional(v.string()),
+    specialInstructions: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const org = await getOrganization(ctx);
+
+    // 1. Get proposal and verify ownership
+    const proposal = await ctx.db.get(args.proposalId);
+    if (!proposal) {
+      throw new Error("Proposal not found");
+    }
+
+    if (proposal.organizationId !== org._id) {
+      throw new Error("Proposal not found");
+    }
+
+    // 2. Get project
+    const project = await ctx.db.get(proposal.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // 3. Get customer
+    const customer = await ctx.db.get(proposal.customerId);
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+
+    // 4. Get all line items for this proposal
+    const lineItems = await ctx.db
+      .query("lineItems")
+      .withIndex("by_parent_doc", (q) =>
+        q.eq("parentDocId", args.proposalId).eq("parentDocType", "Proposal")
+      )
+      .filter((q) => q.eq(q.field("organizationId"), org._id))
+      .collect();
+
+    if (lineItems.length === 0) {
+      throw new Error("No line items found for this proposal");
+    }
+
+    const now = Date.now();
+
+    // 5. Generate work order number: WO-YYYYMMDD-XXX
+    const date = new Date(now);
+    const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
+
+    const todayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const todayEnd = todayStart + 24 * 60 * 60 * 1000;
+
+    const todayWorkOrders = await ctx.db
+      .query("workOrders")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .filter((q) =>
+        q.and(
+          q.gte(q.field("createdAt"), todayStart),
+          q.lt(q.field("createdAt"), todayEnd)
+        )
+      )
+      .collect();
+
+    const sequence = (todayWorkOrders.length + 1).toString().padStart(3, "0");
+    const workOrderNumber = `WO-${dateStr}-${sequence}`;
+
+    // 6. Determine primary loadout and service type from line items
+    const primaryLineItem = lineItems[0];
+    const primaryLoadoutId = proposal.loadoutId || primaryLineItem.loadoutId;
+    const serviceType = lineItems.length === 1
+      ? primaryLineItem.serviceType
+      : `${primaryLineItem.serviceType} + ${lineItems.length - 1} more`;
+
+    // 7. Calculate contract amount from proposal price range (use high estimate)
+    const contractAmount = proposal.priceRangeHigh;
+
+    // 8. Create work order
+    const workOrderId = await ctx.db.insert("workOrders", {
+      organizationId: org._id,
+      creationType: "PROPOSAL",
+      proposalId: args.proposalId,
+      projectId: proposal.projectId,
+      customerId: proposal.customerId,
+      projectName: project.name || `${customer.name} - ${serviceType}`,
+      workOrderNumber,
+      propertyAddress: project.propertyAddress || customer.propertyAddress || "",
+      propertyCoordinates: project.propertyCoordinates || customer.propertyCoordinates,
+      serviceType,
+      contractAmount,
+      estimatedHours: proposal.estimatedHours,
+      primaryLoadoutId,
+      scheduledDate: args.scheduledDate,
+      scheduledStartTime: args.scheduledStartTime,
+      specialInstructions: args.specialInstructions,
+      notes: args.notes,
+      status: "Scheduled",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // 9. Copy line items to work order context
+    for (const lineItem of lineItems) {
+      await ctx.db.insert("lineItems", {
+        organizationId: org._id,
+        parentDocId: workOrderId,
+        parentDocType: "WorkOrder",
+        lineNumber: lineItem.lineNumber,
+        serviceType: lineItem.serviceType,
+        description: lineItem.description,
+        formulaUsed: lineItem.formulaUsed,
+        workVolumeInputs: lineItem.workVolumeInputs,
+        baseScore: lineItem.baseScore,
+        complexityMultiplier: lineItem.complexityMultiplier,
+        adjustedScore: lineItem.adjustedScore,
+        loadoutId: lineItem.loadoutId,
+        loadoutName: lineItem.loadoutName,
+        productionRatePPH: lineItem.productionRatePPH,
+        costPerHour: lineItem.costPerHour,
+        billingRatePerHour: lineItem.billingRatePerHour,
+        targetMargin: lineItem.targetMargin,
+        productionHours: lineItem.productionHours,
+        transportHours: lineItem.transportHours,
+        bufferHours: lineItem.bufferHours,
+        totalEstimatedHours: lineItem.totalEstimatedHours,
+        estimatedCost: lineItem.estimatedCost,
+        estimatedPrice: lineItem.estimatedPrice,
+        estimatedProfit: lineItem.estimatedProfit,
+        estimatedMargin: lineItem.estimatedMargin,
+        status: "Scheduled",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // 10. Update project status to "Work Order"
+    await ctx.db.patch(proposal.projectId, {
+      status: "Work Order",
+      updatedAt: now,
+    });
+
+    // 11. Update proposal status to "Accepted" (if it has signatureData, it's "Signed")
+    await ctx.db.patch(args.proposalId, {
+      status: proposal.signatureData ? "Signed" : "Accepted",
+      updatedAt: now,
+    });
+
+    return workOrderId;
   },
 });
 
