@@ -849,10 +849,12 @@ function NewProposalPageContent() {
                 <Box sx={{ display: "flex", gap: 2 }}>
                   <Button
                     variant="outlined"
-                    onClick={handleSaveProposal}
+                    onClick={() => {
+                      alert(`TEST: Customer=${selectedCustomerId}, Lead=${leadId}, Items=${lineItems.length}`);
+                      handleSaveProposal();
+                    }}
                     size="large"
                     fullWidth
-                    disabled={!selectedCustomerId && !leadId}
                   >
                     Save
                   </Button>
@@ -871,10 +873,8 @@ function NewProposalPageContent() {
                     size="large"
                     fullWidth
                     onClick={() => {
-                      // TODO: Implement PDF export
-                      alert("Export functionality coming soon!");
+                      alert("Export clicked!");
                     }}
-                    disabled={(!selectedCustomerId && !leadId) || lineItems.length === 0}
                   >
                     Export
                   </Button>
