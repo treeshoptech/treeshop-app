@@ -152,15 +152,16 @@ export default function LeadsPage() {
     }
   };
 
-  const handleConvertToProposal = async (lead: any) => {
-    try {
-      await updateProject({
-        id: lead._id,
-        status: "Proposal",
-      });
-    } catch (error) {
-      console.error("Error converting to proposal:", error);
-    }
+  const handleConvertToProposal = (lead: any) => {
+    // Navigate to new proposal page with pre-filled customer data
+    const params = new URLSearchParams({
+      customerName: lead.customerName || "",
+      customerEmail: lead.customerEmail || "",
+      customerPhone: lead.customerPhone || "",
+      propertyAddress: lead.propertyAddress || "",
+      leadId: lead._id,
+    });
+    window.location.href = `/proposals/new?${params.toString()}`;
   };
 
   const openEditDialog = (lead: any) => {

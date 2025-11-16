@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -35,7 +35,7 @@ import {
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
 } from "@mui/icons-material";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   StumpGrindingCalculator,
   MulchingCalculator,
@@ -43,17 +43,127 @@ import {
   TreeRemovalCalculator,
   TreeTrimmingCalculator,
 } from "@/app/components/calculators";
+import { Id } from "@/convex/_generated/dataModel";
 
-type ServiceType = "Stump Grinding" | "Forestry Mulching" | "Land Clearing" | "Tree Removal" | "Tree Trimming";
+type ServiceType = "Stump Grinding" | "Forestry Mulching" | "Land Clearing" | "Tree Removal" | "Tree Trimming" | "Custom";
 
 const steps = ["Customer Info", "Add Line Items", "Review & Save"];
 
+// Custom Line Item Form Component
+function CustomLineItemForm({ onLineItemCreate }: { onLineItemCreate: (data: any) => void }) {
+  const [description, setDescription] = useState("");
+  const [hours, setHours] = useState(1);
+  const [pricePerHour, setPricePerHour] = useState(500);
+
+  const handleCreate = () => {
+    const totalPrice = hours * pricePerHour;
+    const totalCost = totalPrice * 0.5; // Assume 50% margin for custom items
+
+    onLineItemCreate({
+      serviceType: "Custom",
+      description: description || "Custom line item",
+      formulaUsed: "Manual Entry",
+      workVolumeInputs: {},
+      baseScore: 0,
+      complexityMultiplier: 1,
+      adjustedScore: 0,
+      afissFactors: [],
+      loadoutId: undefined,
+      loadoutName: "Manual Entry",
+      productionRatePPH: 0,
+      costPerHour: totalCost / hours,
+      billingRatePerHour: pricePerHour,
+      targetMargin: 50,
+      productionHours: hours,
+      transportHours: 0,
+      bufferHours: 0,
+      totalEstimatedHours: hours,
+      pricingMethod: "Manual",
+      totalCost,
+      totalPrice,
+      profit: totalPrice - totalCost,
+      marginPercent: 50,
+    });
+  };
+
+  return (
+    <Stack spacing={3}>
+      <Typography variant="body2" color="text.secondary">
+        Create a custom line item for special services or one-off tasks
+      </Typography>
+      <TextField
+        label="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        fullWidth
+        required
+        multiline
+        rows={3}
+        placeholder="e.g., Emergency call-out fee, Special equipment rental, Debris hauling"
+      />
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            label="Estimated Hours"
+            type="number"
+            value={hours}
+            onChange={(e) => setHours(parseFloat(e.target.value) || 1)}
+            fullWidth
+            InputProps={{ inputProps: { min: 0.5, max: 100, step: 0.5 } }}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            label="Price per Hour"
+            type="number"
+            value={pricePerHour}
+            onChange={(e) => setPricePerHour(parseFloat(e.target.value) || 100)}
+            fullWidth
+            InputProps={{
+              startAdornment: "$",
+              inputProps: { min: 0, max: 10000, step: 50 },
+            }}
+          />
+        </Grid>
+      </Grid>
+      <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+        <Stack spacing={1}>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="body2" color="text.secondary">
+              Total Hours
+            </Typography>
+            <Typography variant="body1" fontWeight="medium">
+              {hours.toFixed(1)} hrs
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="body2" color="text.secondary">
+              Total Price
+            </Typography>
+            <Typography variant="h6" color="primary">
+              {new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+              }).format(hours * pricePerHour)}
+            </Typography>
+          </Box>
+        </Stack>
+      </Paper>
+      <Button variant="contained" onClick={handleCreate} fullWidth size="large" disabled={!description}>
+        Create Line Item
+      </Button>
+    </Stack>
+  );
+}
+
 export default function NewProposalPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeStep, setActiveStep] = useState(0);
   const [lineItems, setLineItems] = useState<any[]>([]);
   const [showCalculator, setShowCalculator] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceType>("Stump Grinding");
+  const [leadId, setLeadId] = useState<Id<"projects"> | null>(null);
 
   // Form data
   const [customerName, setCustomerName] = useState("");
@@ -62,11 +172,27 @@ export default function NewProposalPage() {
   const [propertyAddress, setPropertyAddress] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Pre-fill form from URL parameters (from lead)
+  useEffect(() => {
+    const name = searchParams.get("customerName");
+    const email = searchParams.get("customerEmail");
+    const phone = searchParams.get("customerPhone");
+    const address = searchParams.get("propertyAddress");
+    const id = searchParams.get("leadId");
+
+    if (name) setCustomerName(name);
+    if (email) setCustomerEmail(email);
+    if (phone) setCustomerPhone(phone);
+    if (address) setPropertyAddress(address);
+    if (id) setLeadId(id as Id<"projects">);
+  }, [searchParams]);
+
   // Fetch loadouts for calculators
   const loadouts = useQuery(api.loadouts.list);
 
   // Mutations
   const createProject = useMutation(api.projects.create);
+  const updateProject = useMutation(api.projects.update);
   const createLineItem = useMutation(api.lineItems.create);
 
   const handleLineItemCreate = (lineItemData: any) => {
@@ -88,19 +214,32 @@ export default function NewProposalPage() {
 
   const handleSaveProposal = async () => {
     try {
-      // Create project
-      const projectId = await createProject({
-        name: `${customerName} - Proposal`,
-        customerName,
-        customerEmail: customerEmail || undefined,
-        customerPhone: customerPhone || undefined,
-        propertyAddress,
-        serviceType: lineItems[0]?.serviceType || "Stump Grinding",
-        status: "Proposal",
-        proposalStatus: "Draft",
-        estimatedValue: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
-        notes: notes || undefined,
-      });
+      let projectId: Id<"projects">;
+
+      // If converting from lead, update the existing project
+      if (leadId) {
+        await updateProject({
+          id: leadId,
+          status: "Proposal",
+          proposalStatus: "Draft",
+          estimatedValue: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
+        });
+        projectId = leadId;
+      } else {
+        // Create new project
+        projectId = await createProject({
+          name: `${customerName} - Proposal`,
+          customerName,
+          customerEmail: customerEmail || undefined,
+          customerPhone: customerPhone || undefined,
+          propertyAddress,
+          serviceType: lineItems[0]?.serviceType || "Stump Grinding",
+          status: "Proposal",
+          proposalStatus: "Draft",
+          estimatedValue: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
+          notes: notes || undefined,
+        });
+      }
 
       // Create line items
       for (let i = 0; i < lineItems.length; i++) {
@@ -295,29 +434,144 @@ export default function NewProposalPage() {
                 <Typography variant="h6" gutterBottom>
                   Add Line Item
                 </Typography>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <FormControl sx={{ minWidth: 200 }}>
-                    <InputLabel>Service Type</InputLabel>
-                    <Select
-                      value={selectedService}
-                      label="Service Type"
-                      onChange={(e) => setSelectedService(e.target.value as ServiceType)}
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Select a service type to add to this proposal
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      size="large"
+                      onClick={() => {
+                        setSelectedService("Stump Grinding");
+                        setShowCalculator(true);
+                      }}
+                      sx={{
+                        py: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
                     >
-                      <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
-                      <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
-                      <MenuItem value="Land Clearing">Land Clearing</MenuItem>
-                      <MenuItem value="Tree Removal">Tree Removal</MenuItem>
-                      <MenuItem value="Tree Trimming">Tree Trimming</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setShowCalculator(true)}
-                  >
-                    Open Calculator
-                  </Button>
-                </Stack>
+                      <Typography variant="h6">Stump Grinding</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Individual stump removal
+                      </Typography>
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      size="large"
+                      onClick={() => {
+                        setSelectedService("Forestry Mulching");
+                        setShowCalculator(true);
+                      }}
+                      sx={{
+                        py: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      <Typography variant="h6">Forestry Mulching</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Acreage-based clearing
+                      </Typography>
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      size="large"
+                      onClick={() => {
+                        setSelectedService("Land Clearing");
+                        setShowCalculator(true);
+                      }}
+                      sx={{
+                        py: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      <Typography variant="h6">Land Clearing</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Heavy equipment work
+                      </Typography>
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      size="large"
+                      onClick={() => {
+                        setSelectedService("Tree Removal");
+                        setShowCalculator(true);
+                      }}
+                      sx={{
+                        py: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      <Typography variant="h6">Tree Removal</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Full tree takedown
+                      </Typography>
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      size="large"
+                      onClick={() => {
+                        setSelectedService("Tree Trimming");
+                        setShowCalculator(true);
+                      }}
+                      sx={{
+                        py: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      <Typography variant="h6">Tree Trimming</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Pruning & maintenance
+                      </Typography>
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      size="large"
+                      onClick={() => {
+                        setSelectedService("Custom");
+                        setShowCalculator(true);
+                      }}
+                      sx={{
+                        py: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        borderStyle: "dashed",
+                      }}
+                    >
+                      <Typography variant="h6">Custom Line Item</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Manual entry for special items
+                      </Typography>
+                    </Button>
+                  </Grid>
+                </Grid>
               </Paper>
             ) : (
               <Paper sx={{ p: 3 }}>
@@ -355,6 +609,9 @@ export default function NewProposalPage() {
                     loadout={loadouts?.[0]}
                     onLineItemCreate={handleLineItemCreate}
                   />
+                )}
+                {selectedService === "Custom" && (
+                  <CustomLineItemForm onLineItemCreate={handleLineItemCreate} />
                 )}
               </Paper>
             )}
