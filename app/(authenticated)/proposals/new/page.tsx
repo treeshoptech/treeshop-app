@@ -84,6 +84,7 @@ function NewProposalPageContent() {
   const customerCreatedRef = useRef(false);
 
   // Proposal data
+  const [selectedLeadId, setSelectedLeadId] = useState<Id<"projects"> | "">("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<Id<"customers"> | "">("");
   const [scopeOfWork, setScopeOfWork] = useState("");
   const [notes, setNotes] = useState("");
@@ -114,6 +115,7 @@ function NewProposalPageContent() {
   // Fetch data FIRST
   const loadouts = useQuery(api.loadouts.list);
   const customers = useQuery(api.customers.list);
+  const leads = useQuery(api.projects.list, { status: "Lead" });
 
   // Mutations
   const createProject = useMutation(api.projects.create);
@@ -121,57 +123,29 @@ function NewProposalPageContent() {
   const createLineItem = useMutation(api.lineItems.create);
   const createCustomer = useMutation(api.customers.create);
 
-  // Auto-create customer from lead if needed
-  useEffect(() => {
-    const name = searchParams.get("customerName");
-    const email = searchParams.get("customerEmail");
-    const phone = searchParams.get("customerPhone");
-    const address = searchParams.get("propertyAddress");
-    const id = searchParams.get("leadId");
+  // Handle lead selection
+  const handleLeadSelect = (leadIdValue: Id<"projects"> | "") => {
+    setSelectedLeadId(leadIdValue);
 
-    if (address) setScopeOfWork(`Work to be performed at: ${address}`);
-    if (id) setLeadId(id as Id<"projects">);
+    if (!leadIdValue) return;
 
-    // Check if customer already exists and auto-create if not
-    if (name && customers !== undefined && !customerCreatedRef.current) {
-      customerCreatedRef.current = true;
+    const lead = leads?.find(l => l._id === leadIdValue);
+    if (!lead) return;
 
-      // Try to find existing customer by email or phone
-      const existingCustomer = customers.find(c =>
-        (email && c.email?.toLowerCase() === email.toLowerCase()) ||
-        (phone && c.phone === phone)
-      );
+    setLeadId(leadIdValue);
 
-      if (existingCustomer) {
-        // Customer exists - select them
-        setSelectedCustomerId(existingCustomer._id);
-        setCustomerExpanded(false);
-        setLineItemsExpanded(true);
-      } else {
-        // Customer doesn't exist - auto-create
-        const nameParts = name.trim().split(" ");
-        createCustomer({
-          firstName: nameParts[0] || "",
-          lastName: nameParts.slice(1).join(" ") || "",
-          email: email || undefined,
-          phone: phone || undefined,
-          propertyAddress: address || "",
-          propertyCity: "",
-          propertyState: "FL",
-          propertyZip: "",
-          source: "Website",
-          customerType: "Residential",
-          preferredContactMethod: "Phone",
-        }).then((customerId) => {
-          setSelectedCustomerId(customerId);
-          setCustomerExpanded(false);
-          setLineItemsExpanded(true);
-        }).catch((error) => {
-          console.error("Error auto-creating customer:", error);
-        });
-      }
+    // Auto-fill from lead data
+    if (lead.customerId) {
+      setSelectedCustomerId(lead.customerId);
     }
-  }, [searchParams, customers, createCustomer]);
+    if (lead.propertyAddress) {
+      setScopeOfWork(`Work to be performed at: ${lead.propertyAddress}`);
+    }
+
+    // Collapse customer section, expand line items
+    setCustomerExpanded(false);
+    setLineItemsExpanded(true);
+  };
 
   const handleLineItemCreate = (lineItemData: any) => {
     setLineItems([...lineItems, { ...lineItemData, id: crypto.randomUUID() }]);
@@ -335,7 +309,37 @@ function NewProposalPageContent() {
           />
           <Collapse in={customerExpanded}>
             <Box sx={{ p: 3, pt: 0 }}>
-              <Stack spacing={2}>
+              <Stack spacing={3}>
+                {/* Lead Selection (Optional) */}
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom sx={{ mb: 1 }}>
+                    Convert from Lead (Optional)
+                  </Typography>
+                  <FormControl fullWidth>
+                    <InputLabel>Select Lead</InputLabel>
+                    <Select
+                      value={selectedLeadId}
+                      label="Select Lead"
+                      onChange={(e) => handleLeadSelect(e.target.value as Id<"projects"> | "")}
+                    >
+                      <MenuItem value="">
+                        <em>None - Start Fresh</em>
+                      </MenuItem>
+                      {leads?.map((lead) => (
+                        <MenuItem key={lead._id} value={lead._id}>
+                          {lead.customerName || 'Unknown'} - {lead.propertyAddress || 'No address'}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    Selecting a lead will auto-fill customer and property information
+                  </Typography>
+                </Box>
+
+                <Divider />
+
+                {/* Customer Selection */}
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <FormControl fullWidth required sx={{ mr: 2 }}>
                     <InputLabel>Select Customer</InputLabel>
