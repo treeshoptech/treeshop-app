@@ -55,6 +55,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     customerId: v.optional(v.id("customers")),
+    customerName: v.optional(v.string()), // DEPRECATED - for backward compatibility
     customerFirstName: v.optional(v.string()),
     customerLastName: v.optional(v.string()),
     customerEmail: v.optional(v.string()),
@@ -92,6 +93,7 @@ export const update = mutation({
     id: v.id("projects"),
     name: v.optional(v.string()),
     customerId: v.optional(v.id("customers")),
+    customerName: v.optional(v.string()), // DEPRECATED - for backward compatibility
     customerFirstName: v.optional(v.string()),
     customerLastName: v.optional(v.string()),
     customerEmail: v.optional(v.string()),

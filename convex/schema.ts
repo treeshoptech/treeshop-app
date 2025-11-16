@@ -203,6 +203,7 @@ export default defineSchema({
     customerId: v.optional(v.id("customers")), // Optional - leads may not have customer record yet
 
     // Lead-specific fields (when no customer record exists)
+    customerName: v.optional(v.string()), // DEPRECATED - keeping for backward compatibility
     customerFirstName: v.optional(v.string()),
     customerLastName: v.optional(v.string()),
     customerEmail: v.optional(v.string()),
