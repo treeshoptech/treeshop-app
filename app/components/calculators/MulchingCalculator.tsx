@@ -354,37 +354,39 @@ export default function MulchingCalculator({
       />
 
       {/* Results Summary */}
-      <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
-        <Typography variant="body2" color="text.secondary">
-          Work Volume: <strong>{baseScore.toFixed(1)} inch-acres</strong>
-        </Typography>
-        {timeEstimate && (
-          <Typography variant="body2" color="text.secondary">
-            Estimated Time: <strong>{formatHours(timeEstimate.totalEstimatedHours)}</strong>
-          </Typography>
-        )}
-        {pricing && (
-          <Typography variant="body1" color="primary" sx={{ mt: 1 }}>
-            Price: <strong>{formatCurrency(pricing.totalPrice)}</strong>
-          </Typography>
-        )}
-      </Box>
-
-      {loadout ? (
-        <Button
-          variant="contained"
-          onClick={handleCreateLineItem}
-          fullWidth
-          size="large"
-        >
-          Add to Proposal
-        </Button>
-      ) : (
+      {!loadout ? (
         <Paper sx={{ p: 2, bgcolor: 'error.dark' }}>
           <Typography variant="body2" color="error.light">
-            ⚠️ No loadout configured. Please create a Forestry Mulching loadout in Settings first.
+            ⚠️ Please select a loadout to see pricing and time estimates.
           </Typography>
         </Paper>
+      ) : (
+        <>
+          <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Work Volume: <strong>{baseScore.toFixed(1)} inch-acres</strong>
+            </Typography>
+            {timeEstimate && (
+              <Typography variant="body2" color="text.secondary">
+                Estimated Time: <strong>{formatHours(timeEstimate.totalEstimatedHours)}</strong>
+              </Typography>
+            )}
+            {pricing && (
+              <Typography variant="body1" color="primary" sx={{ mt: 1 }}>
+                Price: <strong>{formatCurrency(pricing.totalPrice)}</strong>
+              </Typography>
+            )}
+          </Box>
+
+          <Button
+            variant="contained"
+            onClick={handleCreateLineItem}
+            fullWidth
+            size="large"
+          >
+            Add to Proposal
+          </Button>
+        </>
       )}
     </Stack>
   );
