@@ -259,20 +259,24 @@ function NewProposalPageContent() {
       } else {
         // Create new project
         const selectedCustomer = customers?.find(c => c._id === selectedCustomerId);
-        projectId = await createProject({
+        const projectData: any = {
           name: `${selectedCustomer?.firstName || ""} ${selectedCustomer?.lastName || ""} - Proposal`.trim(),
           customerId: selectedCustomerId,
-          customerFirstName: selectedCustomer?.firstName || "",
-          customerLastName: selectedCustomer?.lastName || "",
-          customerEmail: selectedCustomer?.email,
-          customerPhone: selectedCustomer?.phone,
           propertyAddress: selectedCustomer?.propertyAddress || "",
           serviceType: lineItems[0]?.serviceType || "Stump Grinding",
           status: "Proposal",
           proposalStatus: "Draft",
           estimatedValue: totalInvestment,
-          notes: scopeOfWork,
-        });
+        };
+
+        // Only add optional fields if they have values
+        if (selectedCustomer?.firstName) projectData.customerFirstName = selectedCustomer.firstName;
+        if (selectedCustomer?.lastName) projectData.customerLastName = selectedCustomer.lastName;
+        if (selectedCustomer?.email) projectData.customerEmail = selectedCustomer.email;
+        if (selectedCustomer?.phone) projectData.customerPhone = selectedCustomer.phone;
+        if (scopeOfWork) projectData.notes = scopeOfWork;
+
+        projectId = await createProject(projectData);
       }
 
       // Create line items
