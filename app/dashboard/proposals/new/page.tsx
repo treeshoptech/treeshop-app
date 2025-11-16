@@ -1,10 +1,8 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useSearchParams } from "next/navigation";
-import { Id } from "@/convex/_generated/dataModel";
 import {
   Box,
   Button,
@@ -12,10 +10,6 @@ import {
   CardContent,
   Chip,
   Container,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Divider,
   FormControl,
   IconButton,
@@ -24,142 +18,140 @@ import {
   Paper,
   Select,
   Stack,
-  Step,
-  StepLabel,
-  Stepper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
-  CircularProgress,
+  Collapse,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
-  Add as AddIcon,
   Delete as DeleteIcon,
   ArrowBack as ArrowBackIcon,
-  Save as SaveIcon,
-  LibraryBooks as LibraryIcon,
+  ExpandMore as ExpandMoreIcon,
+  PersonAdd as PersonAddIcon,
+  Send as SendIcon,
 } from "@mui/icons-material";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   StumpGrindingCalculator,
   MulchingCalculator,
   LandClearingCalculator,
-  TreeRemovalCalculator,
-  TreeTrimmingCalculator,
 } from "@/app/components/calculators";
+import { Id } from "@/convex/_generated/dataModel";
 
-type ServiceType = "Stump Grinding" | "Forestry Mulching" | "Land Clearing" | "Tree Removal" | "Tree Trimming";
-
-const steps = ["Customer Info", "Add Line Items", "Review & Save"];
-
-function NewProposalContent() {
+// Inner component that uses useSearchParams
+function NewProposalPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const leadId = searchParams.get("leadId");
-
-  const [activeStep, setActiveStep] = useState(0);
   const [lineItems, setLineItems] = useState<any[]>([]);
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceType>("Stump Grinding");
-  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [leadId, setLeadId] = useState<Id<"projects"> | null>(null);
 
-  // Form data
-  const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [propertyAddress, setPropertyAddress] = useState("");
+  // Proposal data
+  const [selectedCustomerId, setSelectedCustomerId] = useState<Id<"customers"> | "">("");
+  const [scopeOfWork, setScopeOfWork] = useState("");
   const [notes, setNotes] = useState("");
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
 
-  // Fetch lead data if leadId is provided
-  const allProjects = useQuery(api.projects.list);
-  const leadData = leadId ? allProjects?.find(p => p._id === leadId as Id<"projects">) : null;
+  // Expanded sections
+  const [customerExpanded, setCustomerExpanded] = useState(true);
+  const [scopeExpanded, setScopeExpanded] = useState(false);
+  const [lineItemsExpanded, setLineItemsExpanded] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [termsExpanded, setTermsExpanded] = useState(false);
+  const [sitePlansExpanded, setSitePlansExpanded] = useState(false);
+  const [statusExpanded, setStatusExpanded] = useState(false);
 
-  // Pre-fill form data from lead
+  // New customer form
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerAddress, setNewCustomerAddress] = useState("");
+
+  // Pre-fill form from URL parameters (from lead)
   useEffect(() => {
-    if (leadData) {
-      setCustomerName(leadData.customerName || "");
-      setCustomerEmail(leadData.customerEmail || "");
-      setCustomerPhone(leadData.customerPhone || "");
-      setPropertyAddress(leadData.propertyAddress || "");
-      setNotes(leadData.notes || "");
-    }
-  }, [leadData]);
+    const address = searchParams.get("propertyAddress");
+    const id = searchParams.get("leadId");
 
-  // Fetch loadouts for calculators
+    if (address) setScopeOfWork(`Work to be performed at: ${address}`);
+    if (id) setLeadId(id as Id<"projects">);
+  }, [searchParams]);
+
+  // Fetch data
   const loadouts = useQuery(api.loadouts.list);
-
-  // Fetch line item templates
-  const lineItemTemplates = useQuery(api.lineItemTemplates.list);
+  const customers = useQuery(api.customers.list);
 
   // Mutations
   const createProject = useMutation(api.projects.create);
+  const updateProject = useMutation(api.projects.update);
   const createLineItem = useMutation(api.lineItems.create);
-  const incrementTemplateUsage = useMutation(api.lineItemTemplates.incrementUsage);
+  const createCustomer = useMutation(api.customers.create);
 
   const handleLineItemCreate = (lineItemData: any) => {
     setLineItems([...lineItems, { ...lineItemData, id: crypto.randomUUID() }]);
-    setShowCalculator(false);
   };
 
   const handleRemoveLineItem = (id: string) => {
     setLineItems(lineItems.filter((item) => item.id !== id));
   };
 
-  const handleUseTemplate = async (template: any) => {
-    // Convert template to line item format
-    const lineItem = {
-      id: crypto.randomUUID(),
-      serviceType: template.serviceType || template.category,
-      description: template.description,
-      defaultUnit: template.defaultUnit,
-      defaultUnitPrice: template.defaultUnitPrice,
-      defaultQuantity: template.defaultQuantity || 1,
-      totalPrice: template.defaultUnitPrice * (template.defaultQuantity || 1),
-      totalCost: (template.costPerUnit || 0) * (template.defaultQuantity || 1),
-      profit: (template.defaultUnitPrice - (template.costPerUnit || 0)) * (template.defaultQuantity || 1),
-      marginPercent: template.defaultMargin || 0,
-      totalEstimatedHours: (template.defaultQuantity || 1) / 1, // Placeholder
-      afissFactorIds: template.afissFactorIds || [], // Store factor IDs
-    };
-
-    setLineItems([...lineItems, lineItem]);
-
-    // Increment usage count
-    if (template._id) {
-      await incrementTemplateUsage({ id: template._id });
+  const handleCreateCustomer = async () => {
+    try {
+      const customerId = await createCustomer({
+        name: newCustomerName,
+        email: newCustomerEmail || undefined,
+        phone: newCustomerPhone || undefined,
+        propertyAddress: newCustomerAddress || undefined,
+      });
+      setSelectedCustomerId(customerId);
+      setShowNewCustomerDialog(false);
+      setNewCustomerName("");
+      setNewCustomerEmail("");
+      setNewCustomerPhone("");
+      setNewCustomerAddress("");
+    } catch (error) {
+      console.error("Error creating customer:", error);
     }
-
-    setShowTemplateLibrary(false);
-  };
-
-  const handleNext = () => {
-    setActiveStep((prev) => prev + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prev) => prev - 1);
   };
 
   const handleSaveProposal = async () => {
+    if (!selectedCustomerId || lineItems.length === 0) {
+      alert("Please select a customer and add at least one line item");
+      return;
+    }
+
     try {
-      // Create project
-      const projectId = await createProject({
-        name: `${customerName} - Proposal`,
-        customerName,
-        customerEmail: customerEmail || undefined,
-        customerPhone: customerPhone || undefined,
-        propertyAddress,
-        serviceType: lineItems[0]?.serviceType || "Stump Grinding",
-        status: "Proposal",
-        proposalStatus: "Draft",
-        estimatedValue: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
-        notes: notes || undefined,
-      });
+      let projectId: Id<"projects">;
+
+      const totalValue = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const selectedCustomer = customers?.find((c) => c._id === selectedCustomerId);
+
+      // If converting from lead, update the existing project
+      if (leadId) {
+        await updateProject({
+          id: leadId,
+          status: "Proposal",
+          proposalStatus: "Draft",
+          estimatedValue: totalValue,
+        });
+        projectId = leadId;
+      } else {
+        // Create new project
+        projectId = await createProject({
+          name: `${selectedCustomer?.name} - Proposal`,
+          customerId: selectedCustomerId,
+          customerName: selectedCustomer?.name || "",
+          customerEmail: selectedCustomer?.email,
+          customerPhone: selectedCustomer?.phone,
+          propertyAddress: selectedCustomer?.propertyAddress || "",
+          serviceType: lineItems[0]?.serviceType || "Stump Grinding",
+          status: "Proposal",
+          proposalStatus: "Draft",
+          estimatedValue: totalValue,
+          notes: scopeOfWork,
+        });
+      }
 
       // Create line items
       for (let i = 0; i < lineItems.length; i++) {
@@ -170,26 +162,24 @@ function NewProposalContent() {
           lineNumber: i + 1,
           serviceType: item.serviceType,
           description: item.description,
-          formulaUsed: item.formulaUsed,
-          workVolumeInputs: item.workVolumeInputs,
-          baseScore: item.baseScore,
-          complexityMultiplier: item.complexityMultiplier,
-          adjustedScore: item.adjustedScore,
+          formulaUsed: item.formulaUsed || "",
+          workVolumeInputs: item.workVolumeInputs || {},
+          baseScore: item.baseScore || 0,
           loadoutId: item.loadoutId,
-          loadoutName: item.loadoutName,
-          productionRatePPH: item.productionRatePPH,
-          costPerHour: item.costPerHour,
-          billingRatePerHour: item.billingRatePerHour,
-          targetMargin: item.targetMargin,
-          productionHours: item.productionHours,
-          transportHours: item.transportHours,
-          bufferHours: item.bufferHours,
-          totalEstimatedHours: item.totalEstimatedHours,
-          pricingMethod: item.pricingMethod,
-          totalCost: item.totalCost,
-          totalPrice: item.totalPrice,
-          profit: item.profit,
-          marginPercent: item.marginPercent,
+          loadoutName: item.loadoutName || "",
+          productionRatePPH: item.productionRatePPH || 0,
+          costPerHour: item.costPerHour || 0,
+          billingRatePerHour: item.billingRatePerHour || 0,
+          targetMargin: item.targetMargin || 50,
+          productionHours: item.productionHours || 0,
+          transportHours: item.transportHours || 0,
+          bufferHours: item.bufferHours || 0,
+          totalEstimatedHours: item.totalEstimatedHours || 0,
+          pricingMethod: item.pricingMethod || "Calculated",
+          totalCost: item.totalCost || 0,
+          totalPrice: item.totalPrice || 0,
+          profit: item.profit || 0,
+          marginPercent: item.marginPercent || 0,
         });
       }
 
@@ -200,421 +190,388 @@ function NewProposalContent() {
   };
 
   const totalValue = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
-  const totalCost = lineItems.reduce((sum, item) => sum + item.totalCost, 0);
-  const totalProfit = lineItems.reduce((sum, item) => sum + item.profit, 0);
+  const selectedCustomer = customers?.find((c) => c._id === selectedCustomerId);
+
+  const SectionHeader = ({ title, expanded, onToggle }: any) => (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        p: 2,
+        cursor: "pointer",
+        "&:hover": { bgcolor: "action.hover" },
+      }}
+      onClick={onToggle}
+    >
+      <Typography variant="h6">{title}</Typography>
+      <ExpandMoreIcon
+        sx={{
+          transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+          transition: "transform 0.3s",
+        }}
+      />
+    </Box>
+  );
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Stack spacing={3}>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Stack spacing={2}>
         {/* Header */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <IconButton onClick={() => router.push("/dashboard/proposals")}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+          <IconButton onClick={() => router.push("/proposals")}>
             <ArrowBackIcon />
           </IconButton>
           <Box>
-            <Typography variant="h3">New Proposal</Typography>
-            <Typography variant="body1" color="text.secondary">
-              Build a detailed proposal with line item pricing
-            </Typography>
+            <Typography variant="h4">New Proposal</Typography>
           </Box>
         </Box>
 
-        {/* Stepper */}
-        <Paper sx={{ p: 3 }}>
-          <Stepper activeStep={activeStep}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+        {/* 1. Customer Information */}
+        <Paper>
+          <SectionHeader
+            title="1. Customer Information"
+            expanded={customerExpanded}
+            onToggle={() => setCustomerExpanded(!customerExpanded)}
+          />
+          <Collapse in={customerExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <Stack spacing={2}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <FormControl fullWidth required sx={{ mr: 2 }}>
+                    <InputLabel>Select Customer</InputLabel>
+                    <Select
+                      value={selectedCustomerId}
+                      label="Select Customer"
+                      onChange={(e) => setSelectedCustomerId(e.target.value as Id<"customers">)}
+                    >
+                      {customers?.map((customer) => (
+                        <MenuItem key={customer._id} value={customer._id}>
+                          {customer.name} {customer.propertyAddress && `- ${customer.propertyAddress}`}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    startIcon={<PersonAddIcon />}
+                    onClick={() => setShowNewCustomerDialog(true)}
+                    variant="outlined"
+                  >
+                    New Customer
+                  </Button>
+                </Box>
+
+                {selectedCustomer && (
+                  <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+                    <Typography variant="body2"><strong>Name:</strong> {selectedCustomer.name}</Typography>
+                    {selectedCustomer.email && (
+                      <Typography variant="body2"><strong>Email:</strong> {selectedCustomer.email}</Typography>
+                    )}
+                    {selectedCustomer.phone && (
+                      <Typography variant="body2"><strong>Phone:</strong> {selectedCustomer.phone}</Typography>
+                    )}
+                    {selectedCustomer.propertyAddress && (
+                      <Typography variant="body2"><strong>Address:</strong> {selectedCustomer.propertyAddress}</Typography>
+                    )}
+                  </Box>
+                )}
+              </Stack>
+            </Box>
+          </Collapse>
         </Paper>
 
-        {/* Step Content */}
-        {activeStep === 0 && (
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Customer Information
-            </Typography>
-            <Stack spacing={3} sx={{ mt: 2 }}>
+        {/* 2. Scope of Work */}
+        <Paper>
+          <SectionHeader
+            title="2. Scope of Work"
+            expanded={scopeExpanded}
+            onToggle={() => setScopeExpanded(!scopeExpanded)}
+          />
+          <Collapse in={scopeExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
               <TextField
-                label="Customer Name"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                fullWidth
-                required
-              />
-              <TextField
-                label="Email"
-                type="email"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Phone"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Property Address"
-                value={propertyAddress}
-                onChange={(e) => setPropertyAddress(e.target.value)}
-                fullWidth
-                required
-                multiline
-                rows={2}
-              />
-              <TextField
-                label="Notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
                 fullWidth
                 multiline
-                rows={3}
+                rows={4}
+                value={scopeOfWork}
+                onChange={(e) => setScopeOfWork(e.target.value)}
+                placeholder="Describe the work to be performed..."
               />
-            </Stack>
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
-              <Button
-                variant="contained"
-                onClick={handleNext}
-                disabled={!customerName || !propertyAddress}
-              >
-                Next
-              </Button>
             </Box>
-          </Paper>
-        )}
+          </Collapse>
+        </Paper>
 
-        {activeStep === 1 && (
-          <Stack spacing={3}>
-            {/* Line Items List */}
-            {lineItems.length > 0 && (
-              <Paper>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Line</TableCell>
-                        <TableCell>Service</TableCell>
-                        <TableCell>Description</TableCell>
-                        <TableCell>Hours</TableCell>
-                        <TableCell align="right">Price</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {lineItems.map((item, index) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell>{item.serviceType}</TableCell>
-                          <TableCell>{item.description}</TableCell>
-                          <TableCell>{item.totalEstimatedHours.toFixed(1)} hrs</TableCell>
-                          <TableCell align="right">
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            }).format(item.totalPrice)}
-                          </TableCell>
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleRemoveLineItem(item.id)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow>
-                        <TableCell colSpan={4} align="right">
-                          <Typography variant="h6">Total:</Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="h6">
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            }).format(totalValue)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell />
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
-            )}
-
-            {/* Add Line Item Section */}
-            {!showCalculator ? (
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Add Line Item
-                </Typography>
-                <Stack spacing={3}>
-                  <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-                    <FormControl sx={{ minWidth: 200 }}>
-                      <InputLabel>Service Type</InputLabel>
-                      <Select
-                        value={selectedService}
-                        label="Service Type"
-                        onChange={(e) => setSelectedService(e.target.value as ServiceType)}
-                      >
-                        <MenuItem value="Stump Grinding">Stump Grinding</MenuItem>
-                        <MenuItem value="Forestry Mulching">Forestry Mulching</MenuItem>
-                        <MenuItem value="Land Clearing">Land Clearing</MenuItem>
-                        <MenuItem value="Tree Removal">Tree Removal</MenuItem>
-                        <MenuItem value="Tree Trimming">Tree Trimming</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={() => setShowCalculator(true)}
-                    >
-                      Open Calculator
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<LibraryIcon />}
-                      onClick={() => setShowTemplateLibrary(true)}
-                    >
-                      Use Template
-                    </Button>
-                  </Stack>
+        {/* 3. Service Line Items */}
+        <Paper>
+          <SectionHeader
+            title="3. Service Line Items"
+            expanded={lineItemsExpanded}
+            onToggle={() => setLineItemsExpanded(!lineItemsExpanded)}
+          />
+          <Collapse in={lineItemsExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              {/* Added Line Items */}
+              {lineItems.length > 0 && (
+                <Stack spacing={2} sx={{ mb: 3 }}>
+                  {lineItems.map((item, index) => (
+                    <Card key={item.id} variant="outlined">
+                      <CardContent>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
+                              <Typography variant="h6">
+                                {index + 1}. {item.serviceType}
+                              </Typography>
+                              {item.baseScore > 0 && (
+                                <Chip
+                                  label={`${item.baseScore.toFixed(1)} ${item.serviceType === 'Stump Grinding' ? 'StumpScore' : 'Inch-Acres'}`}
+                                  size="small"
+                                  color="primary"
+                                />
+                              )}
+                            </Stack>
+                            <Typography variant="body2" color="text.secondary">
+                              {item.description}
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleRemoveLineItem(item.id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  <Box sx={{ p: 2, bgcolor: "primary.dark", borderRadius: 1 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Typography variant="h6">Total</Typography>
+                      <Typography variant="h4">
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(totalValue)}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Stack>
-              </Paper>
-            ) : (
-              <Paper sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-                  <Typography variant="h6">{selectedService} Calculator</Typography>
-                  <Button onClick={() => setShowCalculator(false)}>Cancel</Button>
-                </Box>
-                <Divider sx={{ mb: 3 }} />
-                {selectedService === "Stump Grinding" && (
+              )}
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* Add Service Items */}
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                Add Services
+              </Typography>
+
+              <Stack spacing={3}>
+                {/* Stump Grinding */}
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Stump Grinding
+                  </Typography>
                   <StumpGrindingCalculator
                     loadout={loadouts?.[0]}
                     onLineItemCreate={handleLineItemCreate}
                   />
-                )}
-                {selectedService === "Forestry Mulching" && (
+                </Box>
+
+                <Divider />
+
+                {/* Forestry Mulching */}
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Forestry Mulching
+                  </Typography>
                   <MulchingCalculator
                     loadout={loadouts?.[0]}
                     onLineItemCreate={handleLineItemCreate}
                   />
-                )}
-                {selectedService === "Land Clearing" && (
+                </Box>
+
+                <Divider />
+
+                {/* Land Clearing */}
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Land Clearing
+                  </Typography>
                   <LandClearingCalculator
                     loadout={loadouts?.[0]}
                     onLineItemCreate={handleLineItemCreate}
                   />
-                )}
-                {selectedService === "Tree Removal" && (
-                  <TreeRemovalCalculator
-                    loadout={loadouts?.[0]}
-                    onLineItemCreate={handleLineItemCreate}
-                  />
-                )}
-                {selectedService === "Tree Trimming" && (
-                  <TreeTrimmingCalculator
-                    loadout={loadouts?.[0]}
-                    onLineItemCreate={handleLineItemCreate}
-                  />
-                )}
-              </Paper>
-            )}
-
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <Button onClick={handleBack}>Back</Button>
-              <Button
-                variant="contained"
-                onClick={handleNext}
-                disabled={lineItems.length === 0}
-              >
-                Next
-              </Button>
+                </Box>
+              </Stack>
             </Box>
-          </Stack>
-        )}
+          </Collapse>
+        </Paper>
 
-        {activeStep === 2 && (
-          <Stack spacing={3}>
-            {/* Summary */}
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h5" gutterBottom>
-                Proposal Summary
-              </Typography>
-              <Stack spacing={2} sx={{ mt: 2 }}>
+        {/* 4. Notes */}
+        <Paper>
+          <SectionHeader
+            title="4. Notes (Internal - for crew)"
+            expanded={notesExpanded}
+            onToggle={() => setNotesExpanded(!notesExpanded)}
+          />
+          <Collapse in={notesExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Internal notes for the crew delivering and completing this work..."
+              />
+            </Box>
+          </Collapse>
+        </Paper>
+
+        {/* 5. Terms & Conditions */}
+        <Paper>
+          <SectionHeader
+            title="5. Terms & Conditions"
+            expanded={termsExpanded}
+            onToggle={() => setTermsExpanded(!termsExpanded)}
+          />
+          <Collapse in={termsExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <Stack spacing={2}>
                 <Box>
+                  <Typography variant="subtitle2" gutterBottom>Environmental Responsibility</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Customer
-                  </Typography>
-                  <Typography variant="h6">{customerName}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Property Address
-                  </Typography>
-                  <Typography>{propertyAddress}</Typography>
-                </Box>
-                <Divider />
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Line Items
-                  </Typography>
-                  <Typography variant="h6">{lineItems.length}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Cost
-                  </Typography>
-                  <Typography variant="h6">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    }).format(totalCost)}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Price
-                  </Typography>
-                  <Typography variant="h4" color="primary">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    }).format(totalValue)}
+                    Tree Shop is committed to environmental stewardship and will not impact federally protected wetlands.
                   </Typography>
                 </Box>
                 <Box>
+                  <Typography variant="subtitle2" gutterBottom>Payment Terms</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Profit
-                  </Typography>
-                  <Typography variant="h6" color="success.main">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    }).format(totalProfit)}
+                    • 25% deposit required to secure scheduling<br />
+                    • Remaining balance due upon completion<br />
+                    • 3% daily fee applies to late payments
                   </Typography>
                 </Box>
               </Stack>
-            </Paper>
-
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <Button onClick={handleBack}>Back</Button>
-              <Button
-                variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={handleSaveProposal}
-                size="large"
-              >
-                Save Proposal
-              </Button>
             </Box>
-          </Stack>
-        )}
-      </Stack>
+          </Collapse>
+        </Paper>
 
-      {/* Template Library Dialog */}
-      <Dialog
-        open={showTemplateLibrary}
-        onClose={() => setShowTemplateLibrary(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Select Line Item Template</DialogTitle>
-        <DialogContent>
-          {lineItemTemplates && lineItemTemplates.length > 0 ? (
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Unit</TableCell>
-                    <TableCell align="right">Price</TableCell>
-                    <TableCell>AFISS</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {lineItemTemplates.map((template) => (
-                    <TableRow key={template._id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {template.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {template.description}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={template.category} size="small" />
-                      </TableCell>
-                      <TableCell>{template.defaultUnit}</TableCell>
-                      <TableCell align="right">
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                        }).format(template.defaultUnitPrice)}
-                      </TableCell>
-                      <TableCell>
-                        {template.afissFactorIds && template.afissFactorIds.length > 0 ? (
-                          <Chip
-                            label={`${template.afissFactorIds.length} factors`}
-                            size="small"
-                            color="primary"
-                          />
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">
-                            None
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Button
-                          size="small"
-                          variant="contained"
-                          onClick={() => handleUseTemplate(template)}
-                        >
-                          Use
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Box sx={{ py: 4, textAlign: "center" }}>
-              <Typography variant="body1" color="text.secondary" gutterBottom>
-                No line item templates found.
+        {/* 6. Site Plans */}
+        <Paper>
+          <SectionHeader
+            title="6. Site Plans & Maps"
+            expanded={sitePlansExpanded}
+            onToggle={() => setSitePlansExpanded(!sitePlansExpanded)}
+          />
+          <Collapse in={sitePlansExpanded}>
+            <Box sx={{ p: 3, pt: 0, textAlign: "center" }}>
+              <Typography variant="h6" color="primary" gutterBottom>
+                🗺️ Coming Soon!
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Create templates in Settings → Line Items Library
+                Satellite maps with work area drawings and project details will be available here.
               </Typography>
             </Box>
-          )}
+          </Collapse>
+        </Paper>
+
+        {/* 7. Status & Actions */}
+        <Paper>
+          <SectionHeader
+            title="7. Status & Actions"
+            expanded={statusExpanded}
+            onToggle={() => setStatusExpanded(!statusExpanded)}
+          />
+          <Collapse in={statusExpanded}>
+            <Box sx={{ p: 3, pt: 0 }}>
+              <Stack spacing={2}>
+                <Typography variant="body2" color="text.secondary">
+                  Save this proposal as a draft or send it to the customer for review.
+                </Typography>
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={handleSaveProposal}
+                    size="large"
+                    fullWidth
+                    disabled={!selectedCustomerId || lineItems.length === 0}
+                  >
+                    Save Draft
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<SendIcon />}
+                    onClick={handleSaveProposal}
+                    size="large"
+                    fullWidth
+                    disabled={!selectedCustomerId || lineItems.length === 0}
+                  >
+                    Save & Send
+                  </Button>
+                </Box>
+              </Stack>
+            </Box>
+          </Collapse>
+        </Paper>
+      </Stack>
+
+      {/* New Customer Dialog */}
+      <Dialog open={showNewCustomerDialog} onClose={() => setShowNewCustomerDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Customer</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <TextField
+              label="Customer Name"
+              value={newCustomerName}
+              onChange={(e) => setNewCustomerName(e.target.value)}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={newCustomerEmail}
+              onChange={(e) => setNewCustomerEmail(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Phone"
+              value={newCustomerPhone}
+              onChange={(e) => setNewCustomerPhone(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Property Address"
+              value={newCustomerAddress}
+              onChange={(e) => setNewCustomerAddress(e.target.value)}
+              fullWidth
+              multiline
+              rows={2}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowTemplateLibrary(false)}>Cancel</Button>
+          <Button onClick={() => setShowNewCustomerDialog(false)}>Cancel</Button>
+          <Button onClick={handleCreateCustomer} variant="contained" disabled={!newCustomerName}>
+            Create Customer
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>
   );
 }
 
+// Wrapper component with Suspense boundary
 export default function NewProposalPage() {
   return (
     <Suspense fallback={
-      <Container maxWidth="xl" sx={{ py: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-        <CircularProgress />
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Typography>Loading...</Typography>
       </Container>
     }>
-      <NewProposalContent />
+      <NewProposalPageContent />
     </Suspense>
   );
 }
