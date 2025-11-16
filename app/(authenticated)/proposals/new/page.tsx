@@ -121,7 +121,7 @@ function NewProposalPageContent() {
   const createLineItem = useMutation(api.lineItems.create);
   const createCustomer = useMutation(api.customers.create);
 
-  // Pre-fill form from URL parameters (from lead)
+  // Auto-create customer from lead if needed
   useEffect(() => {
     const name = searchParams.get("customerName");
     const email = searchParams.get("customerEmail");
@@ -132,34 +132,44 @@ function NewProposalPageContent() {
     if (address) setScopeOfWork(`Work to be performed at: ${address}`);
     if (id) setLeadId(id as Id<"projects">);
 
-    // Auto-fill customer form from lead
-    if (name && !customerCreatedRef.current) {
+    // Check if customer already exists and auto-create if not
+    if (name && customers !== undefined && !customerCreatedRef.current) {
       customerCreatedRef.current = true;
-      const nameParts = name.trim().split(" ");
-      setFormData({
-        firstName: nameParts[0] || "",
-        lastName: nameParts.slice(1).join(" ") || "",
-        email: email || "",
-        phone: phone || "",
-        secondaryPhone: "",
-        company: "",
-        propertyAddress: address || "",
-        propertyCity: "",
-        propertyState: "FL",
-        propertyZip: "",
-        billingAddress: "",
-        billingCity: "",
-        billingState: "FL",
-        billingZip: "",
-        source: "Website",
-        referredBy: "",
-        customerType: "Residential",
-        preferredContactMethod: "Phone",
-        tags: [],
-        notes: "",
-      });
-      setFormTab(0);
-      setShowNewCustomerDialog(true);
+
+      // Try to find existing customer by email or phone
+      const existingCustomer = customers.find(c =>
+        (email && c.email?.toLowerCase() === email.toLowerCase()) ||
+        (phone && c.phone === phone)
+      );
+
+      if (existingCustomer) {
+        // Customer exists - select them
+        setSelectedCustomerId(existingCustomer._id);
+        setCustomerExpanded(false);
+        setLineItemsExpanded(true);
+      } else {
+        // Customer doesn't exist - auto-create
+        const nameParts = name.trim().split(" ");
+        createCustomer({
+          firstName: nameParts[0] || "",
+          lastName: nameParts.slice(1).join(" ") || "",
+          email: email || undefined,
+          phone: phone || undefined,
+          propertyAddress: address || "",
+          propertyCity: "",
+          propertyState: "FL",
+          propertyZip: "",
+          source: "Website",
+          customerType: "Residential",
+          preferredContactMethod: "Phone",
+        }).then((customerId) => {
+          setSelectedCustomerId(customerId);
+          setCustomerExpanded(false);
+          setLineItemsExpanded(true);
+        }).catch((error) => {
+          console.error("Error auto-creating customer:", error);
+        });
+      }
     }
   }, [searchParams, customers, createCustomer]);
 
