@@ -20,6 +20,7 @@ import {
   LinearProgress,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   MenuItem,
   Paper,
@@ -876,9 +877,8 @@ export default function WorkOrderDetailPage() {
         <DialogContent>
           <List>
             {employees?.map((emp) => (
-              <ListItem
+              <ListItemButton
                 key={emp._id}
-                button
                 onClick={() => {
                   setSelectedCrew((prev) =>
                     prev.includes(emp._id) ? prev.filter((id) => id !== emp._id) : [...prev, emp._id]
@@ -890,7 +890,7 @@ export default function WorkOrderDetailPage() {
                   primary={`${emp.firstName} ${emp.lastName}`}
                   secondary={`${emp.primaryTrack}${emp.tier}`}
                 />
-              </ListItem>
+              </ListItemButton>
             ))}
           </List>
         </DialogContent>
@@ -908,9 +908,8 @@ export default function WorkOrderDetailPage() {
         <DialogContent>
           <List>
             {equipment?.map((eq) => (
-              <ListItem
+              <ListItemButton
                 key={eq._id}
-                button
                 onClick={() => {
                   setSelectedEquipment((prev) =>
                     prev.includes(eq._id) ? prev.filter((id) => id !== eq._id) : [...prev, eq._id]
@@ -922,7 +921,7 @@ export default function WorkOrderDetailPage() {
                   primary={eq.nickname || `${eq.make} ${eq.model}`}
                   secondary={eq.equipmentCategory}
                 />
-              </ListItem>
+              </ListItemButton>
             ))}
           </List>
         </DialogContent>
