@@ -123,7 +123,7 @@ function NewProposalPageContent() {
   // Fetch data FIRST
   const loadouts = useQuery(api.loadouts.list);
   const customers = useQuery(api.customers.list);
-  const leads = useQuery(api.projects.list, { status: "Lead" });
+  const leads = useQuery(api.projects.listByStatus, { status: "Lead" });
 
   // Mutations
   const createProject = useMutation(api.projects.create);
