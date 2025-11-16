@@ -71,11 +71,24 @@ function NewProposalPageContent() {
 
   // Pre-fill form from URL parameters (from lead)
   useEffect(() => {
+    const name = searchParams.get("customerName");
+    const email = searchParams.get("customerEmail");
+    const phone = searchParams.get("customerPhone");
     const address = searchParams.get("propertyAddress");
     const id = searchParams.get("leadId");
 
     if (address) setScopeOfWork(`Work to be performed at: ${address}`);
     if (id) setLeadId(id as Id<"projects">);
+
+    // Auto-fill new customer form if coming from lead
+    if (name) {
+      setNewCustomerName(name);
+      setNewCustomerEmail(email || "");
+      setNewCustomerPhone(phone || "");
+      setNewCustomerAddress(address || "");
+      // Auto-open customer dialog
+      setShowNewCustomerDialog(true);
+    }
   }, [searchParams]);
 
   // Fetch data
@@ -98,11 +111,17 @@ function NewProposalPageContent() {
 
   const handleCreateCustomer = async () => {
     try {
+      // Split name into first and last
+      const nameParts = newCustomerName.trim().split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
       const customerId = await createCustomer({
-        name: newCustomerName,
+        firstName,
+        lastName,
         email: newCustomerEmail || undefined,
         phone: newCustomerPhone || undefined,
-        propertyAddress: newCustomerAddress || undefined,
+        propertyAddress: newCustomerAddress,
       });
       setSelectedCustomerId(customerId);
       setShowNewCustomerDialog(false);
@@ -110,6 +129,9 @@ function NewProposalPageContent() {
       setNewCustomerEmail("");
       setNewCustomerPhone("");
       setNewCustomerAddress("");
+      // Expand line items section after customer is created
+      setCustomerExpanded(false);
+      setLineItemsExpanded(true);
     } catch (error) {
       console.error("Error creating customer:", error);
     }
@@ -253,7 +275,7 @@ function NewProposalPageContent() {
                     >
                       {customers?.map((customer) => (
                         <MenuItem key={customer._id} value={customer._id}>
-                          {customer.name} {customer.propertyAddress && `- ${customer.propertyAddress}`}
+                          {customer.firstName} {customer.lastName} {customer.propertyAddress && `- ${customer.propertyAddress}`}
                         </MenuItem>
                       ))}
                     </Select>
@@ -269,7 +291,7 @@ function NewProposalPageContent() {
 
                 {selectedCustomer && (
                   <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
-                    <Typography variant="body2"><strong>Name:</strong> {selectedCustomer.name}</Typography>
+                    <Typography variant="body2"><strong>Name:</strong> {selectedCustomer.firstName} {selectedCustomer.lastName}</Typography>
                     {selectedCustomer.email && (
                       <Typography variant="body2"><strong>Email:</strong> {selectedCustomer.email}</Typography>
                     )}
