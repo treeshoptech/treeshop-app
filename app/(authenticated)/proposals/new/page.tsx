@@ -231,9 +231,8 @@ function NewProposalPageContent() {
             return; // Exit here, user will choose what to do
           } else {
             // No duplicates found, create new customer from lead
-            const nameParts = (lead.customerName || "").trim().split(" ");
-            const firstName = nameParts[0] || "Unknown";
-            const lastName = nameParts.slice(1).join(" ") || "";
+            const firstName = lead.customerFirstName || "Unknown";
+            const lastName = lead.customerLastName || "";
 
             customerId = await createCustomer({
               firstName,
@@ -259,10 +258,12 @@ function NewProposalPageContent() {
         projectId = leadId;
       } else {
         // Create new project
+        const selectedCustomer = customers?.find(c => c._id === selectedCustomerId);
         projectId = await createProject({
-          name: `${selectedCustomer?.name} - Proposal`,
+          name: `${selectedCustomer?.firstName || ""} ${selectedCustomer?.lastName || ""} - Proposal`.trim(),
           customerId: selectedCustomerId,
-          customerName: selectedCustomer?.name || "",
+          customerFirstName: selectedCustomer?.firstName || "",
+          customerLastName: selectedCustomer?.lastName || "",
           customerEmail: selectedCustomer?.email,
           customerPhone: selectedCustomer?.phone,
           propertyAddress: selectedCustomer?.propertyAddress || "",
@@ -402,7 +403,7 @@ function NewProposalPageContent() {
                       </MenuItem>
                       {leads?.map((lead) => (
                         <MenuItem key={lead._id} value={lead._id}>
-                          {lead.customerName || 'Unknown'} - {lead.propertyAddress || 'No address'}
+                          {`${lead.customerFirstName || ""} ${lead.customerLastName || ""}`.trim() || 'Unknown'} - {lead.propertyAddress || 'No address'}
                         </MenuItem>
                       ))}
                     </Select>

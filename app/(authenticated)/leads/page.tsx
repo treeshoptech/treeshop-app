@@ -74,7 +74,8 @@ export default function LeadsPage() {
 
   // Form state for new lead
   const [formData, setFormData] = useState({
-    customerName: "",
+    firstName: "",
+    lastName: "",
     customerEmail: "",
     customerPhone: "",
     propertyAddress: "",
@@ -87,10 +88,13 @@ export default function LeadsPage() {
 
   const handleAddLead = async () => {
     try {
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+
       await createProject({
-        name: `${formData.customerName} - ${formData.serviceType}`,
-        customerName: formData.customerName,
-        customerEmail: formData.customerEmail,
+        name: `${fullName} - ${formData.serviceType}`,
+        customerFirstName: formData.firstName,
+        customerLastName: formData.lastName,
+        customerEmail: formData.customerEmail || undefined,
         customerPhone: formData.customerPhone,
         propertyAddress: formData.propertyAddress,
         serviceType: formData.serviceType,
@@ -103,7 +107,8 @@ export default function LeadsPage() {
 
       setAddDialogOpen(false);
       setFormData({
-        customerName: "",
+        firstName: "",
+        lastName: "",
         customerEmail: "",
         customerPhone: "",
         propertyAddress: "",
@@ -124,8 +129,9 @@ export default function LeadsPage() {
     try {
       await updateProject({
         id: selectedLead._id,
-        customerName: formData.customerName,
-        customerEmail: formData.customerEmail,
+        customerFirstName: formData.firstName,
+        customerLastName: formData.lastName,
+        customerEmail: formData.customerEmail || undefined,
         customerPhone: formData.customerPhone,
         propertyAddress: formData.propertyAddress,
         serviceType: formData.serviceType,
@@ -155,10 +161,6 @@ export default function LeadsPage() {
   const handleConvertToProposal = (lead: any) => {
     // Navigate to new proposal page with pre-filled customer data
     const params = new URLSearchParams({
-      customerName: lead.customerName || "",
-      customerEmail: lead.customerEmail || "",
-      customerPhone: lead.customerPhone || "",
-      propertyAddress: lead.propertyAddress || "",
       leadId: lead._id,
     });
     window.location.href = `/proposals/new?${params.toString()}`;
@@ -167,7 +169,8 @@ export default function LeadsPage() {
   const openEditDialog = (lead: any) => {
     setSelectedLead(lead);
     setFormData({
-      customerName: lead.customerName || "",
+      firstName: lead.customerFirstName || "",
+      lastName: lead.customerLastName || "",
       customerEmail: lead.customerEmail || "",
       customerPhone: lead.customerPhone || "",
       propertyAddress: lead.propertyAddress || "",
@@ -308,7 +311,7 @@ export default function LeadsPage() {
                   <TableRow key={lead._id} hover>
                     <TableCell>
                       <Typography variant="body1" fontWeight="medium">
-                        {lead.customerName}
+                        {`${lead.customerFirstName || ""} ${lead.customerLastName || ""}`.trim() || "No Name"}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -391,13 +394,20 @@ export default function LeadsPage() {
         <DialogTitle>Add New Lead</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 2 }}>
-            <TextField
-              label="Customer Name"
-              value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-              fullWidth
-              required
-            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <TextField
+                label="First Name"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                required
+              />
+              <TextField
+                label="Last Name"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                required
+              />
+            </Box>
             <TextField
               label="Email"
               type="email"
@@ -486,13 +496,20 @@ export default function LeadsPage() {
         <DialogTitle>Edit Lead</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 2 }}>
-            <TextField
-              label="Customer Name"
-              value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-              fullWidth
-              required
-            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <TextField
+                label="First Name"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                required
+              />
+              <TextField
+                label="Last Name"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                required
+              />
+            </Box>
             <TextField
               label="Email"
               type="email"

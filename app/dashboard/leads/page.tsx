@@ -91,7 +91,21 @@ export default function LeadsPage() {
   const deleteProject = useMutation(api.projects.remove);
 
   // Form state for new lead
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    firstName: string;
+    lastName: string;
+    customerEmail: string;
+    customerPhone: string;
+    propertyAddress: string;
+    parcelId: string;
+    latitude: string;
+    longitude: string;
+    serviceType: string;
+    estimatedValue: string;
+    leadSource: string;
+    notes: string;
+    leadStatus: LeadStatus;
+  }>({
     firstName: "",
     lastName: "",
     customerEmail: "",
@@ -100,11 +114,11 @@ export default function LeadsPage() {
     parcelId: "",
     latitude: "",
     longitude: "",
-    serviceType: "Stump Grinding" as any,
+    serviceType: "Stump Grinding",
     estimatedValue: "",
     leadSource: "",
     notes: "",
-    leadStatus: "New" as LeadStatus,
+    leadStatus: "New",
   });
 
   const handleAddLead = async () => {
@@ -113,7 +127,8 @@ export default function LeadsPage() {
 
       await createProject({
         name: `${customerName} - ${formData.serviceType}`,
-        customerName: customerName,
+        customerFirstName: formData.firstName,
+        customerLastName: formData.lastName,
         customerEmail: formData.customerEmail || undefined,
         customerPhone: formData.customerPhone,
         propertyAddress: formData.propertyAddress,
@@ -154,8 +169,9 @@ export default function LeadsPage() {
     try {
       await updateProject({
         id: selectedLead._id,
-        customerName: formData.customerName,
-        customerEmail: formData.customerEmail,
+        customerFirstName: formData.firstName,
+        customerLastName: formData.lastName,
+        customerEmail: formData.customerEmail || undefined,
         customerPhone: formData.customerPhone,
         propertyAddress: formData.propertyAddress,
         serviceType: formData.serviceType,
@@ -190,10 +206,14 @@ export default function LeadsPage() {
   const openEditDialog = (lead: any) => {
     setSelectedLead(lead);
     setFormData({
-      customerName: lead.customerName || "",
+      firstName: lead.customerFirstName || "",
+      lastName: lead.customerLastName || "",
       customerEmail: lead.customerEmail || "",
       customerPhone: lead.customerPhone || "",
       propertyAddress: lead.propertyAddress || "",
+      parcelId: "",
+      latitude: "",
+      longitude: "",
       serviceType: lead.serviceType || "Stump Grinding",
       estimatedValue: lead.estimatedValue?.toString() || "",
       leadSource: lead.leadSource || "",
@@ -342,7 +362,7 @@ export default function LeadsPage() {
                     {/* Customer Name & Status */}
                     <Box sx={{ minWidth: 200, flex: 1 }}>
                       <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        {lead.customerName}
+                        {`${lead.customerFirstName || ""} ${lead.customerLastName || ""}`.trim() || "No Name"}
                       </Typography>
                       <Chip
                         label={lead.leadStatus || "New"}
@@ -407,7 +427,7 @@ export default function LeadsPage() {
                           </Typography>
                           <Stack spacing={1}>
                             <Typography variant="body2">
-                              <strong>Name:</strong> {lead.customerName}
+                              <strong>Name:</strong> {`${lead.customerFirstName || ""} ${lead.customerLastName || ""}`.trim() || "No Name"}
                             </Typography>
                             <Typography variant="body2">
                               <strong>Phone:</strong> {lead.customerPhone || 'Not provided'}
@@ -645,13 +665,20 @@ export default function LeadsPage() {
         <DialogTitle>Edit Lead</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 2 }}>
-            <TextField
-              label="Customer Name"
-              value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-              fullWidth
-              required
-            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <TextField
+                label="First Name"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                required
+              />
+              <TextField
+                label="Last Name"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                required
+              />
+            </Box>
             <TextField
               label="Email"
               type="email"
