@@ -29,6 +29,14 @@ import {
   type StumpInput,
 } from "@/lib/scoring-formulas";
 
+// Service-specific Terms & Conditions
+const STUMP_GRINDING_TERMS = [
+  "Stumps will be ground to specified depth below grade",
+  "Wood chips and grindings will remain on property unless removal is requested",
+  "Minor turf damage may occur from equipment access",
+  "Underground utilities must be marked by property owner before work begins",
+];
+
 interface StumpEntry extends StumpInput {
   id: string;
 }
@@ -125,6 +133,7 @@ export default function StumpGrindingCalculator({
       baseScore: scoreResult.baseScore,
       complexityMultiplier: scoreResult.complexityMultiplier,
       adjustedScore: scoreResult.adjustedScore,
+      termsAndConditions: STUMP_GRINDING_TERMS,
       loadoutId: loadout._id,
       loadoutName: loadout.name,
       productionRatePPH: loadout.productionRatePPH,

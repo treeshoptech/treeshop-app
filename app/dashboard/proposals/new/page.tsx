@@ -394,64 +394,33 @@ function NewProposalPageContent() {
 
               <Divider sx={{ my: 3 }} />
 
-              {/* Service Selection or Active Calculator */}
-              {!activeCalculator ? (
-                <>
-                  <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-                    Add Service
-                  </Typography>
-                  <Stack direction="row" spacing={2} flexWrap="wrap" gap={2}>
-                    <Button
-                      variant="contained"
-                      onClick={() => setActiveCalculator("Stump Grinding")}
-                      size="large"
-                    >
-                      Stump Grinding
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={() => setActiveCalculator("Forestry Mulching")}
-                      size="large"
-                    >
-                      Forestry Mulching
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={() => setActiveCalculator("Land Clearing")}
-                      size="large"
-                    >
-                      Land Clearing
-                    </Button>
-                  </Stack>
-                </>
-              ) : (
-                <Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="h6">{activeCalculator}</Typography>
-                    <Button onClick={() => setActiveCalculator(null)} variant="outlined">
-                      Cancel
-                    </Button>
-                  </Box>
-                  {activeCalculator === "Stump Grinding" && (
-                    <StumpGrindingCalculator
-                      loadout={loadouts?.[0]}
-                      onLineItemCreate={handleLineItemCreate}
-                    />
-                  )}
-                  {activeCalculator === "Forestry Mulching" && (
-                    <MulchingCalculator
-                      loadout={loadouts?.[0]}
-                      onLineItemCreate={handleLineItemCreate}
-                    />
-                  )}
-                  {activeCalculator === "Land Clearing" && (
-                    <LandClearingCalculator
-                      loadout={loadouts?.[0]}
-                      onLineItemCreate={handleLineItemCreate}
-                    />
-                  )}
-                </Box>
-              )}
+              {/* Service Selection Buttons */}
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                Add Service
+              </Typography>
+              <Stack direction="row" spacing={2} flexWrap="wrap" gap={2}>
+                <Button
+                  variant="contained"
+                  onClick={() => setActiveCalculator("Stump Grinding")}
+                  size="large"
+                >
+                  Stump Grinding
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => setActiveCalculator("Forestry Mulching")}
+                  size="large"
+                >
+                  Forestry Mulching
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => setActiveCalculator("Land Clearing")}
+                  size="large"
+                >
+                  Land Clearing
+                </Button>
+              </Stack>
             </Box>
           </Collapse>
         </Paper>
@@ -616,6 +585,59 @@ function NewProposalPageContent() {
             Create Customer
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Calculator Dialogs */}
+      <Dialog
+        open={activeCalculator === "Stump Grinding"}
+        onClose={() => setActiveCalculator(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Stump Grinding Calculator</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <StumpGrindingCalculator
+              loadout={loadouts?.[0]}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={activeCalculator === "Forestry Mulching"}
+        onClose={() => setActiveCalculator(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Forestry Mulching Calculator</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <MulchingCalculator
+              loadout={loadouts?.[0]}
+              loadouts={loadouts}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={activeCalculator === "Land Clearing"}
+        onClose={() => setActiveCalculator(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Land Clearing Calculator</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <LandClearingCalculator
+              loadout={loadouts?.[0]}
+              onLineItemCreate={handleLineItemCreate}
+            />
+          </Box>
+        </DialogContent>
       </Dialog>
     </Container>
   );

@@ -35,6 +35,13 @@ interface MulchingCalculatorProps {
     costPerHour: number;
     targetMargin: number;
   };
+  loadouts?: Array<{
+    _id: string;
+    name: string;
+    productionRatePPH: number;
+    costPerHour: number;
+    targetMargin: number;
+  }>;
   driveTimeMinutes?: number;
   onLineItemCreate?: (lineItemData: any) => void;
 }
@@ -103,13 +110,18 @@ const AFISS_CATEGORIES: AfissCategory[] = [
 ];
 
 export default function MulchingCalculator({
-  loadout,
+  loadout: defaultLoadout,
+  loadouts,
   driveTimeMinutes = 30,
   onLineItemCreate,
 }: MulchingCalculatorProps) {
-  const [acres, setAcres] = useState(1.0);
+  const [acres, setAcres] = useState(1.00);
   const [dbhPackage, setDbhPackage] = useState(8);
   const [selectedAfissFactors, setSelectedAfissFactors] = useState<string[]>([]);
+  const [selectedLoadoutId, setSelectedLoadoutId] = useState<string>(defaultLoadout?._id || loadouts?.[0]?._id || "");
+
+  // Get active loadout based on selection
+  const loadout = loadouts?.find(l => l._id === selectedLoadoutId) || defaultLoadout;
 
   // Calculate AFISS impacts - TWO SEPARATE TYPES
   const calculateAfissImpacts = () => {
@@ -228,75 +240,111 @@ export default function MulchingCalculator({
 
   return (
     <Stack spacing={3}>
+      {/* Loadout Selection */}
+      {loadouts && loadouts.length > 0 && (
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Select Equipment Loadout
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel>Loadout</InputLabel>
+            <Select
+              value={selectedLoadoutId}
+              label="Loadout"
+              onChange={(e) => setSelectedLoadoutId(e.target.value)}
+            >
+              {loadouts.map((l) => (
+                <MenuItem key={l._id} value={l._id}>
+                  {l.name} - {l.productionRatePPH} PpH @ {formatCurrency(l.costPerHour)}/hr
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+
       {/* Project Acreage */}
-      <Box>
-        <Typography variant="subtitle2" gutterBottom sx={{ mb: 1 }}>
+      <Box sx={{ maxWidth: 300 }}>
+        <Typography variant="subtitle2" gutterBottom>
           Project Acreage
         </Typography>
         <TextField
-          fullWidth
           type="number"
-          value={acres.toFixed(1)}
+          value={acres.toFixed(2)}
           onChange={(e) => {
             const val = parseFloat(e.target.value);
-            if (!isNaN(val) && val >= 0.1 && val <= 50) {
+            if (!isNaN(val) && val >= 0.01 && val <= 50) {
               setAcres(val);
             }
           }}
           onFocus={(e) => e.target.select()}
           InputProps={{
             inputProps: {
-              min: 0.1,
+              min: 0.01,
               max: 50,
-              step: 0.1,
-              style: { fontSize: '1.5rem', fontWeight: 600, textAlign: 'center' }
+              step: 0.01,
+              style: { fontSize: '2rem', fontWeight: 700, textAlign: 'center', padding: '16px' }
             },
-            endAdornment: <Typography variant="body1" color="text.secondary" sx={{ ml: 1 }}>acres</Typography>,
+            endAdornment: <Typography variant="h6" color="text.secondary">acres</Typography>,
           }}
           sx={{
+            width: '100%',
             '& .MuiOutlinedInput-root': {
-              backgroundColor: 'background.default',
+              backgroundColor: 'background.paper',
             }
           }}
         />
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-          Tap to type • Use whole or decimal numbers (e.g., 1.0, 5.5, 10.0)
+          Examples: 1.00, 5.50, 10.25
         </Typography>
       </Box>
 
       {/* DBH Package Selection */}
       <Box>
-        <Typography variant="subtitle2" gutterBottom sx={{ mb: 1 }}>
-          DBH Package (Maximum Tree Diameter)
+        <Typography variant="subtitle2" gutterBottom sx={{ mb: 2 }}>
+          DBH Package
         </Typography>
-        <Stack spacing={1}>
+        <Grid container spacing={1.5}>
           {DBH_PACKAGES.map((pkg) => (
-            <Paper
-              key={pkg.value}
-              sx={{
-                p: 2,
-                cursor: 'pointer',
-                border: 2,
-                borderColor: dbhPackage === pkg.value ? 'primary.main' : 'transparent',
-                bgcolor: dbhPackage === pkg.value ? 'primary.dark' : 'background.default',
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  bgcolor: dbhPackage === pkg.value ? 'primary.dark' : 'action.hover',
-                },
-              }}
-              onClick={() => setDbhPackage(pkg.value)}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="h5" sx={{ fontWeight: 700, minWidth: 50 }}>
-                  {pkg.value}"
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {pkg.label}
-                </Typography>
-              </Box>
-            </Paper>
+            <Grid item xs={12} key={pkg.value}>
+              <Paper
+                elevation={dbhPackage === pkg.value ? 8 : 1}
+                sx={{
+                  p: 2,
+                  cursor: 'pointer',
+                  border: 2,
+                  borderColor: dbhPackage === pkg.value ? 'primary.main' : 'divider',
+                  bgcolor: dbhPackage === pkg.value ? 'primary.dark' : 'background.paper',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    transform: 'translateY(-2px)',
+                  },
+                }}
+                onClick={() => setDbhPackage(pkg.value)}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{
+                    minWidth: 60,
+                    height: 60,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: dbhPackage === pkg.value ? 'primary.main' : 'background.default',
+                    borderRadius: 1,
+                  }}>
+                    <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                      {pkg.value}"
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2">
+                    {pkg.label}
+                  </Typography>
+                </Box>
+              </Paper>
+            </Grid>
           ))}
-        </Stack>
+        </Grid>
       </Box>
 
       <AfissSelector

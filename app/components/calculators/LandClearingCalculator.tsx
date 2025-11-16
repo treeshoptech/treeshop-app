@@ -29,6 +29,14 @@ import {
   formatHours,
 } from "@/lib/scoring-formulas";
 
+// Service-specific Terms & Conditions
+const LAND_CLEARING_TERMS = [
+  "All vegetation and brush will be cleared to ground level",
+  "Debris will be hauled off-site unless otherwise specified",
+  "Final grading and cleanup included in scope",
+  "Property boundaries and utilities must be clearly marked before work begins",
+];
+
 interface LandClearingCalculatorProps {
   loadout?: {
     _id: string;
@@ -89,6 +97,7 @@ export default function LandClearingCalculator({
       baseScore: scoreResult.baseScore,
       complexityMultiplier: scoreResult.complexityMultiplier,
       adjustedScore: scoreResult.adjustedScore,
+      termsAndConditions: LAND_CLEARING_TERMS,
       loadoutId: loadout._id,
       loadoutName: loadout.name,
       productionRatePPH: loadout.productionRatePPH,
