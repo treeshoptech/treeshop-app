@@ -292,34 +292,35 @@ export default function ProposalsPage() {
                     onClick={() => setExpandedProposal(isExpanded ? null : proposal._id)}
                   >
                     {/* Collapsed View */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-                      {/* Customer & Status */}
-                      <Box sx={{ minWidth: 200, flex: 1 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          {proposal.customerName}
-                        </Typography>
-                        <Chip
-                          label={proposal.proposalStatus || "Draft"}
-                          color={STATUS_COLORS[proposal.proposalStatus as ProposalStatus] || "default"}
-                          size="small"
-                          sx={{ mt: 0.5 }}
-                        />
-                      </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3, flex: 1, minWidth: 0 }}>
+                        {/* Customer & Status */}
+                        <Box sx={{ minWidth: 200, maxWidth: 300 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                            {proposal.customerName}
+                          </Typography>
+                          <Chip
+                            label={proposal.proposalStatus || "Draft"}
+                            color={STATUS_COLORS[proposal.proposalStatus as ProposalStatus] || "default"}
+                            size="small"
+                          />
+                        </Box>
 
-                      {/* Service & Address */}
-                      <Box sx={{ minWidth: 250, flex: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {proposal.serviceType}
-                        </Typography>
-                        <Typography variant="body2" noWrap>
-                          {proposal.propertyAddress?.split(',')[0] || 'No address'}
-                        </Typography>
-                      </Box>
+                        {/* Service & Address */}
+                        <Box sx={{ minWidth: 250, maxWidth: 400, flex: 1 }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            {proposal.serviceType}
+                          </Typography>
+                          <Typography variant="body2">
+                            {proposal.propertyAddress?.split(',')[0] || 'No address'}
+                          </Typography>
+                        </Box>
 
-                      {/* Value */}
-                      <Box sx={{ minWidth: 120 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                          <MoneyIcon fontSize="small" color="action" />
+                        {/* Value & Date */}
+                        <Box sx={{ minWidth: 150 }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Value
+                          </Typography>
                           <Typography variant="h6" color="success.main">
                             {new Intl.NumberFormat("en-US", {
                               style: "currency",
@@ -328,21 +329,22 @@ export default function ProposalsPage() {
                             }).format(proposalValue)}
                           </Typography>
                         </Box>
-                      </Box>
 
-                      {/* Created Date */}
-                      <Box sx={{ minWidth: 100 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                          <CalendarIcon fontSize="small" color="action" />
-                          <Typography variant="caption" color="text.secondary">
+                        {/* Created Date */}
+                        <Box sx={{ minWidth: 120 }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Created
+                          </Typography>
+                          <Typography variant="body2">
                             {new Date(proposal._creationTime).toLocaleDateString()}
                           </Typography>
                         </Box>
                       </Box>
 
-                      {/* Quick Actions - Only when NOT expanded */}
-                      {!isExpanded && proposal.proposalStatus === "Accepted" && (
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                      {/* Right side: Actions & Expand */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                        {/* Quick Actions - Only when NOT expanded */}
+                        {!isExpanded && proposal.proposalStatus === "Accepted" && (
                           <Button
                             size="small"
                             variant="contained"
@@ -355,13 +357,13 @@ export default function ProposalsPage() {
                           >
                             Create Work Order
                           </Button>
-                        </Box>
-                      )}
+                        )}
 
-                      {/* Expand Icon */}
-                      <IconButton size="small">
-                        {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                      </IconButton>
+                        {/* Expand Icon */}
+                        <IconButton size="small">
+                          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        </IconButton>
+                      </Box>
                     </Box>
 
                     {/* Expanded View */}
