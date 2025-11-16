@@ -259,21 +259,35 @@ function NewProposalPageContent() {
       } else {
         // Create new project
         const selectedCustomer = customers?.find(c => c._id === selectedCustomerId);
+
+        // Validate customer exists and has required data
+        if (!selectedCustomer) {
+          alert("❌ Customer not found");
+          return;
+        }
+        if (!selectedCustomer.propertyAddress) {
+          alert("❌ Customer is missing property address");
+          return;
+        }
+        if (!selectedCustomer.firstName && !selectedCustomer.lastName) {
+          alert("❌ Customer is missing name");
+          return;
+        }
+
         const projectData: any = {
-          name: `${selectedCustomer?.firstName || ""} ${selectedCustomer?.lastName || ""} - Proposal`.trim(),
-          customerId: selectedCustomerId,
-          propertyAddress: selectedCustomer?.propertyAddress || "",
+          name: `${selectedCustomer.firstName || ""} ${selectedCustomer.lastName || ""} - Proposal`.trim(),
+          customerId: selectedCustomerId as Id<"customers">,  // Type assertion
+          propertyAddress: selectedCustomer.propertyAddress,
           serviceType: lineItems[0]?.serviceType || "Stump Grinding",
           status: "Proposal",
           proposalStatus: "Draft",
           estimatedValue: totalInvestment,
         };
 
-        // Only add optional fields if they have values
-        if (selectedCustomer?.firstName) projectData.customerFirstName = selectedCustomer.firstName;
-        if (selectedCustomer?.lastName) projectData.customerLastName = selectedCustomer.lastName;
-        if (selectedCustomer?.email) projectData.customerEmail = selectedCustomer.email;
-        if (selectedCustomer?.phone) projectData.customerPhone = selectedCustomer.phone;
+        if (selectedCustomer.firstName) projectData.customerFirstName = selectedCustomer.firstName;
+        if (selectedCustomer.lastName) projectData.customerLastName = selectedCustomer.lastName;
+        if (selectedCustomer.email) projectData.customerEmail = selectedCustomer.email;
+        if (selectedCustomer.phone) projectData.customerPhone = selectedCustomer.phone;
         if (scopeOfWork) projectData.notes = scopeOfWork;
 
         projectId = await createProject(projectData);
