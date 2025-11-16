@@ -278,7 +278,7 @@ function NewProposalPageContent() {
       for (let i = 0; i < lineItems.length; i++) {
         const item = lineItems[i];
         await createLineItem({
-          parentDocId: projectId,
+          parentDocId: projectId as string,
           parentDocType: "Proposal",
           lineNumber: i + 1,
           serviceType: item.serviceType,
@@ -286,6 +286,8 @@ function NewProposalPageContent() {
           formulaUsed: item.formulaUsed || "",
           workVolumeInputs: item.workVolumeInputs || {},
           baseScore: item.baseScore || 0,
+          complexityMultiplier: item.complexityMultiplier || 1.0,
+          adjustedScore: item.adjustedScore || item.baseScore || 0,
           loadoutId: item.loadoutId,
           loadoutName: item.loadoutName || "",
           productionRatePPH: item.productionRatePPH || 0,
