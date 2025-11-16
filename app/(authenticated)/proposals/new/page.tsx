@@ -191,19 +191,19 @@ function NewProposalPageContent() {
   };
 
   const handleSaveProposal = async () => {
-    console.log("🔍 handleSaveProposal called");
-    console.log("🔍 selectedCustomerId:", selectedCustomerId);
-    console.log("🔍 leadId:", leadId);
-    console.log("🔍 lineItems.length:", lineItems.length);
-
-    if ((!selectedCustomerId && !leadId) || lineItems.length === 0) {
-      console.log("❌ Validation failed");
-      alert("Please select a customer or lead and add at least one line item");
-      return;
-    }
-
-    console.log("✅ Validation passed, proceeding to save");
     try {
+      console.log("🔍 handleSaveProposal called");
+      console.log("🔍 selectedCustomerId:", selectedCustomerId);
+      console.log("🔍 leadId:", leadId);
+      console.log("🔍 lineItems.length:", lineItems.length);
+
+      if ((!selectedCustomerId && !leadId) || lineItems.length === 0) {
+        console.log("❌ Validation failed");
+        alert("Please select a customer or lead and add at least one line item");
+        return;
+      }
+
+      console.log("✅ Validation passed, proceeding to save");
       let projectId: Id<"projects">;
       let customerId: Id<"customers"> | undefined;
 
@@ -299,9 +299,12 @@ function NewProposalPageContent() {
         });
       }
 
+      console.log("✅ About to redirect to /proposals");
       router.push("/proposals");
-    } catch (error) {
-      console.error("Error creating proposal:", error);
+      console.log("✅ Redirected");
+    } catch (error: any) {
+      console.error("❌ Error creating proposal:", error);
+      alert(`ERROR: ${error?.message || error}`);
     }
   };
 
