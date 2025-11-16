@@ -141,7 +141,7 @@ export default function StumpGrindingCalculator({
     ? calculatePricing({
         totalEstimatedHours: timeEstimate.totalEstimatedHours,
         costPerHour: loadout.totalCostPerHour,
-        targetMargin: 50,
+        targetMargin: 0.50,
       })
     : null;
 
@@ -162,7 +162,7 @@ export default function StumpGrindingCalculator({
       productionRatePPH: loadout.productionRate,
       costPerHour: loadout.totalCostPerHour,
       billingRatePerHour: pricing.totalPrice / timeEstimate.totalEstimatedHours,
-      targetMargin: 50,
+      targetMargin: 0.50,
       productionHours: timeEstimate.productionHours,
       transportHours: timeEstimate.transportHours,
       bufferHours: timeEstimate.bufferHours,

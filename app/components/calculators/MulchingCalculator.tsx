@@ -191,7 +191,7 @@ export default function MulchingCalculator({
     ? calculatePricing({
         totalEstimatedHours: timeEstimate.totalWorkHours,
         costPerHour: loadout.totalCostPerHour,
-        targetMargin: 50, // Use 50% margin as default
+        targetMargin: 0.50, // 50% margin as decimal
       })
     : null;
 
@@ -226,7 +226,7 @@ export default function MulchingCalculator({
       adjustedProductionRate: timeEstimate.adjustedProductionRate,
       costPerHour: loadout.totalCostPerHour,
       billingRatePerHour: pricing.totalPrice / timeEstimate.totalWorkHours,
-      targetMargin: 50,
+      targetMargin: 0.50,
       workHours: timeEstimate.workHours,
       timeOverheadHours: timeEstimate.timeOverheadHours,
       totalWorkHours: timeEstimate.totalWorkHours,
