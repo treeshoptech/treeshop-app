@@ -1,147 +1,349 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
+import { getOrganization } from "./lib/auth";
 
 /**
- * AFISS Factor Definitions - TreeShop IP
- *
- * These percentage multipliers are proprietary to TreeShop.
- * Users identify which factors apply, backend calculates the complexity.
+ * AFISS Factors - Database-driven complexity factors
+ * Replaced hard-coded system with dynamic database approach
  */
-
-export const AFISS_FACTORS = {
-  // ACCESS FACTORS
-  access: [
-    { id: "narrow_gate", name: "Narrow gate (<8 ft)", impact: 0.12 },
-    { id: "no_equipment_access", name: "No equipment access (hand-carry only)", impact: 0.50 },
-    { id: "soft_ground", name: "Soft/muddy ground", impact: 0.15 },
-    { id: "steep_slope", name: "Steep slope (>15°)", impact: 0.20 },
-    { id: "long_drive", name: "Long drive (>2 hrs one-way)", impact: 0.10 },
-    { id: "difficult_parking", name: "Difficult parking/staging area", impact: 0.08 },
-    { id: "gated_community", name: "Gated community (access coordination)", impact: 0.05 },
-    { id: "narrow_driveway", name: "Narrow driveway (<10 ft)", impact: 0.10 },
-  ],
-
-  // FACILITIES FACTORS
-  facilities: [
-    { id: "power_lines_touching", name: "Power lines touching work area", impact: 0.30 },
-    { id: "power_lines_nearby", name: "Power lines nearby (<10 ft)", impact: 0.15 },
-    { id: "building_close", name: "Building within 50 ft", impact: 0.20 },
-    { id: "pool_target", name: "Pool or high-value target", impact: 0.30 },
-    { id: "utilities_zone", name: "Utilities in work zone", impact: 0.15 },
-    { id: "fence_removal", name: "Fence removal required", impact: 0.12 },
-    { id: "deck_patio", name: "Deck or patio in drop zone", impact: 0.18 },
-    { id: "overhead_wires", name: "Communication/cable wires overhead", impact: 0.08 },
-  ],
-
-  // IRREGULARITIES FACTORS
-  irregularities: [
-    { id: "dead_hazard", name: "Dead/hazard trees", impact: 0.15 },
-    { id: "leaning_tree", name: "Leaning trees", impact: 0.20 },
-    { id: "large_root_flare", name: "Large root flare (stumps)", impact: 0.20 },
-    { id: "rotten_stump", name: "Rotten stump", impact: -0.15 },
-    { id: "hardwood_species", name: "Hardwood species (oak, hickory, etc.)", impact: 0.15 },
-    { id: "multi_trunk", name: "Multi-trunk trees", impact: 0.10 },
-    { id: "vines_ivy", name: "Heavy vines or ivy", impact: 0.08 },
-    { id: "split_trunk", name: "Split or damaged trunk", impact: 0.12 },
-  ],
-
-  // SITE CONDITIONS FACTORS
-  siteConditions: [
-    { id: "wetlands", name: "Wetlands in work area", impact: 0.20 },
-    { id: "rocky_ground", name: "Rocky ground", impact: 0.15 },
-    { id: "protected_habitat", name: "Protected species habitat", impact: 0.30 },
-    { id: "steep_terrain", name: "Steep terrain", impact: 0.20 },
-    { id: "dense_undergrowth", name: "Dense undergrowth", impact: 0.15 },
-    { id: "poor_drainage", name: "Poor drainage/standing water", impact: 0.12 },
-    { id: "erosion_concern", name: "Erosion concerns", impact: 0.10 },
-    { id: "tree_density", name: "High tree density", impact: 0.08 },
-  ],
-
-  // SAFETY FACTORS
-  safety: [
-    { id: "high_voltage", name: "High voltage lines", impact: 0.50 },
-    { id: "confined_space", name: "Confined space work", impact: 0.25 },
-    { id: "emergency_hazard", name: "Emergency/hazard situation", impact: 0.30 },
-    { id: "near_roads", name: "Near public roads", impact: 0.10 },
-    { id: "traffic_control", name: "Traffic control required", impact: 0.15 },
-    { id: "elevated_work", name: "Elevated work (>50 ft)", impact: 0.12 },
-    { id: "crane_needed", name: "Crane assistance needed", impact: 0.25 },
-    { id: "neighbor_proximity", name: "Close neighbor proximity", impact: 0.08 },
-  ],
-};
 
 /**
- * Get all AFISS factors organized by category
+ * Get all active AFISS factors (system-wide + organization-specific)
  */
-export const listFactors = query({
-  handler: async () => {
+export const list = query({
+  handler: async (ctx) => {
+    const org = await getOrganization(ctx);
+
+    // Get system factors (organizationId = null) and org-specific factors
+    const factors = await ctx.db
+      .query("afissFactors")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .collect();
+
+    // Filter for system factors and this org's custom factors
+    return factors.filter(
+      (f) => f.organizationId === undefined || f.organizationId === org._id
+    );
+  },
+});
+
+/**
+ * Get AFISS factors for a specific service type
+ */
+export const getByServiceType = query({
+  args: {
+    serviceType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const allFactors = await list(ctx, {});
+    return allFactors.filter((f) =>
+      f.applicableServiceTypes.includes(args.serviceType)
+    );
+  },
+});
+
+/**
+ * Get factors grouped by category
+ */
+export const getGroupedByCategory = query({
+  args: {
+    serviceType: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const factors = args.serviceType
+      ? await getByServiceType(ctx, { serviceType: args.serviceType })
+      : await list(ctx, {});
+
+    // Group by category
+    const grouped: Record<string, typeof factors> = {};
+    for (const factor of factors) {
+      if (!grouped[factor.category]) {
+        grouped[factor.category] = [];
+      }
+      grouped[factor.category].push(factor);
+    }
+
+    // Sort within each category by sortOrder
+    for (const category in grouped) {
+      grouped[category].sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+
+    return grouped;
+  },
+});
+
+/**
+ * Calculate AFISS multiplier from selected factor IDs
+ */
+export const calculateMultiplier = query({
+  args: {
+    factorIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.factorIds || args.factorIds.length === 0) {
+      return {
+        multiplier: 1.0,
+        totalImpact: 0,
+        factorsApplied: [],
+      };
+    }
+
+    const allFactors = await list(ctx, {});
+    let totalImpact = 0;
+    const factorsApplied = [];
+
+    for (const factorId of args.factorIds) {
+      const factor = allFactors.find((f) => f.factorId === factorId);
+      if (factor) {
+        totalImpact += factor.impactPercentage;
+        factorsApplied.push({
+          id: factor.factorId,
+          name: factor.name,
+          impact: factor.impactPercentage,
+          category: factor.category,
+        });
+      }
+    }
+
     return {
-      access: AFISS_FACTORS.access,
-      facilities: AFISS_FACTORS.facilities,
-      irregularities: AFISS_FACTORS.irregularities,
-      siteConditions: AFISS_FACTORS.siteConditions,
-      safety: AFISS_FACTORS.safety,
+      multiplier: Math.round((1.0 + totalImpact) * 100) / 100,
+      totalImpact: Math.round(totalImpact * 100) / 100,
+      totalImpactPercent: Math.round(totalImpact * 100),
+      factorsApplied,
     };
   },
 });
 
 /**
- * Calculate complexity multiplier based on selected factors
- * This is the proprietary TreeShop calculation - IP protected
+ * Get AFISS factor by factorId
+ */
+export const getByFactorId = query({
+  args: {
+    factorId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("afissFactors")
+      .withIndex("by_factor_id", (q) => q.eq("factorId", args.factorId))
+      .first();
+  },
+});
+
+/**
+ * Create a custom AFISS factor for an organization
+ */
+export const create = mutation({
+  args: {
+    factorId: v.string(),
+    name: v.string(),
+    category: v.string(),
+    description: v.string(),
+    impactPercentage: v.number(),
+    isPositive: v.boolean(),
+    applicableServiceTypes: v.array(v.string()),
+    icon: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    // Check if factor ID already exists
+    const existing = await ctx.db
+      .query("afissFactors")
+      .withIndex("by_factor_id", (q) => q.eq("factorId", args.factorId))
+      .first();
+
+    if (existing) {
+      throw new Error(
+        `AFISS factor with ID "${args.factorId}" already exists`
+      );
+    }
+
+    const now = Date.now();
+
+    const id = await ctx.db.insert("afissFactors", {
+      organizationId: org._id,
+      factorId: args.factorId,
+      name: args.name,
+      category: args.category,
+      description: args.description,
+      impactPercentage: args.impactPercentage,
+      isPositive: args.isPositive,
+      applicableServiceTypes: args.applicableServiceTypes,
+      icon: args.icon,
+      sortOrder: 1000, // Custom factors go at the end
+      isActive: true,
+      isSystemFactor: false,
+      usageCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { success: true, id };
+  },
+});
+
+/**
+ * Update a custom AFISS factor
+ */
+export const update = mutation({
+  args: {
+    factorId: v.string(),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    impactPercentage: v.optional(v.number()),
+    applicableServiceTypes: v.optional(v.array(v.string())),
+    icon: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    const factor = await ctx.db
+      .query("afissFactors")
+      .withIndex("by_factor_id", (q) => q.eq("factorId", args.factorId))
+      .first();
+
+    if (!factor) {
+      throw new Error(`AFISS factor "${args.factorId}" not found`);
+    }
+
+    // Only allow updating custom factors (not system factors)
+    if (factor.isSystemFactor) {
+      throw new Error("Cannot modify system AFISS factors");
+    }
+
+    // Only allow updating own organization's factors
+    if (factor.organizationId !== org._id) {
+      throw new Error("Cannot modify another organization's AFISS factors");
+    }
+
+    const updates: any = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.impactPercentage !== undefined)
+      updates.impactPercentage = args.impactPercentage;
+    if (args.applicableServiceTypes !== undefined)
+      updates.applicableServiceTypes = args.applicableServiceTypes;
+    if (args.icon !== undefined) updates.icon = args.icon;
+    if (args.isActive !== undefined) updates.isActive = args.isActive;
+
+    await ctx.db.patch(factor._id, updates);
+
+    return { success: true };
+  },
+});
+
+/**
+ * Delete a custom AFISS factor
+ */
+export const remove = mutation({
+  args: {
+    factorId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const org = await getOrganization(ctx);
+
+    const factor = await ctx.db
+      .query("afissFactors")
+      .withIndex("by_factor_id", (q) => q.eq("factorId", args.factorId))
+      .first();
+
+    if (!factor) {
+      throw new Error(`AFISS factor "${args.factorId}" not found`);
+    }
+
+    // Cannot delete system factors
+    if (factor.isSystemFactor) {
+      throw new Error(
+        "Cannot delete system AFISS factors. They can be deactivated instead."
+      );
+    }
+
+    // Only allow deleting own organization's factors
+    if (factor.organizationId !== org._id) {
+      throw new Error("Cannot delete another organization's AFISS factors");
+    }
+
+    await ctx.db.delete(factor._id);
+
+    return { success: true };
+  },
+});
+
+/**
+ * Increment usage count for AFISS factors
+ */
+export const incrementUsage = mutation({
+  args: {
+    factorIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    for (const factorId of args.factorIds) {
+      const factor = await ctx.db
+        .query("afissFactors")
+        .withIndex("by_factor_id", (q) => q.eq("factorId", factorId))
+        .first();
+
+      if (factor) {
+        await ctx.db.patch(factor._id, {
+          usageCount: (factor.usageCount || 0) + 1,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    return { success: true };
+  },
+});
+
+// ============================================
+// LEGACY COMPATIBILITY (Deprecated - use new database queries)
+// ============================================
+
+/**
+ * @deprecated Use getGroupedByCategory instead
+ */
+export const listFactors = query({
+  handler: async (ctx) => {
+    const grouped = await getGroupedByCategory(ctx, {});
+    return {
+      access: grouped["Access"] || [],
+      facilities: grouped["Facilities"] || [],
+      irregularities: grouped["Irregularities"] || [],
+      siteConditions: grouped["Site"] || [],
+      safety: grouped["Safety"] || [],
+    };
+  },
+});
+
+/**
+ * @deprecated Use calculateMultiplier instead
  */
 export const calculateComplexity = query({
   args: {
     selectedFactorIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    let totalImpact = 0;
-
-    // Flatten all factors
-    const allFactors = [
-      ...AFISS_FACTORS.access,
-      ...AFISS_FACTORS.facilities,
-      ...AFISS_FACTORS.irregularities,
-      ...AFISS_FACTORS.siteConditions,
-      ...AFISS_FACTORS.safety,
-    ];
-
-    // Calculate total impact from selected factors
-    for (const factorId of args.selectedFactorIds) {
-      const factor = allFactors.find((f) => f.id === factorId);
-      if (factor) {
-        totalImpact += factor.impact;
-      }
-    }
-
-    // Complexity multiplier = 1.0 + total impact
-    const multiplier = 1.0 + totalImpact;
-
+    const result = await calculateMultiplier(ctx, { factorIds: args.selectedFactorIds });
     return {
-      multiplier: Math.max(multiplier, 0.5), // Minimum 0.5x (for rotten stumps, etc.)
-      totalImpact,
+      multiplier: Math.max(result.multiplier, 0.5), // Min 0.5x
+      totalImpact: result.totalImpact,
       selectedFactors: args.selectedFactorIds.length,
     };
   },
 });
 
 /**
- * Get details about specific factors (for display purposes)
+ * @deprecated Use getByFactorId or list instead
  */
 export const getFactorDetails = query({
   args: {
     factorIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const allFactors = [
-      ...AFISS_FACTORS.access,
-      ...AFISS_FACTORS.facilities,
-      ...AFISS_FACTORS.irregularities,
-      ...AFISS_FACTORS.siteConditions,
-      ...AFISS_FACTORS.safety,
-    ];
-
+    const allFactors = await list(ctx, {});
     return args.factorIds
-      .map((id) => allFactors.find((f) => f.id === id))
+      .map((id) => allFactors.find((f) => f.factorId === id))
       .filter((f) => f !== undefined);
   },
 });
