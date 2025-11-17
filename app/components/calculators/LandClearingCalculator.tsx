@@ -1,21 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Divider,
   FormControl,
   FormControlLabel,
   Grid,
-  InputLabel,
-  MenuItem,
   Paper,
   Radio,
   RadioGroup,
-  Select,
   Stack,
   TextField,
   Typography,
@@ -23,12 +18,10 @@ import {
 } from "@mui/material";
 import {
   calculateLandClearingScore,
-  calculateTimeEstimate,
-  calculatePricing,
-  TRANSPORT_RATES,
   formatCurrency,
   formatHours,
 } from "@/lib/scoring-formulas";
+import { AfissSelector } from "./AfissSelector";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -81,12 +74,21 @@ export default function LandClearingCalculator({
 }: LandClearingCalculatorProps) {
   const [acres, setAcres] = useState(2);
   const [density, setDensity] = useState<Density>("Average");
-  const [afissMultiplier, setAfissMultiplier] = useState(1.0);
+  const [selectedAfissFactors, setSelectedAfissFactors] = useState<string[]>([]);
 
   // TWO-TIER SYSTEM: Fetch service template for Land Clearing
   const serviceTemplate = useQuery(api.serviceTemplates.getByServiceType, {
     serviceType: "Land Clearing"
   });
+
+  // Fetch AFISS multiplier calculation
+  const multiplierResult = useQuery(
+    api.afissFactors.calculateMultiplier,
+    { factorIds: selectedAfissFactors }
+  );
+
+  // Apply AFISS multiplier from database
+  const afissMultiplier = multiplierResult?.multiplier || 1.0;
 
   // TWO-TIER SYSTEM: Calculate work score
   const scoreResult = calculateLandClearingScore({
@@ -122,19 +124,28 @@ export default function LandClearingCalculator({
     : null;
 
   const handleCreateLineItem = () => {
-    if (!serviceTemplate || !estimatedHours || !clientPrice) return;
+    if (!serviceTemplate || !estimatedHours || !clientPrice || !multiplierResult) return;
 
     const lineItemData = {
       // TWO-TIER SYSTEM: Service identification
       serviceType: "Land Clearing",
       formulaUsed: "ClearingScore",
-      description: `${acres} acres, ${density} density - ${adjustedScore.toFixed(1)} clearing score`,
+      description: `${acres} acres, ${density} density${selectedAfissFactors.length > 0 ? ` (${selectedAfissFactors.length} AFISS factors)` : ""}`,
 
       // TWO-TIER SYSTEM: Work volume and scoring
       workVolumeInputs: scoreResult.workVolumeInputs,
       baseScore,
       complexityMultiplier,
       adjustedScore,
+
+      // TWO-TIER SYSTEM: AFISS factors (save factorIds for later reference)
+      afissFactorIds: selectedAfissFactors,
+      afissFactors: multiplierResult.factorsApplied.map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        impact: f.impact,
+        category: f.category,
+      })),
 
       // TWO-TIER SYSTEM: Service template (Tier 1 - LOCKED pricing)
       serviceTemplateId: serviceTemplate._id,
@@ -144,6 +155,12 @@ export default function LandClearingCalculator({
       estimatedHours,
       estimatedCost,
       clientPrice, // LOCKED - does not change with loadout assignment
+
+      // For display in proposal
+      totalWorkHours: estimatedHours,
+      totalEstimatedHours: estimatedHours,
+      lineItemPrice: clientPrice,
+      totalPrice: clientPrice,
 
       // TWO-TIER SYSTEM: Projected profitability
       projectedProfit,
@@ -157,7 +174,7 @@ export default function LandClearingCalculator({
   };
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={3}>
       {/* TWO-TIER SYSTEM: Service Template Status */}
       {!serviceTemplate && (
         <Alert severity="error">
@@ -191,17 +208,6 @@ export default function LandClearingCalculator({
             InputProps={{ inputProps: { min: 0.5, max: 20, step: 0.5 } }}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            type="number"
-            label="AFISS Complexity Multiplier"
-            value={afissMultiplier}
-            onChange={(e) => setAfissMultiplier(parseFloat(e.target.value) || 1.0)}
-            InputProps={{ inputProps: { min: 1.0, max: 2.0, step: 0.05 } }}
-            helperText="Adjust based on utilities, structures, etc."
-          />
-        </Grid>
       </Grid>
 
       <FormControl>
@@ -229,6 +235,14 @@ export default function LandClearingCalculator({
         </RadioGroup>
       </FormControl>
 
+      {/* AFISS Factor Selector - Database Driven */}
+      <AfissSelector
+        serviceType="Land Clearing"
+        selectedFactorIds={selectedAfissFactors}
+        onFactorsChange={setSelectedAfissFactors}
+        showMultiplier={true}
+      />
+
       {/* TWO-TIER SYSTEM: Results Summary */}
       {!serviceTemplate ? (
         <Paper sx={{ p: 2, bgcolor: 'error.dark' }}>
@@ -246,7 +260,15 @@ export default function LandClearingCalculator({
               Base Score: <strong>{baseScore.toFixed(1)} CS</strong> ({acres} acres, {density} density)
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              AFISS Multiplier: <strong>{complexityMultiplier.toFixed(2)}x</strong>
+              AFISS Multiplier: <strong>{afissMultiplier.toFixed(2)}x</strong>
+              {multiplierResult && multiplierResult.totalImpactPercent !== 0 && (
+                <Typography component="span" variant="caption" sx={{ ml: 1 }}>
+                  ({multiplierResult.totalImpactPercent > 0 ? '+' : ''}{multiplierResult.totalImpactPercent}%)
+                </Typography>
+              )}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Final Multiplier: <strong>{complexityMultiplier.toFixed(2)}x</strong>
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Adjusted Score: <strong>{adjustedScore.toFixed(1)} CS</strong>
