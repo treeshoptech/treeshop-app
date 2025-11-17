@@ -205,6 +205,11 @@ function ReportsPageContent() {
         <Tab icon={<ShowChart />} label="Financial Dashboard" iconPosition="start" />
         <Tab icon={<PieChart />} label="Pipeline Tracking" iconPosition="start" />
         <Tab icon={<Speed />} label="Time & Cost Analytics" iconPosition="start" />
+        <Tab icon={<TrendingUp />} label="Lead Generation" iconPosition="start" />
+        <Tab icon={<CheckCircle />} label="Proposal Performance" iconPosition="start" />
+        <Tab icon={<LocalShipping />} label="Work Order Execution" iconPosition="start" />
+        <Tab icon={<People />} label="Customer Intelligence" iconPosition="start" />
+        <Tab icon={<Assessment />} label="Business Dashboard" iconPosition="start" />
       </Tabs>
 
       {/* REPORT 1: Equipment Utilization */}
@@ -1328,7 +1333,722 @@ function ReportsPageContent() {
       <TabPanel value={activeTab} index={6}>
         <TimeCostAnalytics />
       </TabPanel>
+
+      {/* REPORT 8: Lead Generation Analytics */}
+      <TabPanel value={activeTab} index={7}>
+        <LeadGenerationReport />
+      </TabPanel>
+
+      {/* REPORT 9: Proposal Performance Analytics */}
+      <TabPanel value={activeTab} index={8}>
+        <ProposalPerformanceReport />
+      </TabPanel>
+
+      {/* REPORT 10: Work Order Execution Analytics */}
+      <TabPanel value={activeTab} index={9}>
+        <WorkOrderExecutionReport />
+      </TabPanel>
+
+      {/* REPORT 11: Customer Intelligence */}
+      <TabPanel value={activeTab} index={10}>
+        <CustomerIntelligenceReport />
+      </TabPanel>
+
+      {/* REPORT 12: Business Dashboard */}
+      <TabPanel value={activeTab} index={11}>
+        <BusinessDashboardReport />
+      </TabPanel>
     </Box>
+  );
+}
+
+// Report Components
+
+function LeadGenerationReport() {
+  const leadKPIs = useQuery(api.analytics.getLeadStageKPIs, {});
+
+  if (!leadKPIs) return <Typography>Loading...</Typography>;
+
+  return (
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF9500' }}>
+                <TrendingUp />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Total Leads</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>{leadKPIs.totalLeads}</Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#34C759' }}>
+                <AttachMoney />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Total Value</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  ${leadKPIs.totalEstimatedValue.toLocaleString()}
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#007AFF' }}>
+                <Speed />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Avg Response Time</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {leadKPIs.avgResponseTime.toFixed(1)}h
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF3B30' }}>
+                <CheckCircle />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Conversion Rate</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {leadKPIs.conversionRate.toFixed(0)}%
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Leads by Source</Typography>
+            {leadKPIs.bySource.map((source) => (
+              <Box key={source.source} sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">{source.source}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {source.count} (${source.avgValue.toFixed(0)} avg)
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={(source.count / leadKPIs.totalLeads) * 100}
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Leads by Service Type</Typography>
+            {leadKPIs.byServiceType.map((service) => (
+              <Box key={service.service} sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">{service.service}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {service.count} (${service.avgValue.toFixed(0)} avg)
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={(service.count / leadKPIs.totalLeads) * 100}
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+}
+
+function ProposalPerformanceReport() {
+  const proposalKPIs = useQuery(api.analytics.getProposalStageKPIs, {});
+
+  if (!proposalKPIs) return <Typography>Loading...</Typography>;
+
+  return (
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#007AFF' }}>
+                <Assessment />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Total Proposals</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>{proposalKPIs.totalProposals}</Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#34C759' }}>
+                <CheckCircle />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Win Rate</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                  {proposalKPIs.winRate.toFixed(0)}%
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF9500' }}>
+                <AttachMoney />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Avg Proposal Value</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  ${proposalKPIs.avgProposalValue.toLocaleString()}
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF3B30' }}>
+                <Schedule />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Avg Time to Proposal</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {proposalKPIs.avgTimeToProposal.toFixed(1)} days
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Proposals by Service Type</Typography>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Service Type</TableCell>
+                    <TableCell align="right">Count</TableCell>
+                    <TableCell align="right">Total Value</TableCell>
+                    <TableCell align="right">Avg Value</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {proposalKPIs.byServiceType.map((service) => (
+                    <TableRow key={service.service}>
+                      <TableCell>{service.service}</TableCell>
+                      <TableCell align="right">{service.count}</TableCell>
+                      <TableCell align="right">${service.value.toLocaleString()}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: '#34C759' }}>
+                        ${service.avgValue.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+}
+
+function WorkOrderExecutionReport() {
+  const workOrderKPIs = useQuery(api.analytics.getWorkOrderStageKPIs, {});
+
+  if (!workOrderKPIs) return <Typography>Loading...</Typography>;
+
+  return (
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#007AFF' }}>
+                <LocalShipping />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Total Work Orders</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>{workOrderKPIs.totalWorkOrders}</Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#34C759' }}>
+                <CheckCircle />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Completion Rate</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                  {workOrderKPIs.completionRate.toFixed(0)}%
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF9500' }}>
+                <AttachMoney />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Total Revenue</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  ${workOrderKPIs.totalRevenue.toLocaleString()}
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF3B30' }}>
+                <Speed />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">On-Time Rate</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                  {workOrderKPIs.onTimeRate.toFixed(0)}%
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Work Orders by Service Type</Typography>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Service Type</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell align="right">Completed</TableCell>
+                    <TableCell align="right">Completion Rate</TableCell>
+                    <TableCell align="right">Revenue</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {workOrderKPIs.byServiceType.map((service) => (
+                    <TableRow key={service.service}>
+                      <TableCell>{service.service}</TableCell>
+                      <TableCell align="right">{service.count}</TableCell>
+                      <TableCell align="right">{service.completed}</TableCell>
+                      <TableCell align="right">{service.completionRate.toFixed(0)}%</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: '#34C759' }}>
+                        ${service.revenue.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+}
+
+function CustomerIntelligenceReport() {
+  const customerKPIs = useQuery(api.analytics.getCustomerIntelligence, {});
+
+  if (!customerKPIs) return <Typography>Loading...</Typography>;
+
+  return (
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#007AFF' }}>
+                <People />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Total Customers</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>{customerKPIs.totalCustomers}</Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#34C759' }}>
+                <CheckCircle />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Repeat Rate</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                  {customerKPIs.repeatRate.toFixed(0)}%
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF9500' }}>
+                <AttachMoney />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Avg CLV</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  ${customerKPIs.avgCLV.toLocaleString()}
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF3B30' }}>
+                <Warning />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">At-Risk Customers</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>{customerKPIs.atRiskCustomers}</Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Top 10 Customers by Revenue</Typography>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Customer</TableCell>
+                    <TableCell align="right">Projects</TableCell>
+                    <TableCell align="right">Revenue</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {customerKPIs.topCustomers.map((customer) => (
+                    <TableRow key={customer.customerId}>
+                      <TableCell>{customer.customerName}</TableCell>
+                      <TableCell align="right">{customer.completedProjects}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: '#34C759' }}>
+                        ${customer.totalRevenue.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Customers by Type</Typography>
+            {customerKPIs.byType.map((type) => (
+              <Box key={type.type} sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">{type.type}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {type.count} (${type.avgRevenue.toLocaleString()} avg)
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={(type.count / customerKPIs.totalCustomers) * 100}
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+}
+
+function BusinessDashboardReport() {
+  const businessKPIs = useQuery(api.analytics.getBusinessDashboard, {});
+
+  if (!businessKPIs) return <Typography>Loading...</Typography>;
+
+  return (
+    <Grid container spacing={3}>
+      {/* Financial Metrics */}
+      <Grid item xs={12}>
+        <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>Financial Overview</Typography>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#34C759' }}>
+                <AttachMoney />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Total Revenue</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  ${businessKPIs.totalRevenue.toLocaleString()}
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#007AFF' }}>
+                <TrendingUp />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Pipeline Value</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  ${businessKPIs.pipelineValue.toLocaleString()}
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF9500' }}>
+                <Build />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Backlog Value</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  ${businessKPIs.backlogValue.toLocaleString()}
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: businessKPIs.revenueGrowth >= 0 ? '#34C759' : '#FF3B30' }}>
+                {businessKPIs.revenueGrowth >= 0 ? <TrendingUp /> : <TrendingDown />}
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Revenue Growth</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600, color: businessKPIs.revenueGrowth >= 0 ? '#34C759' : '#FF3B30' }}>
+                  {businessKPIs.revenueGrowth.toFixed(1)}%
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Operations Metrics */}
+      <Grid item xs={12}>
+        <Typography variant="h5" sx={{ mb: 2, mt: 2, fontWeight: 600 }}>Operations Overview</Typography>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#007AFF' }}>
+                <Build />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Equipment Utilization</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {businessKPIs.equipmentUtilization.toFixed(0)}%
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#34C759' }}>
+                <People />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Active Employees</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>{businessKPIs.activeEmployees}</Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF9500' }}>
+                <LocalShipping />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Active Work Orders</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>{businessKPIs.activeWorkOrders}</Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item xs={12} md={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar sx={{ bgcolor: '#FF3B30' }}>
+                <CheckCircle />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Total Customers</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>{businessKPIs.totalCustomers}</Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Pipeline Overview */}
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>Project Pipeline</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, bgcolor: '#2C2C2E', textAlign: 'center' }}>
+                  <Schedule sx={{ fontSize: 40, color: '#FF9500', mb: 1 }} />
+                  <Typography variant="h3" sx={{ fontWeight: 600, mb: 1 }}>
+                    {businessKPIs.totalLeads}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Leads</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, bgcolor: '#2C2C2E', textAlign: 'center' }}>
+                  <Assessment sx={{ fontSize: 40, color: '#007AFF', mb: 1 }} />
+                  <Typography variant="h3" sx={{ fontWeight: 600, mb: 1 }}>
+                    {businessKPIs.totalProposals}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Proposals</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, bgcolor: '#2C2C2E', textAlign: 'center' }}>
+                  <Build sx={{ fontSize: 40, color: '#34C759', mb: 1 }} />
+                  <Typography variant="h3" sx={{ fontWeight: 600, mb: 1 }}>
+                    {businessKPIs.activeWorkOrders}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Active Work Orders</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, bgcolor: '#2C2C2E', textAlign: 'center' }}>
+                  <AttachMoney sx={{ fontSize: 40, color: '#FF3B30', mb: 1 }} />
+                  <Typography variant="h3" sx={{ fontWeight: 600, mb: 1 }}>
+                    {businessKPIs.completedWorkOrders}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Completed</Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
   );
 }
 
