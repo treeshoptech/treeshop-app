@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 import { getOrganization, getUserIdentity, requireAdmin } from "./lib/auth";
+import { internal } from "./_generated/api";
 
 /**
  * Get the current user's organization
@@ -62,7 +63,7 @@ export const ensureDevOrg = mutation({
     }
 
     // Create development organization
-    return await ctx.db.insert("organizations", {
+    const orgId = await ctx.db.insert("organizations", {
       clerkOrgId: devOrgId,
       name: "Development Organization",
       businessAddress: "123 Dev Street, New Smyrna Beach, FL 32168",
@@ -72,6 +73,13 @@ export const ensureDevOrg = mutation({
       },
       createdAt: Date.now(),
     });
+
+    // Seed default data for new organization
+    await ctx.scheduler.runAfter(0, internal.seedDefaultData.seedForOrganization, {
+      organizationId: orgId,
+    });
+
+    return orgId;
   },
 });
 
@@ -102,12 +110,19 @@ export const sync = mutation({
     }
 
     // Create new organization
-    return await ctx.db.insert("organizations", {
+    const orgId = await ctx.db.insert("organizations", {
       clerkOrgId: args.clerkOrgId,
       name: args.name,
       slug: args.slug,
       createdAt: Date.now(),
     });
+
+    // Seed default data for new organization
+    await ctx.scheduler.runAfter(0, internal.seedDefaultData.seedForOrganization, {
+      organizationId: orgId,
+    });
+
+    return orgId;
   },
 });
 
@@ -138,11 +153,18 @@ export const syncFromClerk = internalMutation({
     }
 
     // Create new organization
-    return await ctx.db.insert("organizations", {
+    const orgId = await ctx.db.insert("organizations", {
       clerkOrgId: args.clerkOrgId,
       name: args.name,
       slug: args.slug,
       createdAt: Date.now(),
     });
+
+    // Seed default data for new organization
+    await ctx.scheduler.runAfter(0, internal.seedDefaultData.seedForOrganization, {
+      organizationId: orgId,
+    });
+
+    return orgId;
   },
 });
