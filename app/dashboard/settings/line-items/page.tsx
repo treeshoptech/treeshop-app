@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -82,6 +82,16 @@ export default function LineItemsLibraryPage() {
   const createTemplate = useMutation(api.lineItemTemplates.create);
   const updateTemplate = useMutation(api.lineItemTemplates.update);
   const deleteTemplate = useMutation(api.lineItemTemplates.remove);
+  const seedDefaults = useMutation(api.seedDefaultLineItemTemplates.seedDefaults);
+
+  // Auto-seed default templates on page load (runs once, idempotent)
+  useEffect(() => {
+    if (allTemplates !== undefined) {
+      seedDefaults().catch(() => {
+        // Silently fail if already seeded - idempotent operation
+      });
+    }
+  }, [allTemplates, seedDefaults]);
 
   // Form state
   const [formData, setFormData] = useState({
