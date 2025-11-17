@@ -30,6 +30,7 @@ import type * as organizations from "../organizations.js";
 import type * as projects from "../projects.js";
 import type * as scoringFormulas from "../scoringFormulas.js";
 import type * as seedAfissFactors from "../seedAfissFactors.js";
+import type * as seedDefaultData from "../seedDefaultData.js";
 import type * as seedDefaultLineItemTemplates from "../seedDefaultLineItemTemplates.js";
 import type * as serviceTemplateSeeds from "../serviceTemplateSeeds.js";
 import type * as serviceTemplates from "../serviceTemplates.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   projects: typeof projects;
   scoringFormulas: typeof scoringFormulas;
   seedAfissFactors: typeof seedAfissFactors;
+  seedDefaultData: typeof seedDefaultData;
   seedDefaultLineItemTemplates: typeof seedDefaultLineItemTemplates;
   serviceTemplateSeeds: typeof serviceTemplateSeeds;
   serviceTemplates: typeof serviceTemplates;

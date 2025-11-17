@@ -339,12 +339,13 @@ export default function LineItemsLibraryPage() {
       </Stack>
 
       {/* Form Dialog */}
-      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
+      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ textAlign: "center", pb: 1, fontSize: "1.5rem", fontWeight: 600 }}>
           {editingId ? "Edit Template" : "New Template"}
         </DialogTitle>
+        <Divider />
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2, px: { xs: 1, sm: 2 } }}>
+          <Stack spacing={3} sx={{ mt: 3, px: { xs: 2, sm: 3 } }}>
             {/* Basic Info */}
             <TextField
               fullWidth
@@ -390,13 +391,14 @@ export default function LineItemsLibraryPage() {
             </Grid>
 
             {/* Pricing Section */}
-            <Box sx={{ pt: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ pt: 1 }}>
+              <Typography variant="h6" sx={{ mb: 3, textAlign: "center", fontWeight: 600 }}>
                 Pricing & Margins
               </Typography>
 
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
                     <InputLabel>Unit Type</InputLabel>
                     <Select
@@ -412,7 +414,7 @@ export default function LineItemsLibraryPage() {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -424,10 +426,7 @@ export default function LineItemsLibraryPage() {
                     helperText="How many units typically in one job"
                   />
                 </Grid>
-              </Grid>
-
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={12}>
+                <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -440,7 +439,7 @@ export default function LineItemsLibraryPage() {
                     helperText="Price charged to customer per unit"
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -469,6 +468,7 @@ export default function LineItemsLibraryPage() {
                 </Grid>
               </Grid>
             </Box>
+            <Divider sx={{ my: 2 }} />
 
             <TextField
               fullWidth
@@ -480,11 +480,22 @@ export default function LineItemsLibraryPage() {
             />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ justifyContent: "center", gap: 2, pb: 3 }}>
-          <Button onClick={() => setFormOpen(false)} size="large">
+        <Divider />
+        <DialogActions sx={{ justifyContent: "center", gap: 3, py: 3, px: 3 }}>
+          <Button
+            onClick={() => setFormOpen(false)}
+            size="large"
+            variant="outlined"
+            sx={{ minWidth: 120 }}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} variant="contained" size="large">
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            size="large"
+            sx={{ minWidth: 120 }}
+          >
             Save Template
           </Button>
         </DialogActions>
