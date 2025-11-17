@@ -344,19 +344,21 @@ export default function ProposalDetailPage() {
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Typography variant="h5">Customer Information</Typography>
-            {!editMode && !proposal.isLocked ? (
-              <IconButton onClick={() => setEditMode(true)}>
-                <EditIcon />
-              </IconButton>
-            ) : !proposal.isLocked ? (
-              <Stack direction="row" spacing={1}>
-                <Button onClick={() => setEditMode(false)} startIcon={<CloseIcon />}>
-                  Cancel
-                </Button>
-                <Button variant="contained" onClick={handleSaveCustomerInfo} startIcon={<CheckIcon />}>
-                  Save
-                </Button>
-              </Stack>
+            {!proposal.isLocked && (
+              !editMode ? (
+                <IconButton onClick={() => setEditMode(true)}>
+                  <EditIcon />
+                </IconButton>
+              ) : (
+                <Stack direction="row" spacing={1}>
+                  <Button onClick={() => setEditMode(false)} startIcon={<CloseIcon />}>
+                    Cancel
+                  </Button>
+                  <Button variant="contained" onClick={handleSaveCustomerInfo} startIcon={<CheckIcon />}>
+                    Save
+                  </Button>
+                </Stack>
+              )
             )}
           </Box>
           {editMode ? (
