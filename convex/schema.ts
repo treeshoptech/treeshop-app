@@ -802,6 +802,10 @@ export default defineSchema({
     category: v.string(), // "Tree Removal", "Stump Grinding", "Mulching", "Land Clearing", "Equipment Rental", "Labor", "Materials", "Other"
     serviceType: v.optional(v.string()),
 
+    // Formula & Scoring (NEW - TreeShop Score system)
+    formulaUsed: v.optional(v.string()), // "TreeScore", "StumpScore", "MulchingScore", "ClearingScore", "TrimScore", "Fixed"
+    productionTaskType: v.optional(v.string()), // "Production", "Support", "Both"
+
     // Loadout Assignment (NEW - for automatic cost/pricing calculation)
     loadoutId: v.optional(v.id("loadouts")), // Which loadout performs this service
     loadoutName: v.optional(v.string()), // Cached for quick display
@@ -1579,6 +1583,41 @@ export default defineSchema({
     .index("by_category", ["organizationId", "category"])
     .index("by_active", ["organizationId", "isActive"])
     .index("by_field_task", ["organizationId", "isFieldTask"]),
+
+  // AFISS Factors - Access, Facilities, Irregularities, Site, Safety complexity factors
+  afissFactors: defineTable({
+    organizationId: v.optional(v.id("organizations")), // null = global system factors
+
+    // Identity
+    factorId: v.string(), // Unique ID like "access_narrow_gate"
+    name: v.string(), // "Narrow Gate (<8 ft)"
+    category: v.string(), // "Access", "Facilities", "Irregularities", "Site", "Safety"
+    description: v.string(), // Detailed explanation of when to apply
+
+    // Impact
+    impactPercentage: v.number(), // Percentage increase (e.g., 0.12 for 12%)
+    isPositive: v.boolean(), // true = adds complexity, false = reduces (e.g., rotten stump)
+
+    // Applicability
+    applicableServiceTypes: v.array(v.string()), // Which services this factor applies to
+
+    // Display
+    icon: v.optional(v.string()), // Emoji or icon name
+    sortOrder: v.number(), // Display order within category
+    isActive: v.boolean(),
+    isSystemFactor: v.boolean(), // Core TreeShop factors (undeleteable)
+
+    // Metadata
+    usageCount: v.optional(v.number()), // How many times used
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_factor_id", ["factorId"])
+    .index("by_category", ["category"])
+    .index("by_active", ["isActive"])
+    .index("by_system", ["isSystemFactor"]),
 
   // Activity Types - Master list of all trackable activities
   activityTypes: defineTable({
