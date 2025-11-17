@@ -83,15 +83,19 @@ export default function LineItemsLibraryPage() {
   const updateTemplate = useMutation(api.lineItemTemplates.update);
   const deleteTemplate = useMutation(api.lineItemTemplates.remove);
   const seedDefaults = useMutation(api.seedDefaultLineItemTemplates.seedDefaults);
+  const seedAfissFactors = useMutation(api.seedAfissFactors.seedDefaultAfissFactors);
 
-  // Auto-seed default templates on page load (runs once, idempotent)
+  // Auto-seed default templates and AFISS factors on page load (runs once, idempotent)
   useEffect(() => {
     if (allTemplates !== undefined) {
       seedDefaults().catch(() => {
         // Silently fail if already seeded - idempotent operation
       });
+      seedAfissFactors().catch(() => {
+        // Silently fail if already seeded - idempotent operation
+      });
     }
-  }, [allTemplates, seedDefaults]);
+  }, [allTemplates, seedDefaults, seedAfissFactors]);
 
   // Form state
   const [formData, setFormData] = useState({
