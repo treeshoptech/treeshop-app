@@ -346,10 +346,12 @@ export default function LineItemsLibraryPage() {
       </Stack>
 
       {/* Form Dialog */}
-      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{editingId ? "Edit Template" : "New Template"}</DialogTitle>
+      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
+          {editingId ? "Edit Template" : "New Template"}
+        </DialogTitle>
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
+          <Stack spacing={3} sx={{ mt: 2, px: { xs: 1, sm: 2 } }}>
             {/* Basic Info */}
             <TextField
               fullWidth
@@ -368,7 +370,7 @@ export default function LineItemsLibraryPage() {
             />
 
             <Grid container spacing={2}>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
                   <InputLabel>Category</InputLabel>
                   <Select
@@ -384,7 +386,7 @@ export default function LineItemsLibraryPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Service Type (Optional)"
@@ -394,81 +396,86 @@ export default function LineItemsLibraryPage() {
               </Grid>
             </Grid>
 
-            {/* Pricing */}
-            <Typography variant="h6">Pricing & Margins</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Unit Type</InputLabel>
-                  <Select
-                    value={formData.defaultUnit}
-                    label="Unit Type"
-                    onChange={(e) => setFormData({ ...formData, defaultUnit: e.target.value })}
-                  >
-                    {UNITS.map((unit) => (
-                      <MenuItem key={unit} value={unit}>
-                        {unit}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Default Quantity"
-                  value={formData.defaultQuantity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, defaultQuantity: parseFloat(e.target.value) })
-                  }
-                  helperText="How many units typically in one job"
-                />
-              </Grid>
-            </Grid>
+            {/* Pricing Section */}
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
+                Pricing & Margins
+              </Typography>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Billing Rate (Customer Pays)"
-                  value={formData.billingRate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, billingRate: parseFloat(e.target.value) || 0 })
-                  }
-                  InputProps={{ startAdornment: "$" }}
-                  helperText="Price charged to customer per unit"
-                />
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Unit Type</InputLabel>
+                    <Select
+                      value={formData.defaultUnit}
+                      label="Unit Type"
+                      onChange={(e) => setFormData({ ...formData, defaultUnit: e.target.value })}
+                    >
+                      {UNITS.map((unit) => (
+                        <MenuItem key={unit} value={unit}>
+                          {unit}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Default Quantity"
+                    value={formData.defaultQuantity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, defaultQuantity: parseFloat(e.target.value) })
+                    }
+                    helperText="How many units typically in one job"
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Cost Per Unit (Your Cost)"
-                  value={formData.costPerUnit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, costPerUnit: parseFloat(e.target.value) || 0 })
-                  }
-                  InputProps={{ startAdornment: "$" }}
-                  helperText="Your cost to deliver (optional)"
-                />
+
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Billing Rate (Customer Pays)"
+                    value={formData.billingRate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, billingRate: parseFloat(e.target.value) || 0 })
+                    }
+                    InputProps={{ startAdornment: "$" }}
+                    helperText="Price charged to customer per unit"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Cost Per Unit (Your Cost)"
+                    value={formData.costPerUnit}
+                    onChange={(e) =>
+                      setFormData({ ...formData, costPerUnit: parseFloat(e.target.value) || 0 })
+                    }
+                    InputProps={{ startAdornment: "$" }}
+                    helperText="Your cost to deliver (optional)"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Target Profit Margin"
+                    value={formData.targetMargin}
+                    onChange={(e) =>
+                      setFormData({ ...formData, targetMargin: parseFloat(e.target.value) || 0 })
+                    }
+                    InputProps={{ endAdornment: "%" }}
+                    helperText="Enter 47 for 47% margin"
+                    inputProps={{ min: 0, max: 100, step: 1 }}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Target Profit Margin"
-                  value={formData.targetMargin}
-                  onChange={(e) =>
-                    setFormData({ ...formData, targetMargin: parseFloat(e.target.value) || 0 })
-                  }
-                  InputProps={{ endAdornment: "%" }}
-                  helperText="Enter 47 for 47% margin"
-                  inputProps={{ min: 0, max: 100, step: 1 }}
-                />
-              </Grid>
-            </Grid>
+            </Box>
 
             <TextField
               fullWidth
@@ -480,9 +487,11 @@ export default function LineItemsLibraryPage() {
             />
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFormOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained">
+        <DialogActions sx={{ justifyContent: "center", gap: 2, pb: 3 }}>
+          <Button onClick={() => setFormOpen(false)} size="large">
+            Cancel
+          </Button>
+          <Button onClick={handleSave} variant="contained" size="large">
             Save Template
           </Button>
         </DialogActions>
