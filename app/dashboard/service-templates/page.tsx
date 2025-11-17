@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -67,7 +67,6 @@ export default function ServiceTemplatesPage() {
   const recalculateTemplate = useMutation(api.serviceTemplates.recalculateFromHistory);
   const activateTemplate = useMutation(api.serviceTemplates.activate);
   const deactivateTemplate = useMutation(api.serviceTemplates.deactivate);
-  const seedDefaults = useMutation(api.serviceTemplateSeeds.seedDefaultTemplates);
 
   const handleEdit = (template: any) => {
     setSelectedTemplate(template);
@@ -134,23 +133,6 @@ export default function ServiceTemplatesPage() {
     }
   };
 
-  const handleSeedDefaults = async () => {
-    if (!confirm("Seed default service templates? This will create templates for all standard services.")) {
-      return;
-    }
-
-    try {
-      const result = await seedDefaults({});
-      alert(
-        `Seeding complete!\n\n` +
-        `Created: ${result.created.join(", ")}\n` +
-        `Skipped: ${result.skipped.join(", ")}`
-      );
-    } catch (error: any) {
-      alert(error.message || "Error seeding templates");
-    }
-  };
-
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
@@ -182,9 +164,6 @@ export default function ServiceTemplatesPage() {
             </Typography>
           </Box>
           <Stack direction="row" spacing={2}>
-            <Button variant="outlined" onClick={handleSeedDefaults} startIcon={<AddIcon />}>
-              Seed Defaults
-            </Button>
             <Button variant="contained" onClick={handleCreate} startIcon={<AddIcon />}>
               Create Template
             </Button>
@@ -202,10 +181,10 @@ export default function ServiceTemplatesPage() {
               No Service Templates Yet
             </Typography>
             <Typography color="text.secondary" gutterBottom>
-              Create your first service template or seed defaults to get started.
+              Create your first service template based on your loadouts to establish company-wide pricing standards.
             </Typography>
-            <Button variant="contained" onClick={handleSeedDefaults} sx={{ mt: 2 }}>
-              Seed Default Templates
+            <Button variant="contained" onClick={handleCreate} startIcon={<AddIcon />} sx={{ mt: 2 }}>
+              Create Your First Template
             </Button>
           </Paper>
         ) : (
@@ -388,6 +367,8 @@ function ServiceTemplateDialog({
   onClose: () => void;
   onSave: (data: any) => void;
 }) {
+  const loadouts = useQuery(api.loadouts.list);
+  const [selectedLoadoutId, setSelectedLoadoutId] = useState<Id<"loadouts"> | "">("");
   const [formData, setFormData] = useState({
     serviceType: "",
     formulaUsed: "",
@@ -398,6 +379,29 @@ function ServiceTemplateDialog({
     targetMargin: 45,
     notes: "",
   });
+
+  // Get selected loadout details
+  const selectedLoadout = loadouts?.find(l => l._id === selectedLoadoutId);
+
+  // Auto-populate cost and PPH when loadout is selected
+  useEffect(() => {
+    if (selectedLoadout) {
+      setFormData(prev => ({
+        ...prev,
+        standardCostPerHour: selectedLoadout.totalCostPerHour || 0,
+        standardPPH: selectedLoadout.productionRate || 0,
+      }));
+    }
+  }, [selectedLoadout]);
+
+  // Auto-calculate billing rate when cost or margin changes
+  useEffect(() => {
+    if (formData.standardCostPerHour > 0 && formData.targetMargin > 0 && formData.targetMargin < 100) {
+      const marginDecimal = formData.targetMargin / 100;
+      const billingRate = formData.standardCostPerHour / (1 - marginDecimal);
+      setFormData(prev => ({ ...prev, standardBillingRate: Math.round(billingRate * 100) / 100 }));
+    }
+  }, [formData.standardCostPerHour, formData.targetMargin]);
 
   // Initialize form when template changes
   useState(() => {
@@ -433,14 +437,6 @@ function ServiceTemplateDialog({
     }
 
     onSave(formData);
-  };
-
-  const calculateBillingRate = () => {
-    if (formData.standardCostPerHour > 0 && formData.targetMargin > 0 && formData.targetMargin < 100) {
-      const marginDecimal = formData.targetMargin / 100;
-      const billingRate = formData.standardCostPerHour / (1 - marginDecimal);
-      setFormData({ ...formData, standardBillingRate: Math.round(billingRate * 100) / 100 });
-    }
   };
 
   return (
@@ -496,6 +492,36 @@ function ServiceTemplateDialog({
 
           <Divider />
 
+          {/* Loadout Selection - Base pricing on actual equipment/crew costs */}
+          <Box>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+              Base Pricing on Loadout
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Select a loadout to automatically calculate costs based on your actual equipment and crew expenses.
+            </Typography>
+            <TextField
+              select
+              label="Reference Loadout (Optional)"
+              value={selectedLoadoutId}
+              onChange={(e) => setSelectedLoadoutId(e.target.value as Id<"loadouts">)}
+              fullWidth
+              SelectProps={{ native: true }}
+              helperText={selectedLoadout
+                ? `Cost: $${selectedLoadout.totalCostPerHour?.toFixed(2)}/hr | PPH: ${selectedLoadout.productionRate}`
+                : "Choose a loadout to auto-fill cost and production rate"}
+            >
+              <option value="">Manual entry (no loadout)</option>
+              {loadouts?.map((loadout) => (
+                <option key={loadout._id} value={loadout._id}>
+                  {loadout.name} - ${loadout.totalCostPerHour?.toFixed(2)}/hr
+                </option>
+              ))}
+            </TextField>
+          </Box>
+
+          <Divider />
+
           <Grid container spacing={2}>
             <Grid item xs={12} sm={4}>
               <TextField
@@ -504,7 +530,7 @@ function ServiceTemplateDialog({
                 value={formData.standardPPH}
                 onChange={(e) => setFormData({ ...formData, standardPPH: parseFloat(e.target.value) || 0 })}
                 fullWidth
-                helperText="Points per hour"
+                helperText={selectedLoadout ? "From loadout (editable)" : "Points per hour"}
                 inputProps={{ step: 0.1, min: 0 }}
               />
             </Grid>
@@ -515,7 +541,7 @@ function ServiceTemplateDialog({
                 value={formData.standardCostPerHour}
                 onChange={(e) => setFormData({ ...formData, standardCostPerHour: parseFloat(e.target.value) || 0 })}
                 fullWidth
-                helperText="Your average cost"
+                helperText={selectedLoadout ? "From loadout (editable)" : "Your average cost"}
                 inputProps={{ step: 1, min: 0 }}
               />
             </Grid>
@@ -526,7 +552,7 @@ function ServiceTemplateDialog({
                 value={formData.targetMargin}
                 onChange={(e) => setFormData({ ...formData, targetMargin: parseFloat(e.target.value) || 0 })}
                 fullWidth
-                helperText="e.g., 45 for 45%"
+                helperText="Adjust to set your profit"
                 inputProps={{ step: 1, min: 0, max: 99 }}
               />
             </Grid>
@@ -534,17 +560,18 @@ function ServiceTemplateDialog({
 
           <Box>
             <TextField
-              label="Billing Rate"
+              label="Billing Rate (Auto-Calculated)"
               type="number"
               value={formData.standardBillingRate}
               onChange={(e) => setFormData({ ...formData, standardBillingRate: parseFloat(e.target.value) || 0 })}
               fullWidth
-              helperText="What customers pay per hour"
+              helperText={`Auto-calculated: $${formData.standardCostPerHour.toFixed(2)} ÷ (1 - ${formData.targetMargin}%) = $${formData.standardBillingRate.toFixed(2)}/hr`}
               inputProps={{ step: 1, min: 0 }}
+              disabled={formData.standardCostPerHour > 0 && formData.targetMargin > 0}
             />
-            <Button size="small" onClick={calculateBillingRate} sx={{ mt: 1 }}>
-              Calculate from Margin
-            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              This rate is automatically calculated from your cost and margin. It represents what you'll charge customers per hour.
+            </Typography>
           </Box>
 
           <TextField
