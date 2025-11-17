@@ -201,12 +201,12 @@ export default defineSchema({
 
     // Service-Specific Production Rates (crew-specific PPH for each service they can perform)
     productionRates: v.object({
-      "Forestry Mulching": v.optional(v.number()), // e.g., 1.4 PPH
-      "Land Clearing": v.optional(v.number()),
-      "Brush Clearing": v.optional(v.number()),
-      "Stump Grinding": v.optional(v.number()),
-      "Tree Removal": v.optional(v.number()),
-      "Tree Trimming": v.optional(v.number()),
+      forestryMulching: v.optional(v.number()), // e.g., 1.4 PPH
+      landClearing: v.optional(v.number()),
+      brushClearing: v.optional(v.number()),
+      stumpGrinding: v.optional(v.number()),
+      treeRemoval: v.optional(v.number()),
+      treeTrimming: v.optional(v.number()),
     }),
 
     // Operational Status

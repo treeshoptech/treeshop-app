@@ -68,12 +68,12 @@ export const create = mutation({
     serviceTypes: v.optional(v.array(v.string())),
     // NEW: Service-specific production rates
     productionRates: v.optional(v.object({
-      "Forestry Mulching": v.optional(v.number()),
-      "Land Clearing": v.optional(v.number()),
-      "Brush Clearing": v.optional(v.number()),
-      "Stump Grinding": v.optional(v.number()),
-      "Tree Removal": v.optional(v.number()),
-      "Tree Trimming": v.optional(v.number()),
+      forestryMulching: v.optional(v.number()),
+      landClearing: v.optional(v.number()),
+      brushClearing: v.optional(v.number()),
+      stumpGrinding: v.optional(v.number()),
+      treeRemoval: v.optional(v.number()),
+      treeTrimming: v.optional(v.number()),
     })),
     // DEPRECATED: Legacy fields (kept for backward compatibility)
     serviceType: v.optional(v.string()),
@@ -238,12 +238,12 @@ export const update = mutation({
     serviceTypes: v.optional(v.array(v.string())),
     // NEW: Service-specific production rates
     productionRates: v.optional(v.object({
-      "Forestry Mulching": v.optional(v.number()),
-      "Land Clearing": v.optional(v.number()),
-      "Brush Clearing": v.optional(v.number()),
-      "Stump Grinding": v.optional(v.number()),
-      "Tree Removal": v.optional(v.number()),
-      "Tree Trimming": v.optional(v.number()),
+      forestryMulching: v.optional(v.number()),
+      landClearing: v.optional(v.number()),
+      brushClearing: v.optional(v.number()),
+      stumpGrinding: v.optional(v.number()),
+      treeRemoval: v.optional(v.number()),
+      treeTrimming: v.optional(v.number()),
     })),
     // DEPRECATED: Legacy fields
     serviceType: v.optional(v.string()),
