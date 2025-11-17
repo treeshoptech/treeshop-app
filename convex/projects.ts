@@ -72,6 +72,32 @@ export const create = mutation({
     estimatedValue: v.optional(v.number()),
     amountPaid: v.optional(v.number()),
     notes: v.optional(v.string()),
+
+    // TWO-TIER SYSTEM: Service Template (Tier 1 - LOCKED pricing)
+    serviceTemplateId: v.optional(v.id("serviceTemplates")),
+    standardPPH: v.optional(v.number()),
+    standardCostPerHour: v.optional(v.number()),
+    standardBillingRate: v.optional(v.number()),
+
+    // TWO-TIER SYSTEM: Work volume
+    baseScore: v.optional(v.number()),
+    complexityMultiplier: v.optional(v.number()),
+    adjustedScore: v.optional(v.number()),
+    afissFactors: v.optional(v.array(v.string())),
+
+    // TWO-TIER SYSTEM: Estimates and pricing
+    estimatedHours: v.optional(v.number()),
+    estimatedCost: v.optional(v.number()),
+    clientPrice: v.optional(v.number()),
+
+    // TWO-TIER SYSTEM: Loadout Assignment (Tier 2 - optional at proposal)
+    assignedLoadoutId: v.optional(v.id("loadouts")),
+    loadoutPPH: v.optional(v.number()),
+    loadoutCostPerHour: v.optional(v.number()),
+    projectedHours: v.optional(v.number()),
+    projectedCost: v.optional(v.number()),
+    projectedProfit: v.optional(v.number()),
+    projectedMargin: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const org = await getOrganization(ctx);
@@ -110,6 +136,47 @@ export const update = mutation({
     estimatedValue: v.optional(v.number()),
     amountPaid: v.optional(v.number()),
     notes: v.optional(v.string()),
+
+    // TWO-TIER SYSTEM: Service Template (Tier 1 - LOCKED pricing)
+    serviceTemplateId: v.optional(v.id("serviceTemplates")),
+    standardPPH: v.optional(v.number()),
+    standardCostPerHour: v.optional(v.number()),
+    standardBillingRate: v.optional(v.number()),
+
+    // TWO-TIER SYSTEM: Work volume
+    baseScore: v.optional(v.number()),
+    complexityMultiplier: v.optional(v.number()),
+    adjustedScore: v.optional(v.number()),
+    afissFactors: v.optional(v.array(v.string())),
+
+    // TWO-TIER SYSTEM: Estimates and pricing
+    estimatedHours: v.optional(v.number()),
+    estimatedCost: v.optional(v.number()),
+    clientPrice: v.optional(v.number()),
+
+    // TWO-TIER SYSTEM: Loadout Assignment (Tier 2)
+    assignedLoadoutId: v.optional(v.id("loadouts")),
+    loadoutPPH: v.optional(v.number()),
+    loadoutCostPerHour: v.optional(v.number()),
+    projectedHours: v.optional(v.number()),
+    projectedCost: v.optional(v.number()),
+    projectedProfit: v.optional(v.number()),
+    projectedMargin: v.optional(v.number()),
+
+    // TWO-TIER SYSTEM: Actuals (from job completion)
+    actualProductionHours: v.optional(v.number()),
+    actualTotalHours: v.optional(v.number()),
+    actualPPH: v.optional(v.number()),
+    actualCost: v.optional(v.number()),
+    actualProfit: v.optional(v.number()),
+    actualMargin: v.optional(v.number()),
+
+    // TWO-TIER SYSTEM: Variance tracking
+    hoursVariance: v.optional(v.number()),
+    pphVariance: v.optional(v.number()),
+    costVariance: v.optional(v.number()),
+    profitVariance: v.optional(v.number()),
+    marginVariance: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const org = await getOrganization(ctx);

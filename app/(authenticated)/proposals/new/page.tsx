@@ -247,12 +247,34 @@ function NewProposalPageContent() {
           }
         }
 
-        // Update the project with customer ID and change status to Proposal
+        // TWO-TIER SYSTEM: Aggregate data from line items for project-level tracking
+        const firstLineItem = lineItems[0];
+
+        // Update the project with customer ID, Two-Tier fields, and change status to Proposal
         await updateProject({
           id: leadId,
           customerId,
           status: "Proposal",
           proposalStatus: "Draft",
+
+          // TWO-TIER SYSTEM: Service template pricing (Tier 1 - LOCKED)
+          serviceTemplateId: firstLineItem?.serviceTemplateId,
+          standardPPH: firstLineItem?.standardPPH,
+          standardCostPerHour: firstLineItem?.standardCostPerHour,
+          standardBillingRate: firstLineItem?.standardBillingRate,
+
+          // TWO-TIER SYSTEM: Work volume
+          baseScore: firstLineItem?.baseScore,
+          complexityMultiplier: firstLineItem?.complexityMultiplier,
+          adjustedScore: firstLineItem?.adjustedScore,
+          afissFactors: firstLineItem?.afissFactors?.map((f: any) => f.label) || [],
+
+          // TWO-TIER SYSTEM: Estimates and pricing
+          estimatedHours: firstLineItem?.estimatedHours,
+          estimatedCost: firstLineItem?.estimatedCost,
+          clientPrice: firstLineItem?.clientPrice, // LOCKED price from service template
+
+          // Legacy field for backward compatibility
           estimatedValue: totalInvestment,
         });
         projectId = leadId;
@@ -274,6 +296,9 @@ function NewProposalPageContent() {
           return;
         }
 
+        // TWO-TIER SYSTEM: Aggregate data from line items for project-level tracking
+        const firstLineItem = lineItems[0];
+
         const projectData: any = {
           name: `${selectedCustomer.firstName || ""} ${selectedCustomer.lastName || ""} - Proposal`.trim(),
           customerId: selectedCustomerId as Id<"customers">,  // Type assertion
@@ -281,6 +306,25 @@ function NewProposalPageContent() {
           serviceType: lineItems[0]?.serviceType || "Stump Grinding",
           status: "Proposal",
           proposalStatus: "Draft",
+
+          // TWO-TIER SYSTEM: Service template pricing (Tier 1 - LOCKED)
+          serviceTemplateId: firstLineItem?.serviceTemplateId,
+          standardPPH: firstLineItem?.standardPPH,
+          standardCostPerHour: firstLineItem?.standardCostPerHour,
+          standardBillingRate: firstLineItem?.standardBillingRate,
+
+          // TWO-TIER SYSTEM: Work volume
+          baseScore: firstLineItem?.baseScore,
+          complexityMultiplier: firstLineItem?.complexityMultiplier,
+          adjustedScore: firstLineItem?.adjustedScore,
+          afissFactors: firstLineItem?.afissFactors?.map((f: any) => f.label) || [],
+
+          // TWO-TIER SYSTEM: Estimates and pricing
+          estimatedHours: firstLineItem?.estimatedHours,
+          estimatedCost: firstLineItem?.estimatedCost,
+          clientPrice: firstLineItem?.clientPrice, // LOCKED price from service template
+
+          // Legacy field for backward compatibility
           estimatedValue: totalInvestment,
         };
 
