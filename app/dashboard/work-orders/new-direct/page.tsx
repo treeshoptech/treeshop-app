@@ -189,6 +189,11 @@ export default function NewDirectWorkOrderPage() {
 
   const handleSubmit = async () => {
     try {
+      // Validate customer is selected
+      if (!customerData.customerId) {
+        throw new Error("Please select a customer");
+      }
+
       const customer = customers?.find((c) => c._id === customerData.customerId);
       if (!customer) throw new Error("Customer not found");
 
@@ -204,13 +209,13 @@ export default function NewDirectWorkOrderPage() {
 
       // Create direct work order
       await createWorkOrder({
-        customerId: customerData.customerId,
+        customerId: customerData.customerId as Id<"customers">,
         projectName: `${customer.name} - ${lineItems[0]?.serviceType || "Work Order"}`,
         propertyAddress: fullAddress,
         serviceType: lineItems[0]?.serviceType || "General",
         contractAmount: parseFloat(contractData.contractAmount),
         estimatedAcres: lineItems[0]?.acreage ? parseFloat(lineItems[0].acreage) : undefined,
-        loadoutId: contractData.loadoutId || undefined,
+        loadoutId: contractData.loadoutId ? (contractData.loadoutId as Id<"loadouts">) : undefined,
         scheduledDate: contractData.scheduledDate ? new Date(contractData.scheduledDate).getTime() : undefined,
         poNumber: contractData.poNumber || undefined,
         specialInstructions: contractData.specialInstructions || undefined,
