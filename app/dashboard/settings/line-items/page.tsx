@@ -82,24 +82,9 @@ export default function LineItemsLibraryPage() {
   const createTemplate = useMutation(api.lineItemTemplates.create);
   const updateTemplate = useMutation(api.lineItemTemplates.update);
   const deleteTemplate = useMutation(api.lineItemTemplates.remove);
-  const seedDefaults = useMutation(api.seedDefaultLineItemTemplates.seedDefaults);
-  const seedAfissFactors = useMutation(api.seedAfissFactors.seedDefaultAfissFactors);
-  const seedServiceTemplates = useMutation(api.serviceTemplateSeeds.seedDefaultTemplates);
 
-  // Auto-seed default templates, AFISS factors, and service templates on page load (runs once, idempotent)
-  useEffect(() => {
-    if (allTemplates !== undefined) {
-      seedDefaults().catch(() => {
-        // Silently fail if already seeded - idempotent operation
-      });
-      seedAfissFactors().catch(() => {
-        // Silently fail if already seeded - idempotent operation
-      });
-      seedServiceTemplates().catch(() => {
-        // Silently fail if already seeded - idempotent operation
-      });
-    }
-  }, [allTemplates, seedDefaults, seedAfissFactors, seedServiceTemplates]);
+  // Service templates, AFISS factors, and line item templates are automatically created
+  // when the organization is first set up - no manual seeding needed!
 
   // Form state
   const [formData, setFormData] = useState({
