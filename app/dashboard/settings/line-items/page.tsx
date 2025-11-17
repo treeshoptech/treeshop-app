@@ -66,19 +66,10 @@ const UNITS = [
   "Stump",
 ];
 
-const AFISS_CATEGORIES = [
-  "Access",
-  "Facilities",
-  "Irregularities",
-  "Site Conditions",
-  "Safety",
-];
-
 export default function LineItemsLibraryPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<Id<"lineItemTemplates"> | null>(null);
-  const [afissTab, setAfissTab] = useState(0);
 
   // Fetch templates
   const allTemplates = useQuery(api.lineItemTemplates.list);
@@ -101,19 +92,14 @@ export default function LineItemsLibraryPage() {
     category: "Tree Removal",
     serviceType: "",
     defaultUnit: "Each",
-    defaultUnitPrice: 0,
+    billingRate: 0, // What customer pays per unit
     defaultQuantity: 1,
-    costPerUnit: 0,
-    defaultMargin: 0.5,
+    costPerUnit: 0, // Our cost per unit
+    targetMargin: 50, // Percentage (0-100)
     tags: [] as string[],
     notes: "",
   });
 
-  // Fetch AFISS factors from server
-  const afissFactors = useQuery(api.afissFactors.listFactors);
-
-  // Selected AFISS factor IDs for this template
-  const [selectedAfissFactors, setSelectedAfissFactors] = useState<string[]>([]);
 
   const handleOpenForm = (template?: any) => {
     if (template) {
@@ -124,14 +110,13 @@ export default function LineItemsLibraryPage() {
         category: template.category,
         serviceType: template.serviceType || "",
         defaultUnit: template.defaultUnit,
-        defaultUnitPrice: template.defaultUnitPrice,
+        billingRate: template.defaultUnitPrice || 0,
         defaultQuantity: template.defaultQuantity || 1,
         costPerUnit: template.costPerUnit || 0,
-        defaultMargin: template.defaultMargin || 0.5,
+        targetMargin: (template.defaultMargin || 0.5) * 100, // Convert decimal to percentage
         tags: template.tags || [],
         notes: template.notes || "",
       });
-      setSelectedAfissFactors(template.afissFactorIds || []);
     } else {
       setEditingId(null);
       setFormData({
@@ -140,31 +125,40 @@ export default function LineItemsLibraryPage() {
         category: "Tree Removal",
         serviceType: "",
         defaultUnit: "Each",
-        defaultUnitPrice: 0,
+        billingRate: 0,
         defaultQuantity: 1,
         costPerUnit: 0,
-        defaultMargin: 0.5,
+        targetMargin: 50,
         tags: [],
         notes: "",
       });
-      setSelectedAfissFactors([]);
     }
     setFormOpen(true);
   };
 
   const handleSave = async () => {
     try {
+      const saveData = {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        serviceType: formData.serviceType,
+        defaultUnit: formData.defaultUnit,
+        defaultUnitPrice: formData.billingRate,
+        defaultQuantity: formData.defaultQuantity,
+        costPerUnit: formData.costPerUnit,
+        defaultMargin: formData.targetMargin / 100, // Convert percentage to decimal
+        tags: formData.tags,
+        notes: formData.notes,
+      };
+
       if (editingId) {
         await updateTemplate({
           id: editingId,
-          ...formData,
-          afissFactorIds: selectedAfissFactors.length > 0 ? selectedAfissFactors : undefined,
+          ...saveData,
         });
       } else {
-        await createTemplate({
-          ...formData,
-          afissFactorIds: selectedAfissFactors.length > 0 ? selectedAfissFactors : undefined,
-        });
+        await createTemplate(saveData);
       }
       setFormOpen(false);
     } catch (error) {
@@ -179,14 +173,6 @@ export default function LineItemsLibraryPage() {
       } catch (error) {
         console.error("Error deleting template:", error);
       }
-    }
-  };
-
-  const handleToggleAfissFactor = (factorId: string) => {
-    if (selectedAfissFactors.includes(factorId)) {
-      setSelectedAfissFactors(selectedAfissFactors.filter(id => id !== factorId));
-    } else {
-      setSelectedAfissFactors([...selectedAfissFactors, factorId]);
     }
   };
 
@@ -224,7 +210,7 @@ export default function LineItemsLibraryPage() {
               Line Items Library
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Reusable line items with pricing and AFISS complexity presets
+              Reusable service line item templates with default pricing and margins
             </Typography>
           </Box>
           <Stack direction="row" spacing={2}>
@@ -301,9 +287,8 @@ export default function LineItemsLibraryPage() {
                 <TableCell>Name</TableCell>
                 <TableCell>Category</TableCell>
                 <TableCell>Unit</TableCell>
-                <TableCell>Price</TableCell>
+                <TableCell>Billing Rate</TableCell>
                 <TableCell>Margin</TableCell>
-                <TableCell>AFISS</TableCell>
                 <TableCell>Usage</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
@@ -311,7 +296,7 @@ export default function LineItemsLibraryPage() {
             <TableBody>
               {filteredTemplates?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
+                  <TableCell colSpan={7} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
                       No templates found. Create your first reusable line item.
                     </Typography>
@@ -340,19 +325,6 @@ export default function LineItemsLibraryPage() {
                     </TableCell>
                     <TableCell>
                       {((template.defaultMargin || 0) * 100).toFixed(0)}%
-                    </TableCell>
-                    <TableCell>
-                      {template.afissFactorIds && template.afissFactorIds.length > 0 ? (
-                        <Chip
-                          label={`${template.afissFactorIds.length} factors`}
-                          size="small"
-                          color="primary"
-                        />
-                      ) : (
-                        <Typography variant="caption" color="text.secondary">
-                          None
-                        </Typography>
-                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
@@ -436,14 +408,14 @@ export default function LineItemsLibraryPage() {
             </Grid>
 
             {/* Pricing */}
-            <Typography variant="h6">Pricing</Typography>
+            <Typography variant="h6">Pricing & Margins</Typography>
             <Grid container spacing={2}>
-              <Grid item xs={4}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Unit</InputLabel>
+                  <InputLabel>Unit Type</InputLabel>
                   <Select
                     value={formData.defaultUnit}
-                    label="Unit"
+                    label="Unit Type"
                     onChange={(e) => setFormData({ ...formData, defaultUnit: e.target.value })}
                   >
                     {UNITS.map((unit) => (
@@ -454,19 +426,7 @@ export default function LineItemsLibraryPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={4}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Unit Price"
-                  value={formData.defaultUnitPrice}
-                  onChange={(e) =>
-                    setFormData({ ...formData, defaultUnitPrice: parseFloat(e.target.value) })
-                  }
-                  InputProps={{ startAdornment: "$" }}
-                />
-              </Grid>
-              <Grid item xs={4}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   type="number"
@@ -475,153 +435,53 @@ export default function LineItemsLibraryPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, defaultQuantity: parseFloat(e.target.value) })
                   }
+                  helperText="How many units typically in one job"
                 />
               </Grid>
             </Grid>
 
             <Grid container spacing={2}>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   type="number"
-                  label="Cost Per Unit (Optional)"
-                  value={formData.costPerUnit}
+                  label="Billing Rate (Customer Pays)"
+                  value={formData.billingRate}
                   onChange={(e) =>
-                    setFormData({ ...formData, costPerUnit: parseFloat(e.target.value) })
+                    setFormData({ ...formData, billingRate: parseFloat(e.target.value) || 0 })
                   }
                   InputProps={{ startAdornment: "$" }}
+                  helperText="Price charged to customer per unit"
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   type="number"
-                  label="Default Margin"
-                  value={formData.defaultMargin}
+                  label="Cost Per Unit (Your Cost)"
+                  value={formData.costPerUnit}
                   onChange={(e) =>
-                    setFormData({ ...formData, defaultMargin: parseFloat(e.target.value) })
+                    setFormData({ ...formData, costPerUnit: parseFloat(e.target.value) || 0 })
+                  }
+                  InputProps={{ startAdornment: "$" }}
+                  helperText="Your cost to deliver (optional)"
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Target Profit Margin"
+                  value={formData.targetMargin}
+                  onChange={(e) =>
+                    setFormData({ ...formData, targetMargin: parseFloat(e.target.value) || 0 })
                   }
                   InputProps={{ endAdornment: "%" }}
-                  helperText="Enter as decimal (0.5 = 50%)"
+                  helperText="Enter 47 for 47% margin"
+                  inputProps={{ min: 0, max: 100, step: 1 }}
                 />
               </Grid>
             </Grid>
-
-            {/* AFISS Complexity Factors */}
-            <Typography variant="h6">AFISS Complexity Factors</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Select factors that commonly apply to this service type
-            </Typography>
-            <Paper sx={{ p: 2, bgcolor: "background.default" }}>
-              {afissFactors && (
-                <Stack spacing={3}>
-                  {/* Access Factors */}
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      ACCESS
-                    </Typography>
-                    <Stack spacing={1}>
-                      {afissFactors.access.map((factor) => (
-                        <FormControlLabel
-                          key={factor.id}
-                          control={
-                            <Checkbox
-                              checked={selectedAfissFactors.includes(factor.id)}
-                              onChange={() => handleToggleAfissFactor(factor.id)}
-                            />
-                          }
-                          label={factor.name}
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-
-                  {/* Facilities Factors */}
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      FACILITIES
-                    </Typography>
-                    <Stack spacing={1}>
-                      {afissFactors.facilities.map((factor) => (
-                        <FormControlLabel
-                          key={factor.id}
-                          control={
-                            <Checkbox
-                              checked={selectedAfissFactors.includes(factor.id)}
-                              onChange={() => handleToggleAfissFactor(factor.id)}
-                            />
-                          }
-                          label={factor.name}
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-
-                  {/* Irregularities Factors */}
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      IRREGULARITIES
-                    </Typography>
-                    <Stack spacing={1}>
-                      {afissFactors.irregularities.map((factor) => (
-                        <FormControlLabel
-                          key={factor.id}
-                          control={
-                            <Checkbox
-                              checked={selectedAfissFactors.includes(factor.id)}
-                              onChange={() => handleToggleAfissFactor(factor.id)}
-                            />
-                          }
-                          label={factor.name}
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-
-                  {/* Site Conditions Factors */}
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      SITE CONDITIONS
-                    </Typography>
-                    <Stack spacing={1}>
-                      {afissFactors.siteConditions.map((factor) => (
-                        <FormControlLabel
-                          key={factor.id}
-                          control={
-                            <Checkbox
-                              checked={selectedAfissFactors.includes(factor.id)}
-                              onChange={() => handleToggleAfissFactor(factor.id)}
-                            />
-                          }
-                          label={factor.name}
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-
-                  {/* Safety Factors */}
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      SAFETY
-                    </Typography>
-                    <Stack spacing={1}>
-                      {afissFactors.safety.map((factor) => (
-                        <FormControlLabel
-                          key={factor.id}
-                          control={
-                            <Checkbox
-                              checked={selectedAfissFactors.includes(factor.id)}
-                              onChange={() => handleToggleAfissFactor(factor.id)}
-                            />
-                          }
-                          label={factor.name}
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-                </Stack>
-              )}
-            </Paper>
 
             <TextField
               fullWidth
