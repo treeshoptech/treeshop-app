@@ -127,49 +127,119 @@ export default defineSchema({
     .index("by_org_status", ["organizationId", "employmentStatus"])
     .index("by_org_track", ["organizationId", "primaryTrack"]),
 
-  // Loadouts
+  // ============================================
+  // TWO-TIER PRICING SYSTEM
+  // ============================================
+
+  // Service Templates - Tier 1: Company-wide pricing engine (stable standards)
+  serviceTemplates: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Service Identity
+    serviceType: v.string(), // "Forestry Mulching", "Land Clearing", "Stump Grinding", "Tree Removal", etc.
+    formulaUsed: v.string(), // "MulchingScore", "ClearingScore", "StumpScore", "TreeScore", etc.
+    description: v.optional(v.string()),
+
+    // Standard Production Rate (company-wide average PPH for this service)
+    standardPPH: v.number(), // Average Points Per Hour across all jobs/crews
+
+    // Standard Costs (company-wide averages)
+    standardCostPerHour: v.number(), // Average fully-loaded cost per hour
+    standardLaborCost: v.optional(v.number()), // Breakdown for transparency
+    standardEquipmentCost: v.optional(v.number()),
+    standardOverhead: v.optional(v.number()),
+
+    // Standard Billing (includes profit margin)
+    standardBillingRate: v.number(), // What customers pay per hour
+    targetMargin: v.number(), // Target profit margin % (for reporting only - NOT used in calculations)
+
+    // Feedback Loop Tracking
+    lastRecalculated: v.number(), // Timestamp of last template recalculation
+    totalJobsInAverage: v.number(), // How many completed jobs contributed to this average
+    confidenceScore: v.optional(v.number()), // 0-100 indicating data reliability
+
+    // Status
+    isActive: v.boolean(),
+    notes: v.optional(v.string()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_service_type", ["organizationId", "serviceType"])
+    .index("by_active", ["organizationId", "isActive"]),
+
+  // Loadouts - Tier 2: Operational engine (actual crew configurations)
   loadouts: defineTable({
     organizationId: v.id("organizations"),
     name: v.string(),
 
-    // NEW: Multiple service types this loadout can perform
-    serviceTypes: v.array(v.string()), // ["Forestry Mulching", "Land Clearing", "Brush Clearing"]
+    // Crew Configuration
+    assignedEmployees: v.array(v.object({
+      employeeId: v.id("employees"),
+      name: v.string(),
+      role: v.string(), // "Operator", "Ground Crew", "Climber", etc.
+      tier: v.number(),
+      hourlyRate: v.number(),
+      burdenMultiplier: v.number(), // Usually 1.7
+      trueCostPerHour: v.number(), // rate × multiplier
+    })),
 
-    // DEPRECATED: Legacy single service type (kept for backward compatibility)
-    serviceType: v.optional(v.string()),
+    // Equipment Configuration
+    assignedEquipment: v.array(v.object({
+      equipmentId: v.id("equipment"),
+      name: v.string(),
+      type: v.string(), // "Mulcher", "Truck", "Trailer", etc.
+      costPerHour: v.number(),
+    })),
 
-    equipmentIds: v.array(v.id("equipment")),
-    employeeIds: v.array(v.id("employees")),
+    // Total Costs
+    totalLaborCost: v.number(), // Sum of all employee true costs
+    totalEquipmentCost: v.number(), // Sum of all equipment costs
+    totalOverhead: v.optional(v.number()), // Additional overhead costs
+    baseCostPerHour: v.number(), // Total of all costs
 
-    // NEW: Service-specific production rates
-    productionRates: v.optional(v.object({
-      "Forestry Mulching": v.optional(v.number()),
+    // Service-Specific Production Rates (crew-specific PPH for each service they can perform)
+    productionRates: v.object({
+      "Forestry Mulching": v.optional(v.number()), // e.g., 1.4 PPH
       "Land Clearing": v.optional(v.number()),
       "Brush Clearing": v.optional(v.number()),
       "Stump Grinding": v.optional(v.number()),
       "Tree Removal": v.optional(v.number()),
       "Tree Trimming": v.optional(v.number()),
-    })),
+    }),
 
-    // DEPRECATED: Legacy single production rate (kept for backward compatibility)
-    productionRate: v.optional(v.number()), // PpH (Points per Hour)
+    // Operational Status
+    status: v.string(), // "Available", "On Job", "Maintenance", "Inactive"
+    currentProjectId: v.optional(v.id("projects")),
+    currentWorkOrderId: v.optional(v.id("workOrders")),
 
-    totalEquipmentCost: v.number(),
-    totalLaborCost: v.number(),
-    totalCostPerHour: v.number(),
-    // Pre-calculated billing rates at different margins
-    billingRates: v.object({
+    // Performance Tracking
+    totalJobsCompleted: v.optional(v.number()),
+    avgActualPPH: v.optional(v.number()), // Historical average actual PPH
+    avgProfitMargin: v.optional(v.number()), // Historical average margin
+
+    // DEPRECATED: Legacy fields (kept for backward compatibility)
+    serviceTypes: v.optional(v.array(v.string())),
+    serviceType: v.optional(v.string()),
+    productionRate: v.optional(v.number()),
+    totalCostPerHour: v.optional(v.number()),
+    equipmentIds: v.optional(v.array(v.id("equipment"))),
+    employeeIds: v.optional(v.array(v.id("employees"))),
+    billingRates: v.optional(v.object({
       margin30: v.number(),
       margin40: v.number(),
       margin50: v.number(),
       margin60: v.number(),
       margin70: v.number(),
-    }),
-    status: v.string(), // "Active", "Inactive"
+    })),
+
     createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index("by_organization", ["organizationId"])
-    .index("by_org_service", ["organizationId", "serviceType"]),
+    .index("by_status", ["organizationId", "status"])
+    .index("by_current_project", ["currentProjectId"]),
 
   // Customers
   customers: defineTable({
@@ -241,11 +311,68 @@ export default defineSchema({
     amountPaid: v.optional(v.number()),
     propertyAddress: v.string(),
     driveTimeMinutes: v.optional(v.number()),
+
+    // TWO-TIER SYSTEM: Work Score Tracking
+    baseScore: v.optional(v.number()), // Base score before AFISS (e.g., acres × DBH)
+    complexityMultiplier: v.optional(v.number()), // AFISS multiplier (1.0 - 2.5)
+    adjustedScore: v.optional(v.number()), // baseScore × complexityMultiplier
+    afissFactors: v.optional(v.array(v.string())),
+
+    // TWO-TIER SYSTEM: Tier 1 - Service Template Pricing (LOCKED at proposal)
+    serviceTemplateId: v.optional(v.id("serviceTemplates")),
+    standardPPH: v.optional(v.number()), // Snapshot from template
+    standardCostPerHour: v.optional(v.number()), // Snapshot from template
+    standardBillingRate: v.optional(v.number()), // Snapshot from template
+    estimatedHours: v.optional(v.number()), // adjustedScore ÷ standardPPH
+    estimatedCost: v.optional(v.number()), // estimatedHours × standardCostPerHour
+    clientPrice: v.optional(v.number()), // LOCKED: estimatedHours × standardBillingRate
+
+    // TWO-TIER SYSTEM: Tier 2 - Loadout Assignment (at work order creation)
+    assignedLoadoutId: v.optional(v.id("loadouts")),
+    loadoutPPH: v.optional(v.number()), // Crew-specific PPH
+    loadoutCostPerHour: v.optional(v.number()), // Crew-specific cost
+    projectedHours: v.optional(v.number()), // adjustedScore ÷ loadoutPPH
+    projectedCost: v.optional(v.number()), // projectedHours × loadoutCostPerHour
+    projectedProfit: v.optional(v.number()), // clientPrice - projectedCost
+    projectedMargin: v.optional(v.number()), // (projectedProfit / clientPrice) × 100
+
+    // TWO-TIER SYSTEM: Flex Resources (temporary additions)
+    flexEquipment: v.optional(v.array(v.object({
+      equipmentId: v.id("equipment"),
+      name: v.string(),
+      hours: v.number(),
+      costPerHour: v.number(),
+      totalCost: v.number(),
+    }))),
+    flexLabor: v.optional(v.array(v.object({
+      employeeId: v.id("employees"),
+      name: v.string(),
+      hours: v.number(),
+      costPerHour: v.number(),
+      totalCost: v.number(),
+    }))),
+
+    // TWO-TIER SYSTEM: Actuals (from job completion)
+    actualProductionHours: v.optional(v.number()), // Production time only (from time entries)
+    actualTotalHours: v.optional(v.number()), // Total time including transport, setup, etc.
+    actualPPH: v.optional(v.number()), // adjustedScore ÷ actualProductionHours
+    actualCost: v.optional(v.number()), // Total actual cost from time tracking
+    actualProfit: v.optional(v.number()), // clientPrice - actualCost
+    actualMargin: v.optional(v.number()), // (actualProfit / clientPrice) × 100
+
+    // TWO-TIER SYSTEM: Variance Tracking
+    hoursVariance: v.optional(v.number()), // actualTotalHours - estimatedHours
+    pphVariance: v.optional(v.number()), // actualPPH - standardPPH
+    costVariance: v.optional(v.number()), // actualCost - estimatedCost
+    profitVariance: v.optional(v.number()), // actualProfit - projectedProfit
+    marginVariance: v.optional(v.number()), // actualMargin - projectedMargin
+
+    // DEPRECATED: Legacy fields
     treeShopScore: v.optional(v.number()),
     afissMultiplier: v.optional(v.number()),
-    afissFactors: v.optional(v.array(v.string())),
-    notes: v.optional(v.string()),
     estimatedValue: v.optional(v.number()),
+
+    notes: v.optional(v.string()),
     // Locking (prevent edits after work order created)
     isLocked: v.optional(v.boolean()),
     lockedAt: v.optional(v.number()),
@@ -256,7 +383,9 @@ export default defineSchema({
     .index("by_organization", ["organizationId"])
     .index("by_org_status", ["organizationId", "status"])
     .index("by_org_customer", ["organizationId", "customerId"])
-    .index("by_customer", ["customerId"]),
+    .index("by_customer", ["customerId"])
+    .index("by_service_template", ["serviceTemplateId"])
+    .index("by_assigned_loadout", ["assignedLoadoutId"]),
 
   // Proposals
   proposals: defineTable({
@@ -514,7 +643,12 @@ export default defineSchema({
     loadoutId: v.optional(v.id("loadouts")),
     loadoutName: v.optional(v.string()), // Denormalized for reporting
 
-    // NEW: Activity Type System (for direct work orders)
+    // NEW: Task-Based Tracking System
+    taskDefinitionId: v.optional(v.id("taskDefinitions")), // Primary task tracking
+    taskName: v.optional(v.string()), // Denormalized: "Mulching", "Break/Lunch", etc.
+    taskCategory: v.optional(v.string()), // Denormalized: "Production", "Site Support", "General Support"
+
+    // Legacy Activity Type System (deprecated but kept for backward compatibility)
     activityTypeId: v.optional(v.id("activityTypes")),
     activityName: v.optional(v.string()), // Denormalized for reporting speed
 
@@ -524,6 +658,7 @@ export default defineSchema({
     activityDetail: v.optional(v.string()),
     billable: v.boolean(),
     isProduction: v.optional(v.boolean()), // NEW - track production vs support
+    countsForPPH: v.optional(v.boolean()), // NEW - Only Production tasks count for PPH calculations
 
     // Time Data
     startTime: v.number(),
@@ -586,9 +721,11 @@ export default defineSchema({
     .index("by_employee", ["employeeId"])
     .index("by_org_employee", ["organizationId", "employeeId"])
     .index("by_billable", ["organizationId", "billable"])
-    .index("by_activity_type", ["activityTypeId"]) // NEW
+    .index("by_task_definition", ["taskDefinitionId"]) // NEW - Primary task tracking
+    .index("by_activity_type", ["activityTypeId"]) // Legacy
     .index("by_status", ["organizationId", "status"]) // NEW
     .index("by_production", ["organizationId", "isProduction"]) // NEW
+    .index("by_counts_for_pph", ["organizationId", "countsForPPH"]) // NEW - Critical for PPH calculations
     .index("by_date", ["organizationId", "startTime"]) // NEW
     .index("by_employee_date", ["employeeId", "startTime"]), // NEW
 
@@ -789,6 +926,75 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_organization", ["organizationId"]),
+
+  // ============================================
+  // TWO-TIER SYSTEM: PERFORMANCE TRACKING
+  // ============================================
+
+  // Performance Records - Historical job performance for feedback loop
+  performanceRecords: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Job References
+    projectId: v.id("projects"),
+    workOrderId: v.optional(v.id("workOrders")),
+    proposalId: v.optional(v.id("proposals")),
+
+    // Service Details
+    serviceType: v.string(),
+    formulaUsed: v.string(), // "MulchingScore", "StumpScore", etc.
+
+    // Loadout Used
+    loadoutId: v.id("loadouts"),
+    loadoutName: v.string(),
+
+    // Work Score
+    baseScore: v.number(),
+    complexityMultiplier: v.number(),
+    adjustedScore: v.number(),
+    afissFactors: v.optional(v.array(v.string())),
+
+    // Time Performance
+    actualProductionHours: v.number(), // Production time only
+    actualTotalHours: v.number(), // Total including transport, setup, etc.
+    actualPPH: v.number(), // adjustedScore ÷ actualProductionHours
+
+    // Expected vs Actual PPH
+    standardPPH: v.number(), // From service template
+    loadoutPPH: v.number(), // From loadout
+    pphVariance: v.number(), // actualPPH - loadoutPPH
+    pphVariancePercent: v.number(), // (variance / loadoutPPH) × 100
+
+    // Cost Performance
+    actualCost: v.number(),
+    estimatedCost: v.number(),
+    costVariance: v.number(), // actualCost - estimatedCost
+
+    // Profit Performance
+    clientPrice: v.number(),
+    actualProfit: v.number(),
+    actualMargin: v.number(),
+    projectedProfit: v.number(),
+    projectedMargin: v.number(),
+
+    // Site Conditions (for ML)
+    driveTimeMinutes: v.optional(v.number()),
+    weatherCondition: v.optional(v.string()),
+    siteAccessDifficulty: v.optional(v.number()),
+
+    // Include in Calculations
+    includeInTemplateRecalc: v.boolean(), // Use for updating service templates
+    outlier: v.optional(v.boolean()), // Flag unusual performance
+    outlierReason: v.optional(v.string()),
+
+    completedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_service_type", ["organizationId", "serviceType"])
+    .index("by_loadout", ["organizationId", "loadoutId"])
+    .index("by_completed_date", ["organizationId", "completedAt"])
+    .index("by_include_in_recalc", ["organizationId", "includeInTemplateRecalc"]),
 
   // ============================================
   // ADVANCED DATA COLLECTION & ML TABLES
@@ -1342,6 +1548,36 @@ export default defineSchema({
   // ============================================
   // DIRECT WORK ORDER & TIME TRACKING SYSTEM
   // ============================================
+
+  // Task Definitions - Simplified 20-task system for mobile time tracking
+  taskDefinitions: defineTable({
+    organizationId: v.id("organizations"),
+
+    // Identity
+    taskName: v.string(), // "Mulching", "Break/Lunch", etc.
+    category: v.string(), // "Production", "Site Support", "General Support"
+
+    // Task Type Flags
+    isFieldTask: v.boolean(), // true for Production/Site Support, false for General Support
+    isBillable: v.boolean(), // Used in PPH calculations and billing
+    countsForPPH: v.boolean(), // Only Production tasks count for PPH
+
+    // Display & UX
+    icon: v.optional(v.string()), // Material-UI icon name or emoji
+    color: v.optional(v.string()), // Hex color for UI
+    description: v.optional(v.string()),
+    sortOrder: v.number(), // UI display order
+
+    // Status
+    isActive: v.boolean(),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_category", ["organizationId", "category"])
+    .index("by_active", ["organizationId", "isActive"])
+    .index("by_field_task", ["organizationId", "isFieldTask"]),
 
   // Activity Types - Master list of all trackable activities
   activityTypes: defineTable({

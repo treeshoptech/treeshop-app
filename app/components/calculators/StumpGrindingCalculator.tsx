@@ -16,6 +16,7 @@ import {
   Stack,
   TextField,
   Typography,
+  Alert,
 } from "@mui/material";
 import { Delete as DeleteIcon, Add as AddIcon } from "@mui/icons-material";
 import {
@@ -28,6 +29,8 @@ import {
   formatHours,
   type StumpInput,
 } from "@/lib/scoring-formulas";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 // Service-specific Terms & Conditions
 const STUMP_GRINDING_TERMS = [
@@ -78,7 +81,6 @@ export default function StumpGrindingCalculator({
   driveTimeMinutes = 30,
   onLineItemCreate,
 }: StumpGrindingCalculatorProps) {
-  const [selectedLoadoutId, setSelectedLoadoutId] = useState<string>(defaultLoadout?._id || loadouts?.[0]?._id || "");
   const [stumps, setStumps] = useState<StumpEntry[]>([
     {
       id: crypto.randomUUID(),
@@ -93,7 +95,10 @@ export default function StumpGrindingCalculator({
     },
   ]);
 
-  const loadout = loadouts?.find(l => l._id === selectedLoadoutId) || defaultLoadout;
+  // TWO-TIER SYSTEM: Fetch service template for Stump Grinding
+  const serviceTemplate = useQuery(api.serviceTemplates.getByServiceType, {
+    serviceType: "Stump Grinding"
+  });
 
   const addStump = () => {
     setStumps([
@@ -122,56 +127,64 @@ export default function StumpGrindingCalculator({
     setStumps(stumps.map((s) => (s.id === id ? { ...s, ...updates } : s)));
   };
 
-  // Calculate score
+  // TWO-TIER SYSTEM: Calculate work score
   const scoreResult = calculateStumpScore(stumps);
+  const { baseScore, complexityMultiplier, adjustedScore } = scoreResult;
 
-  // Calculate time estimate if loadout provided
-  const timeEstimate = loadout
-    ? calculateTimeEstimate({
-        adjustedScore: scoreResult.adjustedScore,
-        productionRatePPH: loadout.productionRate,
-        driveTimeMinutes,
-        transportRate: TRANSPORT_RATES["Stump Grinding"],
-        minimumHours: MINIMUM_HOURS["Stump Grinding"],
-      })
+  // TWO-TIER SYSTEM: Calculate estimated hours using SERVICE TEMPLATE
+  const estimatedHours = serviceTemplate && serviceTemplate.standardPPH > 0
+    ? Math.max(adjustedScore / serviceTemplate.standardPPH, MINIMUM_HOURS["Stump Grinding"] || 2)
     : null;
 
-  // Calculate pricing if loadout provided
-  const pricing = loadout && timeEstimate
-    ? calculatePricing({
-        totalEstimatedHours: timeEstimate.totalEstimatedHours,
-        costPerHour: loadout.totalCostPerHour,
-        targetMargin: 0.50,
-      })
+  // TWO-TIER SYSTEM: Calculate client price using SERVICE TEMPLATE (LOCKED at proposal)
+  const clientPrice = estimatedHours && serviceTemplate
+    ? estimatedHours * serviceTemplate.standardBillingRate
+    : null;
+
+  // TWO-TIER SYSTEM: Calculate estimated cost using SERVICE TEMPLATE
+  const estimatedCost = estimatedHours && serviceTemplate
+    ? estimatedHours * serviceTemplate.standardCostPerHour
+    : null;
+
+  // TWO-TIER SYSTEM: Calculate projected profit
+  const projectedProfit = clientPrice && estimatedCost
+    ? clientPrice - estimatedCost
+    : null;
+
+  const projectedMargin = projectedProfit && clientPrice
+    ? (projectedProfit / clientPrice) * 100
     : null;
 
   const handleCreateLineItem = () => {
-    if (!loadout || !timeEstimate || !pricing) return;
+    if (!serviceTemplate || !estimatedHours || !clientPrice) return;
 
     const lineItemData = {
+      // TWO-TIER SYSTEM: Service identification
       serviceType: "Stump Grinding",
-      description: `${stumps.length} stump${stumps.length > 1 ? "s" : ""} - ${scoreResult.adjustedScore} points`,
-      formulaUsed: scoreResult.formulaUsed,
+      formulaUsed: "StumpScore",
+      description: `${stumps.length} stump${stumps.length > 1 ? "s" : ""} - ${adjustedScore.toFixed(0)} StumpScore points`,
+
+      // TWO-TIER SYSTEM: Work volume and scoring
       workVolumeInputs: scoreResult.workVolumeInputs,
-      baseScore: scoreResult.baseScore,
-      complexityMultiplier: scoreResult.complexityMultiplier,
-      adjustedScore: scoreResult.adjustedScore,
+      baseScore,
+      complexityMultiplier,
+      adjustedScore,
+
+      // TWO-TIER SYSTEM: Service template (Tier 1 - LOCKED pricing)
+      serviceTemplateId: serviceTemplate._id,
+      standardPPH: serviceTemplate.standardPPH,
+      standardCostPerHour: serviceTemplate.standardCostPerHour,
+      standardBillingRate: serviceTemplate.standardBillingRate,
+      estimatedHours,
+      estimatedCost,
+      clientPrice, // LOCKED - does not change with loadout assignment
+
+      // TWO-TIER SYSTEM: Projected profitability
+      projectedProfit,
+      projectedMargin,
+
+      // Terms & Conditions
       termsAndConditions: STUMP_GRINDING_TERMS,
-      loadoutId: loadout._id,
-      loadoutName: loadout.name,
-      productionRatePPH: loadout.productionRate,
-      costPerHour: loadout.totalCostPerHour,
-      billingRatePerHour: pricing.totalPrice / timeEstimate.totalEstimatedHours,
-      targetMargin: 0.50,
-      productionHours: timeEstimate.productionHours,
-      transportHours: timeEstimate.transportHours,
-      bufferHours: timeEstimate.bufferHours,
-      totalEstimatedHours: timeEstimate.totalEstimatedHours,
-      pricingMethod: pricing.pricingMethod,
-      totalCost: pricing.totalCost,
-      totalPrice: pricing.totalPrice,
-      profit: pricing.profit,
-      marginPercent: pricing.marginPercent,
     };
 
     onLineItemCreate?.(lineItemData);
@@ -179,27 +192,21 @@ export default function StumpGrindingCalculator({
 
   return (
     <Stack spacing={2}>
-      {/* Loadout Selection */}
-      {loadouts && loadouts.length > 0 && (
-        <Box>
-          <Typography variant="subtitle2" gutterBottom>
-            Select Equipment Loadout
+      {/* TWO-TIER SYSTEM: Service Template Status */}
+      {!serviceTemplate && (
+        <Alert severity="warning">
+          No service template found for Stump Grinding. Please set up a service template first.
+        </Alert>
+      )}
+
+      {serviceTemplate && (
+        <Alert severity="info">
+          Using company standard: {serviceTemplate.standardPPH} PPH @ {formatCurrency(serviceTemplate.standardBillingRate)}/hr
+          <br />
+          <Typography variant="caption">
+            Price is based on company-wide averages and will be locked when proposal is created.
           </Typography>
-          <FormControl fullWidth>
-            <InputLabel>Loadout</InputLabel>
-            <Select
-              value={selectedLoadoutId}
-              label="Loadout"
-              onChange={(e) => setSelectedLoadoutId(e.target.value)}
-            >
-              {loadouts.map((l) => (
-                <MenuItem key={l._id} value={l._id}>
-                  {l.name} - {l.productionRate} PpH @ {formatCurrency(l.totalCostPerHour)}/hr
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+        </Alert>
       )}
 
       {/* Stumps */}
@@ -292,31 +299,73 @@ export default function StumpGrindingCalculator({
         Add Another Stump
       </Button>
 
-      {/* Results Summary */}
-      <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
-        <Typography variant="body2" color="text.secondary">
-          Total StumpScore: <strong>{scoreResult.adjustedScore}</strong>
-        </Typography>
-        {timeEstimate && (
-          <Typography variant="body2" color="text.secondary">
-            Estimated Time: <strong>{formatHours(timeEstimate.totalEstimatedHours)}</strong>
+      {/* TWO-TIER SYSTEM: Results Summary */}
+      {!serviceTemplate ? (
+        <Paper sx={{ p: 2, bgcolor: 'error.dark' }}>
+          <Typography variant="body2" color="error.light">
+            ⚠️ No service template configured. Please set up Stump Grinding template first.
           </Typography>
-        )}
-        {pricing && (
-          <Typography variant="body1" color="primary" sx={{ mt: 1 }}>
-            Price: <strong>{formatCurrency(pricing.totalPrice)}</strong>
-          </Typography>
-        )}
-      </Box>
+        </Paper>
+      ) : (
+        <>
+          <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Work Score Calculation
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Base Score: <strong>{baseScore.toFixed(0)} SS</strong> ({stumps.length} stump{stumps.length > 1 ? 's' : ''})
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Complexity Multiplier: <strong>{complexityMultiplier.toFixed(2)}x</strong>
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Adjusted Score: <strong>{adjustedScore.toFixed(0)} SS</strong>
+            </Typography>
 
-      {loadout && (
-        <Button
-          variant="contained"
-          onClick={handleCreateLineItem}
-          fullWidth
-        >
-          Add to Proposal
-        </Button>
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle2" gutterBottom>
+              Pricing (Company Standard)
+            </Typography>
+            {estimatedHours && (
+              <Typography variant="body2" color="text.secondary">
+                Estimated Hours: <strong>{formatHours(estimatedHours)}</strong>
+                <Typography variant="caption" display="block">
+                  ({adjustedScore.toFixed(0)} ÷ {serviceTemplate.standardPPH} PPH, min {MINIMUM_HOURS["Stump Grinding"] || 2}hrs)
+                </Typography>
+              </Typography>
+            )}
+            {estimatedCost && (
+              <Typography variant="body2" color="text.secondary">
+                Estimated Cost: <strong>{formatCurrency(estimatedCost)}</strong>
+              </Typography>
+            )}
+            {clientPrice && (
+              <>
+                <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
+                  Client Price: <strong>{formatCurrency(clientPrice)}</strong>
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  🔒 Locked price - won't change with crew assignment
+                </Typography>
+              </>
+            )}
+            {projectedMargin && (
+              <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                Target Margin: <strong>{projectedMargin.toFixed(1)}%</strong>
+              </Typography>
+            )}
+          </Box>
+
+          <Button
+            variant="contained"
+            onClick={handleCreateLineItem}
+            fullWidth
+            disabled={!clientPrice}
+          >
+            Add to Proposal
+          </Button>
+        </>
       )}
     </Stack>
   );

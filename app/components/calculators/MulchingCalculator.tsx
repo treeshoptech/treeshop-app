@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -16,6 +16,7 @@ import {
   Stack,
   TextField,
   Typography,
+  Alert,
 } from "@mui/material";
 import {
   calculateMulchingScore,
@@ -26,6 +27,8 @@ import {
   formatHours,
 } from "@/lib/scoring-formulas";
 import { AfissSelector, AfissCategory } from "./AfissSelector";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface MulchingCalculatorProps {
   loadout?: {
@@ -133,6 +136,11 @@ export default function MulchingCalculator({
   const [selectedAfissFactors, setSelectedAfissFactors] = useState<string[]>([]);
   const [selectedLoadoutId, setSelectedLoadoutId] = useState<string>(defaultLoadout?._id || loadouts?.[0]?._id || "");
 
+  // TWO-TIER SYSTEM: Fetch service template for Forestry Mulching
+  const serviceTemplate = useQuery(api.serviceTemplates.getByServiceType, {
+    serviceType: "Forestry Mulching"
+  });
+
   // Get active loadout based on selection
   const loadout = loadouts?.find(l => l._id === selectedLoadoutId) || defaultLoadout;
 
@@ -160,81 +168,81 @@ export default function MulchingCalculator({
 
   const { productionMultiplier, timeMultiplier } = calculateAfissImpacts();
 
-  // Base score (NOT affected by AFISS - property doesn't change)
+  // TWO-TIER SYSTEM: Calculate base score (property measurement - NOT affected by AFISS)
   const baseScore = acres * dbhPackage;
 
-  // Calculate work hours ONLY (no transport/buffer per line item)
-  const timeEstimate = loadout
-    ? (() => {
-        // Step 1: Apply production impact to production rate
-        const adjustedProductionRate = loadout.productionRate * productionMultiplier;
+  // TWO-TIER SYSTEM: Apply AFISS complexity multiplier
+  const adjustedScore = baseScore * productionMultiplier * timeMultiplier;
 
-        // Step 2: Calculate work hours with adjusted rate
-        const workHours = baseScore / adjustedProductionRate;
-
-        // Step 3: Apply AFISS time overhead multiplier
-        const timeOverheadHours = workHours * (1 - timeMultiplier); // Negative becomes positive
-
-        const totalWorkHours = workHours + timeOverheadHours;
-
-        return {
-          workHours,
-          timeOverheadHours,
-          totalWorkHours,
-          adjustedProductionRate,
-        };
-      })()
+  // TWO-TIER SYSTEM: Calculate estimated hours using SERVICE TEMPLATE
+  const estimatedHours = serviceTemplate && serviceTemplate.standardPPH > 0
+    ? adjustedScore / serviceTemplate.standardPPH
     : null;
 
-  // Calculate line item cost ONLY (no transport/buffer)
-  const pricing = loadout && timeEstimate
-    ? calculatePricing({
-        totalEstimatedHours: timeEstimate.totalWorkHours,
-        costPerHour: loadout.totalCostPerHour,
-        targetMargin: 0.50, // 50% margin as decimal
-      })
+  // TWO-TIER SYSTEM: Calculate client price using SERVICE TEMPLATE (LOCKED at proposal)
+  const clientPrice = estimatedHours && serviceTemplate
+    ? estimatedHours * serviceTemplate.standardBillingRate
+    : null;
+
+  // TWO-TIER SYSTEM: Calculate estimated cost using SERVICE TEMPLATE
+  const estimatedCost = estimatedHours && serviceTemplate
+    ? estimatedHours * serviceTemplate.standardCostPerHour
+    : null;
+
+  // TWO-TIER SYSTEM: Calculate projected profit
+  const projectedProfit = clientPrice && estimatedCost
+    ? clientPrice - estimatedCost
+    : null;
+
+  const projectedMargin = projectedProfit && clientPrice
+    ? (projectedProfit / clientPrice) * 100
     : null;
 
   const handleCreateLineItem = () => {
-    if (!loadout || !timeEstimate || !pricing) return;
+    if (!serviceTemplate || !estimatedHours || !clientPrice) return;
 
     // Get selected factor details for documentation
     const selectedFactorDetails = AFISS_CATEGORIES.flatMap((cat) =>
       cat.factors.filter((f) => selectedAfissFactors.includes(f.id))
     );
 
-    const adjustedScore = baseScore * productionMultiplier * timeMultiplier;
+    const complexityMultiplier = productionMultiplier * timeMultiplier;
 
     const lineItemData = {
+      // TWO-TIER SYSTEM: Service identification
       serviceType: "Forestry Mulching",
+      formulaUsed: "MulchingScore",
       description: `${acres.toFixed(2)} acres, ${dbhPackage}" DBH package${selectedFactorDetails.length > 0 ? ` (${selectedFactorDetails.length} AFISS factors)` : ""}`,
-      formulaUsed: `TreeShop Score = ${acres.toFixed(2)} acres × ${dbhPackage}" DBH${productionMultiplier !== 1 || timeMultiplier !== 1 ? ` × ${(productionMultiplier * timeMultiplier).toFixed(2)} AFISS` : ""}`,
+
+      // TWO-TIER SYSTEM: Work volume and scoring
       workVolumeInputs: { acres, dbhPackage },
-      baseScore: baseScore,
-      complexityMultiplier: productionMultiplier * timeMultiplier,
-      adjustedScore: adjustedScore,
-      termsAndConditions: MULCHING_TERMS,
+      baseScore,
+      complexityMultiplier,
+      adjustedScore,
+
+      // TWO-TIER SYSTEM: AFISS factors
       afissFactors: selectedFactorDetails.map((f) => ({
         id: f.id,
         label: f.label,
         impactType: f.impactType,
         impactPercent: f.impactPercent,
       })),
-      loadoutId: loadout._id,
-      loadoutName: loadout.name,
-      productionRatePPH: loadout.productionRate,
-      adjustedProductionRate: timeEstimate.adjustedProductionRate,
-      costPerHour: loadout.totalCostPerHour,
-      billingRatePerHour: pricing.totalPrice / timeEstimate.totalWorkHours,
-      targetMargin: 0.50,
-      workHours: timeEstimate.workHours,
-      timeOverheadHours: timeEstimate.timeOverheadHours,
-      totalWorkHours: timeEstimate.totalWorkHours,
-      pricingMethod: pricing.pricingMethod,
-      lineItemCost: pricing.totalCost,
-      lineItemPrice: pricing.totalPrice,
-      profit: pricing.profit,
-      marginPercent: pricing.marginPercent,
+
+      // TWO-TIER SYSTEM: Service template (Tier 1 - LOCKED pricing)
+      serviceTemplateId: serviceTemplate._id,
+      standardPPH: serviceTemplate.standardPPH,
+      standardCostPerHour: serviceTemplate.standardCostPerHour,
+      standardBillingRate: serviceTemplate.standardBillingRate,
+      estimatedHours,
+      estimatedCost,
+      clientPrice, // LOCKED - does not change with loadout assignment
+
+      // TWO-TIER SYSTEM: Projected profitability
+      projectedProfit,
+      projectedMargin,
+
+      // Terms & Conditions
+      termsAndConditions: MULCHING_TERMS,
     };
 
     onLineItemCreate?.(lineItemData);
@@ -242,27 +250,21 @@ export default function MulchingCalculator({
 
   return (
     <Stack spacing={3}>
-      {/* Loadout Selection */}
-      {loadouts && loadouts.length > 0 && (
-        <Box>
-          <Typography variant="subtitle2" gutterBottom>
-            Select Equipment Loadout
+      {/* TWO-TIER SYSTEM: Service Template Status */}
+      {!serviceTemplate && (
+        <Alert severity="warning">
+          No service template found for Forestry Mulching. Please set up a service template first.
+        </Alert>
+      )}
+
+      {serviceTemplate && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Using company standard: {serviceTemplate.standardPPH} PPH @ {formatCurrency(serviceTemplate.standardBillingRate)}/hr
+          <br />
+          <Typography variant="caption">
+            Price is based on company-wide averages and will be locked when proposal is created.
           </Typography>
-          <FormControl fullWidth>
-            <InputLabel>Loadout</InputLabel>
-            <Select
-              value={selectedLoadoutId}
-              label="Loadout"
-              onChange={(e) => setSelectedLoadoutId(e.target.value)}
-            >
-              {loadouts.map((l) => (
-                <MenuItem key={l._id} value={l._id}>
-                  {l.name} - {l.productionRate} PpH @ {formatCurrency(l.totalCostPerHour)}/hr
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+        </Alert>
       )}
 
       {/* Project Acreage */}
@@ -373,32 +375,62 @@ export default function MulchingCalculator({
         onFactorsChange={setSelectedAfissFactors}
       />
 
-      {/* Results Summary */}
-      {!loadout ? (
+      {/* TWO-TIER SYSTEM: Results Summary */}
+      {!serviceTemplate ? (
         <Paper sx={{ p: 2, bgcolor: 'error.dark' }}>
           <Typography variant="body2" color="error.light">
-            ⚠️ Please select a loadout to see pricing and time estimates.
+            ⚠️ No service template configured. Please set up Forestry Mulching template first.
           </Typography>
         </Paper>
       ) : (
         <>
           <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Work Score Calculation
+            </Typography>
             <Typography variant="body2" color="text.secondary">
-              Mulching Score: <strong>{baseScore.toFixed(1)} points</strong>
+              Base Score: <strong>{baseScore.toFixed(1)} MS</strong> ({acres.toFixed(2)} acres × {dbhPackage}" DBH)
             </Typography>
-            {timeEstimate && (
+            <Typography variant="body2" color="text.secondary">
+              AFISS Multiplier: <strong>{(productionMultiplier * timeMultiplier).toFixed(2)}x</strong>
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Adjusted Score: <strong>{adjustedScore.toFixed(1)} MS</strong>
+            </Typography>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle2" gutterBottom>
+              Pricing (Company Standard)
+            </Typography>
+            {estimatedHours && (
               <Typography variant="body2" color="text.secondary">
-                Work Hours: <strong>{formatHours(timeEstimate.totalWorkHours)}</strong>
+                Estimated Hours: <strong>{formatHours(estimatedHours)}</strong>
+                <Typography variant="caption" display="block">
+                  ({adjustedScore.toFixed(1)} ÷ {serviceTemplate.standardPPH} PPH)
+                </Typography>
               </Typography>
             )}
-            {pricing && (
-              <Typography variant="body1" color="primary" sx={{ mt: 1 }}>
-                Line Item: <strong>{formatCurrency(pricing.totalPrice)}</strong>
+            {estimatedCost && (
+              <Typography variant="body2" color="text.secondary">
+                Estimated Cost: <strong>{formatCurrency(estimatedCost)}</strong>
               </Typography>
             )}
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              Transport & buffer calculated at proposal level
-            </Typography>
+            {clientPrice && (
+              <>
+                <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
+                  Client Price: <strong>{formatCurrency(clientPrice)}</strong>
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  🔒 Locked price - won't change with crew assignment
+                </Typography>
+              </>
+            )}
+            {projectedMargin && (
+              <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                Target Margin: <strong>{projectedMargin.toFixed(1)}%</strong>
+              </Typography>
+            )}
           </Box>
 
           <Button
@@ -406,6 +438,7 @@ export default function MulchingCalculator({
             onClick={handleCreateLineItem}
             fullWidth
             size="large"
+            disabled={!clientPrice}
           >
             Add to Proposal
           </Button>
