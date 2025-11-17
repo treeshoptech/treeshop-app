@@ -1,32 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Divider,
-  FormControl,
   Grid,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   Stack,
   TextField,
   Typography,
   Alert,
 } from "@mui/material";
-import {
-  calculateMulchingScore,
-  calculateTimeEstimate,
-  calculatePricing,
-  TRANSPORT_RATES,
-  formatCurrency,
-  formatHours,
-} from "@/lib/scoring-formulas";
-import { AfissSelector, AfissCategory } from "./AfissSelector";
+import { formatCurrency, formatHours } from "@/lib/scoring-formulas";
+import { AfissSelector } from "./AfissSelector";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -77,53 +64,6 @@ const MULCHING_TERMS = [
   "Property boundaries must be clearly marked before work begins",
 ];
 
-// AFISS Factor Database for Forestry Mulching
-const AFISS_CATEGORIES: AfissCategory[] = [
-  {
-    id: "access",
-    name: "ACCESS",
-    factors: [
-      { id: "narrow-gate", label: "Narrow gate (<8 ft)", impactType: "time", impactPercent: -12 },
-      { id: "no-equipment-access", label: "No equipment access (hand-carry)", impactType: "production", impactPercent: -50 },
-      { id: "soft-ground", label: "Soft/muddy ground", impactType: "production", impactPercent: -15 },
-      { id: "steep-slope", label: "Steep slope (>15°)", impactType: "production", impactPercent: -20 },
-      { id: "long-drive", label: "Long drive (>2 hrs one-way)", impactType: "time", impactPercent: -10 },
-    ],
-  },
-  {
-    id: "facilities",
-    name: "FACILITIES",
-    factors: [
-      { id: "power-lines-touching", label: "Power lines in work area", impactType: "time", impactPercent: -30 },
-      { id: "power-lines-nearby", label: "Power lines nearby (<10 ft)", impactType: "time", impactPercent: -15 },
-      { id: "building-nearby", label: "Building within 50 ft", impactType: "time", impactPercent: -20 },
-      { id: "pool-nearby", label: "Pool or high-value target", impactType: "time", impactPercent: -30 },
-      { id: "utilities-in-zone", label: "Utilities in work zone", impactType: "time", impactPercent: -15 },
-    ],
-  },
-  {
-    id: "site",
-    name: "SITE CONDITIONS",
-    factors: [
-      { id: "wetlands", label: "Wetlands in work area", impactType: "production", impactPercent: -20 },
-      { id: "rocky-ground", label: "Rocky ground", impactType: "production", impactPercent: -15 },
-      { id: "protected-habitat", label: "Protected species habitat", impactType: "time", impactPercent: -30 },
-      { id: "steep-terrain", label: "Steep terrain", impactType: "production", impactPercent: -20 },
-      { id: "dense-undergrowth", label: "Dense undergrowth", impactType: "production", impactPercent: -15 },
-    ],
-  },
-  {
-    id: "safety",
-    name: "SAFETY",
-    factors: [
-      { id: "high-voltage", label: "High voltage lines", impactType: "time", impactPercent: -50 },
-      { id: "confined-space", label: "Confined space work", impactType: "time", impactPercent: -25 },
-      { id: "emergency-hazard", label: "Emergency/hazard situation", impactType: "time", impactPercent: -30 },
-      { id: "near-public-road", label: "Near public roads", impactType: "time", impactPercent: -10 },
-    ],
-  },
-];
-
 export default function MulchingCalculator({
   loadout: defaultLoadout,
   loadouts,
@@ -141,38 +81,21 @@ export default function MulchingCalculator({
     serviceType: "Forestry Mulching"
   });
 
+  // Fetch AFISS multiplier calculation
+  const multiplierResult = useQuery(
+    api.afissFactors.calculateMultiplier,
+    { factorIds: selectedAfissFactors }
+  );
+
   // Get active loadout based on selection
   const loadout = loadouts?.find(l => l._id === selectedLoadoutId) || defaultLoadout;
-
-  // Calculate AFISS impacts - TWO SEPARATE TYPES
-  const calculateAfissImpacts = () => {
-    let productionMultiplier = 1.0; // Affects production rate (machine speed)
-    let timeMultiplier = 1.0; // Affects total time (overhead/safety)
-
-    AFISS_CATEGORIES.forEach((category) => {
-      category.factors.forEach((factor) => {
-        if (selectedAfissFactors.includes(factor.id)) {
-          if (factor.impactType === "production") {
-            // Production impacts compound (multiple terrain issues multiply)
-            productionMultiplier *= 1 + factor.impactPercent / 100;
-          } else if (factor.impactType === "time") {
-            // Time impacts compound (multiple safety concerns multiply)
-            timeMultiplier *= 1 + factor.impactPercent / 100;
-          }
-        }
-      });
-    });
-
-    return { productionMultiplier, timeMultiplier };
-  };
-
-  const { productionMultiplier, timeMultiplier } = calculateAfissImpacts();
 
   // TWO-TIER SYSTEM: Calculate base score (property measurement - NOT affected by AFISS)
   const baseScore = acres * dbhPackage;
 
-  // TWO-TIER SYSTEM: Apply AFISS complexity multiplier
-  const adjustedScore = baseScore * productionMultiplier * timeMultiplier;
+  // TWO-TIER SYSTEM: Apply AFISS complexity multiplier from database
+  const complexityMultiplier = multiplierResult?.multiplier || 1.0;
+  const adjustedScore = baseScore * complexityMultiplier;
 
   // TWO-TIER SYSTEM: Calculate estimated hours using SERVICE TEMPLATE
   const estimatedHours = serviceTemplate && serviceTemplate.standardPPH > 0
@@ -199,20 +122,13 @@ export default function MulchingCalculator({
     : null;
 
   const handleCreateLineItem = () => {
-    if (!serviceTemplate || !estimatedHours || !clientPrice) return;
-
-    // Get selected factor details for documentation
-    const selectedFactorDetails = AFISS_CATEGORIES.flatMap((cat) =>
-      cat.factors.filter((f) => selectedAfissFactors.includes(f.id))
-    );
-
-    const complexityMultiplier = productionMultiplier * timeMultiplier;
+    if (!serviceTemplate || !estimatedHours || !clientPrice || !multiplierResult) return;
 
     const lineItemData = {
       // TWO-TIER SYSTEM: Service identification
       serviceType: "Forestry Mulching",
       formulaUsed: "MulchingScore",
-      description: `${acres.toFixed(2)} acres, ${dbhPackage}" DBH package${selectedFactorDetails.length > 0 ? ` (${selectedFactorDetails.length} AFISS factors)` : ""}`,
+      description: `${acres.toFixed(2)} acres, ${dbhPackage}" DBH package${selectedAfissFactors.length > 0 ? ` (${selectedAfissFactors.length} AFISS factors)` : ""}`,
 
       // TWO-TIER SYSTEM: Work volume and scoring
       workVolumeInputs: { acres, dbhPackage },
@@ -220,12 +136,13 @@ export default function MulchingCalculator({
       complexityMultiplier,
       adjustedScore,
 
-      // TWO-TIER SYSTEM: AFISS factors
-      afissFactors: selectedFactorDetails.map((f) => ({
+      // TWO-TIER SYSTEM: AFISS factors (save factorIds for later reference)
+      afissFactorIds: selectedAfissFactors,
+      afissFactors: multiplierResult.factorsApplied.map((f: any) => ({
         id: f.id,
-        label: f.label,
-        impactType: f.impactType,
-        impactPercent: f.impactPercent,
+        name: f.name,
+        impact: f.impact,
+        category: f.category,
       })),
 
       // TWO-TIER SYSTEM: Service template (Tier 1 - LOCKED pricing)
@@ -236,6 +153,12 @@ export default function MulchingCalculator({
       estimatedHours,
       estimatedCost,
       clientPrice, // LOCKED - does not change with loadout assignment
+
+      // For display in proposal
+      totalWorkHours: estimatedHours,
+      totalEstimatedHours: estimatedHours,
+      lineItemPrice: clientPrice,
+      totalPrice: clientPrice,
 
       // TWO-TIER SYSTEM: Projected profitability
       projectedProfit,
@@ -374,10 +297,12 @@ export default function MulchingCalculator({
         </Grid>
       </Box>
 
+      {/* AFISS Factor Selector - Database Driven */}
       <AfissSelector
-        categories={AFISS_CATEGORIES}
-        selectedFactors={selectedAfissFactors}
+        serviceType="Forestry Mulching"
+        selectedFactorIds={selectedAfissFactors}
         onFactorsChange={setSelectedAfissFactors}
+        showMultiplier={true}
       />
 
       {/* TWO-TIER SYSTEM: Results Summary */}
@@ -397,7 +322,12 @@ export default function MulchingCalculator({
               Base Score: <strong>{baseScore.toFixed(1)} MS</strong> ({acres.toFixed(2)} acres × {dbhPackage}" DBH)
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              AFISS Multiplier: <strong>{(productionMultiplier * timeMultiplier).toFixed(2)}x</strong>
+              AFISS Multiplier: <strong>{complexityMultiplier.toFixed(2)}x</strong>
+              {multiplierResult && multiplierResult.totalImpactPercent !== 0 && (
+                <Typography component="span" variant="caption" sx={{ ml: 1 }}>
+                  ({multiplierResult.totalImpactPercent > 0 ? '+' : ''}{multiplierResult.totalImpactPercent}%)
+                </Typography>
+              )}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Adjusted Score: <strong>{adjustedScore.toFixed(1)} MS</strong>

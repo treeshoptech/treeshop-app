@@ -21,14 +21,13 @@ import {
 import { Delete as DeleteIcon, Add as AddIcon } from "@mui/icons-material";
 import {
   calculateStumpScore,
-  calculateTimeEstimate,
-  calculatePricing,
   TRANSPORT_RATES,
   MINIMUM_HOURS,
   formatCurrency,
   formatHours,
   type StumpInput,
 } from "@/lib/scoring-formulas";
+import { AfissSelector } from "./AfissSelector";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -94,11 +93,18 @@ export default function StumpGrindingCalculator({
       tightSpace: false,
     },
   ]);
+  const [selectedAfissFactors, setSelectedAfissFactors] = useState<string[]>([]);
 
   // TWO-TIER SYSTEM: Fetch service template for Stump Grinding
   const serviceTemplate = useQuery(api.serviceTemplates.getByServiceType, {
     serviceType: "Stump Grinding"
   });
+
+  // Fetch AFISS multiplier calculation
+  const multiplierResult = useQuery(
+    api.afissFactors.calculateMultiplier,
+    { factorIds: selectedAfissFactors }
+  );
 
   const addStump = () => {
     setStumps([
@@ -127,9 +133,14 @@ export default function StumpGrindingCalculator({
     setStumps(stumps.map((s) => (s.id === id ? { ...s, ...updates } : s)));
   };
 
-  // TWO-TIER SYSTEM: Calculate work score
+  // TWO-TIER SYSTEM: Calculate work score (includes stump-specific modifiers)
   const scoreResult = calculateStumpScore(stumps);
-  const { baseScore, complexityMultiplier, adjustedScore } = scoreResult;
+  const { baseScore, complexityMultiplier: stumpMultiplier, adjustedScore: stumpAdjustedScore } = scoreResult;
+
+  // Apply AFISS site complexity multiplier on top of stump modifiers
+  const afissMultiplier = multiplierResult?.multiplier || 1.0;
+  const finalComplexityMultiplier = stumpMultiplier * afissMultiplier;
+  const adjustedScore = baseScore * finalComplexityMultiplier;
 
   // TWO-TIER SYSTEM: Calculate estimated hours using SERVICE TEMPLATE
   const estimatedHours = serviceTemplate && serviceTemplate.standardPPH > 0
@@ -156,19 +167,28 @@ export default function StumpGrindingCalculator({
     : null;
 
   const handleCreateLineItem = () => {
-    if (!serviceTemplate || !estimatedHours || !clientPrice) return;
+    if (!serviceTemplate || !estimatedHours || !clientPrice || !multiplierResult) return;
 
     const lineItemData = {
       // TWO-TIER SYSTEM: Service identification
       serviceType: "Stump Grinding",
       formulaUsed: "StumpScore",
-      description: `${stumps.length} stump${stumps.length > 1 ? "s" : ""} - ${adjustedScore.toFixed(0)} StumpScore points`,
+      description: `${stumps.length} stump${stumps.length > 1 ? "s" : ""} - ${adjustedScore.toFixed(0)} StumpScore points${selectedAfissFactors.length > 0 ? ` (${selectedAfissFactors.length} AFISS factors)` : ""}`,
 
       // TWO-TIER SYSTEM: Work volume and scoring
       workVolumeInputs: scoreResult.workVolumeInputs,
       baseScore,
-      complexityMultiplier,
+      complexityMultiplier: finalComplexityMultiplier,
       adjustedScore,
+
+      // TWO-TIER SYSTEM: AFISS factors (save factorIds for later reference)
+      afissFactorIds: selectedAfissFactors,
+      afissFactors: multiplierResult.factorsApplied.map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        impact: f.impact,
+        category: f.category,
+      })),
 
       // TWO-TIER SYSTEM: Service template (Tier 1 - LOCKED pricing)
       serviceTemplateId: serviceTemplate._id,
@@ -178,6 +198,12 @@ export default function StumpGrindingCalculator({
       estimatedHours,
       estimatedCost,
       clientPrice, // LOCKED - does not change with loadout assignment
+
+      // For display in proposal
+      totalWorkHours: estimatedHours,
+      totalEstimatedHours: estimatedHours,
+      lineItemPrice: clientPrice,
+      totalPrice: clientPrice,
 
       // TWO-TIER SYSTEM: Projected profitability
       projectedProfit,
@@ -304,6 +330,14 @@ export default function StumpGrindingCalculator({
         Add Another Stump
       </Button>
 
+      {/* AFISS Factor Selector - Database Driven */}
+      <AfissSelector
+        serviceType="Stump Grinding"
+        selectedFactorIds={selectedAfissFactors}
+        onFactorsChange={setSelectedAfissFactors}
+        showMultiplier={true}
+      />
+
       {/* TWO-TIER SYSTEM: Results Summary */}
       {!serviceTemplate ? (
         <Paper sx={{ p: 2, bgcolor: 'error.dark' }}>
@@ -321,7 +355,20 @@ export default function StumpGrindingCalculator({
               Base Score: <strong>{baseScore.toFixed(0)} SS</strong> ({stumps.length} stump{stumps.length > 1 ? 's' : ''})
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Complexity Multiplier: <strong>{complexityMultiplier.toFixed(2)}x</strong>
+              Stump Modifiers: <strong>{stumpMultiplier.toFixed(2)}x</strong>
+            </Typography>
+            {selectedAfissFactors.length > 0 && (
+              <Typography variant="body2" color="text.secondary">
+                AFISS Site Multiplier: <strong>{afissMultiplier.toFixed(2)}x</strong>
+                {multiplierResult && multiplierResult.totalImpactPercent !== 0 && (
+                  <Typography component="span" variant="caption" sx={{ ml: 1 }}>
+                    ({multiplierResult.totalImpactPercent > 0 ? '+' : ''}{multiplierResult.totalImpactPercent}%)
+                  </Typography>
+                )}
+              </Typography>
+            )}
+            <Typography variant="body2" color="text.secondary">
+              Final Multiplier: <strong>{finalComplexityMultiplier.toFixed(2)}x</strong>
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Adjusted Score: <strong>{adjustedScore.toFixed(0)} SS</strong>
