@@ -108,6 +108,7 @@ export default function WorkOrderDetailPage() {
   const updateWorkOrder = useMutation(api.workOrders.update);
   const startWork = useMutation(api.workOrders.startWork);
   const completeWork = useMutation(api.workOrders.complete);
+  const processJobCompletion = useMutation(api.jobCompletion.processJobCompletion);
   const assignCrew = useMutation(api.workOrders.assignCrew);
   const assignEquipment = useMutation(api.workOrders.assignEquipment);
   const updateCompletionChecklist = useMutation(api.workOrders.updateCompletionChecklist);
@@ -179,19 +180,39 @@ export default function WorkOrderDetailPage() {
   };
 
   const handleCompleteWork = async () => {
-    if (!isComplete) {
-      alert("Please complete all line items first");
+    // Check if there are any time entries
+    if (!timeEntries || timeEntries.length === 0) {
+      if (!confirm("No time entries found. Complete work order anyway?")) {
+        return;
+      }
+    }
+
+    // Check if there are active (uncompleted) time entries
+    const activeEntries = timeEntries?.filter(entry => !entry.endTime) || [];
+    if (activeEntries.length > 0) {
+      alert(`Please stop ${activeEntries.length} active time ${activeEntries.length === 1 ? 'entry' : 'entries'} before completing the work order.`);
       return;
     }
 
     try {
-      await completeWork({
-        id: workOrderId,
-        customerSignature: "", // TODO: Add signature canvas
+      // Process job completion (calculates PPH, costs, profits, creates performance record)
+      const result = await processJobCompletion({
+        workOrderId,
       });
+
+      alert(
+        `Work order completed!\n\n` +
+        `Total Hours: ${result.totalHours.toFixed(2)}\n` +
+        `Production Hours: ${result.productionHours.toFixed(2)}\n` +
+        (result.actualPPH ? `Actual PPH: ${result.actualPPH.toFixed(2)}\n` : '') +
+        `Total Cost: $${result.actualTotalCost.toFixed(2)}\n` +
+        `Profit: $${result.actualProfit.toFixed(2)} (${result.actualMargin.toFixed(1)}%)`
+      );
+
+      router.push("/dashboard/work-orders");
     } catch (error) {
       console.error("Error completing work:", error);
-      alert("Failed to complete work order");
+      alert("Failed to complete work order: " + (error as Error).message);
     }
   };
 
