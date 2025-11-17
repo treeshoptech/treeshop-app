@@ -90,7 +90,6 @@ function NewProposalPageContent() {
   // Proposal data
   const [selectedLeadId, setSelectedLeadId] = useState<Id<"projects"> | "">("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<Id<"customers"> | "">("");
-  const [selectedLoadoutId, setSelectedLoadoutId] = useState<Id<"loadouts"> | "">("");
   const [scopeOfWork, setScopeOfWork] = useState("");
   const [notes, setNotes] = useState("");
   const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
@@ -100,7 +99,6 @@ function NewProposalPageContent() {
 
   // Expanded sections
   const [customerExpanded, setCustomerExpanded] = useState(true);
-  const [loadoutExpanded, setLoadoutExpanded] = useState(false);
   const [lineItemsExpanded, setLineItemsExpanded] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [termsExpanded, setTermsExpanded] = useState(false);
@@ -121,7 +119,6 @@ function NewProposalPageContent() {
   });
 
   // Fetch data FIRST
-  const loadouts = useQuery(api.loadouts.list);
   const customers = useQuery(api.customers.list);
   const leads = useQuery(api.projects.listByStatus, { status: "Lead" });
 
@@ -521,61 +518,10 @@ function NewProposalPageContent() {
           </Collapse>
         </Paper>
 
-        {/* 2. Loadout Selection */}
+        {/* 2. Service Line Items */}
         <Paper>
           <SectionHeader
-            title="2. Loadout Selection"
-            expanded={loadoutExpanded}
-            onToggle={() => setLoadoutExpanded(!loadoutExpanded)}
-          />
-          <Collapse in={loadoutExpanded}>
-            <Box sx={{ p: 3, pt: 0 }}>
-              <Typography variant="subtitle2" gutterBottom sx={{ mb: 2 }}>
-                Select Equipment Loadout
-              </Typography>
-              <FormControl fullWidth required>
-                <InputLabel>Loadout</InputLabel>
-                <Select
-                  value={selectedLoadoutId}
-                  label="Loadout"
-                  onChange={(e) => {
-                    setSelectedLoadoutId(e.target.value as Id<"loadouts">);
-                    setLoadoutExpanded(false);
-                    setLineItemsExpanded(true);
-                  }}
-                >
-                  {loadouts?.map((loadout) => (
-                    <MenuItem key={loadout._id} value={loadout._id}>
-                      {loadout.name} - {loadout.productionRate || 0} PpH @ ${(loadout.totalCostPerHour || 0).toFixed(2)}/hr
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              {selectedLoadoutId && loadouts && (
-                <Box sx={{ p: 2, bgcolor: "background.default", borderRadius: 1, mt: 2 }}>
-                  {(() => {
-                    const selectedLoadout = loadouts.find(l => l._id === selectedLoadoutId);
-                    return selectedLoadout ? (
-                      <>
-                        <Typography variant="body2"><strong>Production Rate:</strong> {selectedLoadout.productionRate || 0} points per hour</Typography>
-                        <Typography variant="body2"><strong>Cost Per Hour:</strong> ${(selectedLoadout.totalCostPerHour || 0).toFixed(2)}</Typography>
-                        <Typography variant="body2"><strong>Billing Rates:</strong> ${(selectedLoadout.billingRates?.margin50 || 0).toFixed(2)}/hr (50% margin)</Typography>
-                      </>
-                    ) : null;
-                  })()}
-                </Box>
-              )}
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-                The selected loadout determines available services and pricing rates for this proposal.
-              </Typography>
-            </Box>
-          </Collapse>
-        </Paper>
-
-        {/* 3. Service Line Items */}
-        <Paper>
-          <SectionHeader
-            title="3. Service Line Items"
+            title="2. Service Line Items"
             expanded={lineItemsExpanded}
             onToggle={() => setLineItemsExpanded(!lineItemsExpanded)}
           />
@@ -826,10 +772,10 @@ function NewProposalPageContent() {
           </Collapse>
         </Paper>
 
-        {/* 4. Notes */}
+        {/* 3. Notes */}
         <Paper>
           <SectionHeader
-            title="4. Notes (Internal - for crew)"
+            title="3. Notes (Internal - for crew)"
             expanded={notesExpanded}
             onToggle={() => setNotesExpanded(!notesExpanded)}
           />
@@ -847,10 +793,10 @@ function NewProposalPageContent() {
           </Collapse>
         </Paper>
 
-        {/* 5. Terms & Conditions */}
+        {/* 4. Terms & Conditions */}
         <Paper>
           <SectionHeader
-            title="5. Terms & Conditions"
+            title="4. Terms & Conditions"
             expanded={termsExpanded}
             onToggle={() => setTermsExpanded(!termsExpanded)}
           />
@@ -886,10 +832,10 @@ function NewProposalPageContent() {
           </Collapse>
         </Paper>
 
-        {/* 6. Site Plans */}
+        {/* 5. Site Plans */}
         <Paper>
           <SectionHeader
-            title="6. Site Plans & Maps"
+            title="5. Site Plans & Maps"
             expanded={sitePlansExpanded}
             onToggle={() => setSitePlansExpanded(!sitePlansExpanded)}
           />
@@ -905,10 +851,10 @@ function NewProposalPageContent() {
           </Collapse>
         </Paper>
 
-        {/* 7. Status & Actions */}
+        {/* 6. Status & Actions */}
         <Paper>
           <SectionHeader
-            title="7. Status & Actions"
+            title="6. Status & Actions"
             expanded={statusExpanded}
             onToggle={() => setStatusExpanded(!statusExpanded)}
           />
@@ -1129,8 +1075,6 @@ function NewProposalPageContent() {
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <StumpGrindingCalculator
-              loadout={loadouts?.find(l => l._id === selectedLoadoutId)}
-              loadouts={loadouts}
               onLineItemCreate={handleLineItemCreate}
             />
           </Box>
@@ -1147,8 +1091,6 @@ function NewProposalPageContent() {
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <MulchingCalculator
-              loadout={loadouts?.find(l => l._id === selectedLoadoutId)}
-              loadouts={loadouts}
               onLineItemCreate={handleLineItemCreate}
             />
           </Box>
@@ -1165,8 +1107,6 @@ function NewProposalPageContent() {
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <LandClearingCalculator
-              loadout={loadouts?.find(l => l._id === selectedLoadoutId)}
-              loadouts={loadouts}
               onLineItemCreate={handleLineItemCreate}
             />
           </Box>
