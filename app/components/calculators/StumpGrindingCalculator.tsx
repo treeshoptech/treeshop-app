@@ -194,8 +194,13 @@ export default function StumpGrindingCalculator({
     <Stack spacing={2}>
       {/* TWO-TIER SYSTEM: Service Template Status */}
       {!serviceTemplate && (
-        <Alert severity="warning">
-          No service template found for Stump Grinding. Please set up a service template first.
+        <Alert severity="error">
+          <Typography variant="subtitle2" gutterBottom>
+            No service template found for Stump Grinding
+          </Typography>
+          <Typography variant="body2">
+            Please go to <strong>Service Templates</strong> page and <strong>"Create Template"</strong> based on your loadout costs to establish company-wide pricing standards.
+          </Typography>
         </Alert>
       )}
 

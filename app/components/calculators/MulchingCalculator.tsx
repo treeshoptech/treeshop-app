@@ -257,7 +257,7 @@ export default function MulchingCalculator({
             No service template found for Forestry Mulching
           </Typography>
           <Typography variant="body2">
-            Please go to <strong>Service Templates</strong> page and click <strong>"Seed Default Templates"</strong> to initialize pricing standards.
+            Please go to <strong>Service Templates</strong> page and <strong>"Create Template"</strong> based on your loadout costs to establish company-wide pricing standards.
           </Typography>
         </Alert>
       )}
