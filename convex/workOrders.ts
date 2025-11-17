@@ -432,8 +432,9 @@ export const createFromProposal = mutation({
     const estimatedHours = lineItems.reduce((sum, li) => sum + (li.totalEstimatedHours || 0), 0);
 
     // 7. Determine customer name (from customer record or project fields)
-    const customerName = customer?.name
-      || project.customerName
+    const customerName = customer
+      ? `${customer.firstName} ${customer.lastName}`
+      : project.customerName
       || `${project.customerFirstName || ''} ${project.customerLastName || ''}`.trim()
       || "Unknown Customer";
 

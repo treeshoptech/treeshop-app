@@ -207,10 +207,13 @@ export default function NewDirectWorkOrderPage() {
         .filter(Boolean)
         .join(", ");
 
+      // Build customer name
+      const customerName = `${customer.firstName} ${customer.lastName}`;
+
       // Create direct work order
       await createWorkOrder({
         customerId: customerData.customerId as Id<"customers">,
-        projectName: `${customer.name} - ${lineItems[0]?.serviceType || "Work Order"}`,
+        projectName: `${customerName} - ${lineItems[0]?.serviceType || "Work Order"}`,
         propertyAddress: fullAddress,
         serviceType: lineItems[0]?.serviceType || "General",
         contractAmount: parseFloat(contractData.contractAmount),
@@ -285,7 +288,7 @@ export default function NewDirectWorkOrderPage() {
                 >
                   {customers?.map((customer) => (
                     <MenuItem key={customer._id} value={customer._id}>
-                      {customer.name} - {customer.email || customer.phone}
+                      {customer.firstName} {customer.lastName} - {customer.email || customer.phone}
                     </MenuItem>
                   ))}
                 </Select>
@@ -297,7 +300,7 @@ export default function NewDirectWorkOrderPage() {
                     <Typography variant="subtitle2" color="text.secondary">
                       Selected Customer
                     </Typography>
-                    <Typography variant="h6">{selectedCustomer.name}</Typography>
+                    <Typography variant="h6">{selectedCustomer.firstName} {selectedCustomer.lastName}</Typography>
                     <Typography variant="body2">{selectedCustomer.email}</Typography>
                     <Typography variant="body2">{selectedCustomer.phone}</Typography>
                   </CardContent>
