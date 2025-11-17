@@ -252,8 +252,13 @@ export default function MulchingCalculator({
     <Stack spacing={3}>
       {/* TWO-TIER SYSTEM: Service Template Status */}
       {!serviceTemplate && (
-        <Alert severity="warning">
-          No service template found for Forestry Mulching. Please set up a service template first.
+        <Alert severity="error">
+          <Typography variant="subtitle2" gutterBottom>
+            No service template found for Forestry Mulching
+          </Typography>
+          <Typography variant="body2">
+            Please go to <strong>Service Templates</strong> page and click <strong>"Seed Default Templates"</strong> to initialize pricing standards.
+          </Typography>
         </Alert>
       )}
 
