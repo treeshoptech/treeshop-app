@@ -82,8 +82,6 @@ export default function LineItemsLibraryPage() {
   const createTemplate = useMutation(api.lineItemTemplates.create);
   const updateTemplate = useMutation(api.lineItemTemplates.update);
   const deleteTemplate = useMutation(api.lineItemTemplates.remove);
-  const seedDefaults = useMutation(api.seedDefaultLineItemTemplates.seedDefaults);
-  const resetDefaults = useMutation(api.seedDefaultLineItemTemplates.resetDefaults);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -166,28 +164,17 @@ export default function LineItemsLibraryPage() {
     }
   };
 
-  const handleDelete = async (id: Id<"lineItemTemplates">) => {
+  const handleDelete = async (id: Id<"lineItemTemplates">, template: any) => {
+    if (template.isSystemTemplate) {
+      alert("Cannot delete core TreeShop templates. These are system templates required for proper operation.");
+      return;
+    }
+
     if (confirm("Delete this line item template?")) {
       try {
         await deleteTemplate({ id });
       } catch (error) {
         console.error("Error deleting template:", error);
-      }
-    }
-  };
-
-  const handleSeedDefaults = async () => {
-    if (confirm("Create default TreeShop enhanced line item templates for the five core service types?")) {
-      try {
-        await seedDefaults();
-      } catch (error: any) {
-        if (error.message?.includes("already exist")) {
-          if (confirm("Default templates already exist. Do you want to reset and recreate them? This will delete all existing templates.")) {
-            await resetDefaults();
-          }
-        } else {
-          console.error("Error seeding defaults:", error);
-        }
       }
     }
   };
@@ -213,25 +200,14 @@ export default function LineItemsLibraryPage() {
               Reusable service line item templates with default pricing and margins
             </Typography>
           </Box>
-          <Stack direction="row" spacing={2}>
-            {(allTemplates?.length || 0) === 0 && (
-              <Button
-                variant="outlined"
-                onClick={handleSeedDefaults}
-                size="large"
-              >
-                Create Default Templates
-              </Button>
-            )}
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenForm()}
-              size="large"
-            >
-              New Template
-            </Button>
-          </Stack>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenForm()}
+            size="large"
+          >
+            New Template
+          </Button>
         </Box>
 
         {/* Stats */}
@@ -342,9 +318,10 @@ export default function LineItemsLibraryPage() {
                         </IconButton>
                         <IconButton
                           size="small"
-                          onClick={() => handleDelete(template._id)}
-                          title="Delete"
+                          onClick={() => handleDelete(template._id, template)}
+                          title={template.isSystemTemplate ? "System template (cannot delete)" : "Delete"}
                           color="error"
+                          disabled={template.isSystemTemplate}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>

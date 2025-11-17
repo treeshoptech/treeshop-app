@@ -835,6 +835,7 @@ export default defineSchema({
     // Status & Organization (NEW)
     isActive: v.optional(v.boolean()), // Active templates show in lists
     sortOrder: v.optional(v.number()), // For custom ordering
+    isSystemTemplate: v.optional(v.boolean()), // Core TreeShop templates (undeleteable)
 
     // Metadata
     usageCount: v.optional(v.number()),

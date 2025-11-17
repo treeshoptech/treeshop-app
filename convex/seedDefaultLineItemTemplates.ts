@@ -4,20 +4,22 @@ import { getOrganization } from "./lib/auth";
 
 /**
  * Seed default TreeShop enhanced line item templates for an organization
- * These are the five core service types with TreeShop Score-based pricing
+ * These are the five core service types - auto-created and undeleteable
  */
 export const seedDefaults = mutation({
   handler: async (ctx) => {
     const org = await getOrganization(ctx);
 
-    // Check if templates already exist
+    // Check if system templates already exist for this org
     const existing = await ctx.db
       .query("lineItemTemplates")
       .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .filter((q) => q.eq(q.field("isSystemTemplate"), true))
       .collect();
 
-    if (existing.length > 0) {
-      throw new Error("Default templates already exist for this organization");
+    if (existing.length >= 5) {
+      // System templates already seeded
+      return { success: true, message: "System templates already exist", count: existing.length };
     }
 
     const now = Date.now();
@@ -34,16 +36,7 @@ export const seedDefaults = mutation({
       defaultQuantity: 1,
       costPerUnit: 0,
       defaultMargin: 0.50, // 50% default margin
-      afissFactorIds: [
-        "access_narrow_gate",
-        "access_soft_ground",
-        "access_steep_slope",
-        "facilities_power_lines_nearby",
-        "facilities_buildings_within_50ft",
-        "site_wetlands",
-        "site_rocky_ground",
-        "site_dense_undergrowth"
-      ],
+      isSystemTemplate: true, // Core TreeShop template - undeleteable
       tags: ["mulching", "land-clearing", "vegetation-management"],
       notes: "Uses TreeShop Score formula: DBH Package (inches) × Acreage × AFISS Multiplier. Production rate varies by equipment (1.3-5.0 PpH typical).",
       usageCount: 0,
@@ -63,16 +56,7 @@ export const seedDefaults = mutation({
       defaultQuantity: 1,
       costPerUnit: 0,
       defaultMargin: 0.50,
-      afissFactorIds: [
-        "irregularities_hardwood_species",
-        "irregularities_large_root_flare",
-        "irregularities_rotten_stump",
-        "site_rocky_ground",
-        "facilities_tight_landscaping",
-        "facilities_near_foundation",
-        "access_narrow_gate",
-        "access_soft_ground"
-      ],
+      isSystemTemplate: true, // Core TreeShop template - undeleteable
       tags: ["stump-grinding", "stump-removal", "grinding"],
       notes: "Uses StumpScore formula: Diameter² × (Height Above + Grind Depth Below). Modifiers: Hardwood +15%, Large root flare +20%, Rotten -15%. Production rate: 400 StumpScore points per hour (default).",
       usageCount: 0,
@@ -92,19 +76,7 @@ export const seedDefaults = mutation({
       defaultQuantity: 1,
       costPerUnit: 0,
       defaultMargin: 0.50,
-      afissFactorIds: [
-        "irregularities_dead_hazard_tree",
-        "irregularities_leaning_tree",
-        "irregularities_multi_trunk",
-        "facilities_power_lines_touching",
-        "facilities_power_lines_nearby",
-        "facilities_buildings_within_50ft",
-        "facilities_pool_high_value_target",
-        "access_no_bucket_access",
-        "safety_high_voltage_lines",
-        "safety_confined_space",
-        "safety_near_public_roads"
-      ],
+      isSystemTemplate: true, // Core TreeShop template - undeleteable
       tags: ["tree-removal", "felling", "hazard-tree"],
       notes: "Uses TreeShop Score formula: Height × Crown Radius × 2 × DBH ÷ 12. AFISS multipliers applied per tree based on access method, proximity to structures, and tree condition. Production rate: ~250 PpH (varies by crew/equipment).",
       usageCount: 0,
@@ -124,16 +96,7 @@ export const seedDefaults = mutation({
       defaultQuantity: 1,
       costPerUnit: 0,
       defaultMargin: 0.50,
-      afissFactorIds: [
-        "facilities_power_lines_touching",
-        "facilities_power_lines_nearby",
-        "facilities_buildings_within_50ft",
-        "facilities_pool_high_value_target",
-        "access_no_bucket_access",
-        "irregularities_dead_hazard_tree",
-        "safety_high_voltage_lines",
-        "safety_confined_space"
-      ],
+      isSystemTemplate: true, // Core TreeShop template - undeleteable
       tags: ["tree-trimming", "pruning", "crown-reduction"],
       notes: "Uses same TreeShop Score base as Tree Removal, but applies trim percentage factor: Light (10-15%) ×0.3, Medium (20-30%) ×0.5, Heavy (40-50%) ×0.8. Production rate: ~300 PpH (varies by trim type).",
       usageCount: 0,
@@ -153,18 +116,7 @@ export const seedDefaults = mutation({
       defaultQuantity: 1,
       costPerUnit: 0,
       defaultMargin: 0.50,
-      afissFactorIds: [
-        "access_soft_ground",
-        "access_steep_slope",
-        "facilities_utilities_in_work_zone",
-        "facilities_buildings_within_50ft",
-        "facilities_power_lines_nearby",
-        "site_wetlands",
-        "site_rocky_ground",
-        "site_dense_undergrowth",
-        "site_protected_species_habitat",
-        "irregularities_dead_hazard_tree"
-      ],
+      isSystemTemplate: true, // Core TreeShop template - undeleteable
       tags: ["land-clearing", "site-prep", "excavation"],
       notes: "Day-based pricing: Standard Lot (1 day), Large Lot (2 days), Multi-Lot (3+ days). Intensity levels: Light, Standard, Heavy. AFISS factors add 0.5-1 day. Daily rate = 8 hours × Loadout Hourly Rate.",
       usageCount: 0,
