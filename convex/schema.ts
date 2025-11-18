@@ -1726,4 +1726,160 @@ export default defineSchema({
     .index("by_organization", ["organizationId"])
     .index("by_work_order", ["workOrderId"])
     .index("by_updated", ["organizationId", "lastUpdated"]),
+
+  // ============================================
+  // AI ASSISTANT RAG SYSTEM
+  // ============================================
+
+  // Knowledge Base Documents - Source content for RAG
+  knowledgeDocuments: defineTable({
+    organizationId: v.optional(v.id("organizations")), // null = global TreeShop docs
+
+    // Document Identity
+    title: v.string(),
+    slug: v.string(), // URL-friendly identifier
+    category: v.string(), // "Getting Started", "Pricing", "AFISS", "Equipment", "Workflows", "FAQs", "Formulas"
+    subcategory: v.optional(v.string()),
+
+    // Content
+    content: v.string(), // Full markdown/text content
+    contentType: v.string(), // "markdown", "text", "html"
+    excerpt: v.optional(v.string()), // Short summary (first 200 chars)
+
+    // Metadata
+    sourceUrl: v.optional(v.string()), // Original URL if scraped
+    sourceType: v.string(), // "Website", "Documentation", "Help Article", "Formula Guide", "Manual Entry"
+    lastScraped: v.optional(v.number()), // For website content
+    wordCount: v.number(),
+
+    // Tags for filtering
+    tags: v.array(v.string()), // ["pricing", "forestry-mulching", "afiss", etc.]
+    relatedServiceTypes: v.optional(v.array(v.string())), // Which services this relates to
+
+    // Search & Display
+    searchKeywords: v.optional(v.array(v.string())), // Additional keywords for search
+    priority: v.number(), // Higher = more important (0-10)
+    isPublished: v.boolean(),
+
+    // System vs Custom
+    isSystemDoc: v.boolean(), // Core TreeShop docs (undeleteable)
+
+    // Usage tracking
+    viewCount: v.optional(v.number()),
+    helpfulCount: v.optional(v.number()),
+    unhelpfulCount: v.optional(v.number()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.optional(v.string()), // User ID
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_slug", ["slug"])
+    .index("by_category", ["category"])
+    .index("by_published", ["isPublished"])
+    .index("by_priority", ["priority"])
+    .index("by_system", ["isSystemDoc"])
+    .searchIndex("search_content", {
+      searchField: "content",
+      filterFields: ["organizationId", "category", "isPublished"],
+    }),
+
+  // Document Chunks - Split documents for embeddings
+  documentChunks: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    documentId: v.id("knowledgeDocuments"),
+
+    // Chunk Identity
+    chunkIndex: v.number(), // Position in document (0, 1, 2, etc.)
+    chunkText: v.string(), // Text content (500-1000 chars ideally)
+    wordCount: v.number(),
+
+    // Context (for reconstruction)
+    documentTitle: v.string(), // Denormalized for display
+    documentCategory: v.string(),
+    previousChunkText: v.optional(v.string()), // Last 100 chars of previous chunk
+    nextChunkText: v.optional(v.string()), // First 100 chars of next chunk
+
+    // Embeddings (vector representation)
+    embedding: v.array(v.number()), // OpenAI ada-002 = 1536 dimensions
+    embeddingModel: v.string(), // "text-embedding-ada-002" or similar
+
+    // Metadata
+    tags: v.array(v.string()), // Inherited from document
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_organization", ["organizationId"])
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 1536,
+      filterFields: ["organizationId", "documentCategory"],
+    }),
+
+  // AI Chat Sessions - Track conversations for improvement
+  aiChatSessions: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    userId: v.optional(v.string()), // Clerk user ID
+
+    // Session Info
+    sessionId: v.string(), // Unique session identifier
+    startTime: v.number(),
+    lastMessageTime: v.number(),
+    messageCount: v.number(),
+
+    // Context
+    currentPage: v.optional(v.string()), // Where user was when chatting
+    userRole: v.optional(v.string()), // "Owner", "Admin", "Employee", etc.
+
+    // Quality Metrics
+    averageResponseTime: v.optional(v.number()), // Milliseconds
+    userSatisfactionRating: v.optional(v.number()), // 1-5 stars (if user rates)
+    wasHelpful: v.optional(v.boolean()), // Thumbs up/down
+
+    // Flags
+    needsHumanReview: v.optional(v.boolean()), // AI flagged as needing help
+    escalatedToSupport: v.optional(v.boolean()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_session_id", ["sessionId"])
+    .index("by_user", ["userId"])
+    .index("by_start_time", ["organizationId", "startTime"]),
+
+  // AI Chat Messages - Individual messages for analysis
+  aiChatMessages: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    sessionId: v.string(),
+
+    // Message Content
+    role: v.string(), // "user", "assistant", "system"
+    content: v.string(),
+    timestamp: v.number(),
+
+    // RAG Context Used
+    retrievedDocuments: v.optional(v.array(v.object({
+      documentId: v.id("knowledgeDocuments"),
+      chunkId: v.id("documentChunks"),
+      title: v.string(),
+      relevanceScore: v.number(), // Similarity score (0-1)
+      wasUsed: v.boolean(), // Actually included in context
+    }))),
+
+    // Performance Metrics
+    responseTimeMs: v.optional(v.number()),
+    tokensUsed: v.optional(v.number()),
+    modelUsed: v.optional(v.string()), // "gpt-4o-mini", etc.
+
+    // Quality
+    wasEdited: v.optional(v.boolean()), // If user edited/regenerated
+    userFeedback: v.optional(v.string()), // "helpful", "not helpful", "irrelevant"
+
+    createdAt: v.number(),
+  })
+    .index("by_session", ["sessionId"])
+    .index("by_organization", ["organizationId"])
+    .index("by_timestamp", ["organizationId", "timestamp"]),
 });

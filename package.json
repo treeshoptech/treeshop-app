@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/treeshoptech/treeshop-app#readme",
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.68",
     "@clerk/nextjs": "^6.35.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -27,6 +28,7 @@
     "@mui/material": "^7.3.5",
     "@mui/material-nextjs": "^7.3.5",
     "@react-google-maps/api": "^2.20.7",
+    "ai": "^5.0.93",
     "convex": "^1.29.0",
     "convex-helpers": "^0.1.104",
     "date-fns": "^4.1.0",
@@ -34,7 +36,8 @@
     "next-pwa": "^5.6.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "recharts": "^3.4.1"
+    "recharts": "^3.4.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

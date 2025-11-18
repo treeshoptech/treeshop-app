@@ -7,11 +7,13 @@ import {
   Box,
   Container,
   IconButton,
+  Fab,
 } from '@mui/material';
-import { Menu as MenuIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, AutoAwesome as SparkleIcon } from '@mui/icons-material';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { RightSideNav } from './RightSideNav';
+import { AIAssistantSidebar } from '@/app/components/chat/AIAssistantSidebar';
 import { useUserRole } from '@/app/hooks/useUserRole';
 
 export default function DashboardLayout({
@@ -20,6 +22,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [rightNavOpen, setRightNavOpen] = useState(false);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { isAdmin, isEmployee, loading } = useUserRole();
@@ -120,6 +123,34 @@ export default function DashboardLayout({
 
       {/* Right Side Navigation */}
       <RightSideNav open={rightNavOpen} onClose={() => setRightNavOpen(false)} />
+
+      {/* AI Assistant Sidebar */}
+      <AIAssistantSidebar
+        open={aiAssistantOpen}
+        onClose={() => setAiAssistantOpen(false)}
+        context={{
+          currentPage: pathname,
+        }}
+      />
+
+      {/* Floating AI Assistant Button */}
+      <Fab
+        color="primary"
+        aria-label="AI Assistant"
+        onClick={() => setAiAssistantOpen(true)}
+        sx={{
+          position: 'fixed',
+          bottom: { xs: 80, sm: 24 },
+          right: { xs: 16, sm: 24 },
+          backgroundColor: '#10B981',
+          '&:hover': {
+            backgroundColor: '#059669',
+          },
+          zIndex: 1000,
+        }}
+      >
+        <SparkleIcon />
+      </Fab>
     </>
   );
 }

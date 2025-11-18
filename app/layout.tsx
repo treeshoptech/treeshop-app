@@ -4,6 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme/theme';
 import { ConvexClientProvider } from './ConvexClientProvider';
+import { AIContextProvider } from './components/chat/AIContext';
 
 export const metadata: Metadata = {
   title: "TreeShop - Stop Running Your Business From the Truck",
@@ -57,12 +58,14 @@ export default function RootLayout({
       </head>
       <body>
         <ConvexClientProvider>
-          <AppRouterCacheProvider>
-            <ThemeProvider theme={theme}>
-              <CssBaseline />
-              {children}
-            </ThemeProvider>
-          </AppRouterCacheProvider>
+          <AIContextProvider>
+            <AppRouterCacheProvider>
+              <ThemeProvider theme={theme}>
+                <CssBaseline />
+                {children}
+              </ThemeProvider>
+            </AppRouterCacheProvider>
+          </AIContextProvider>
         </ConvexClientProvider>
       </body>
     </html>
