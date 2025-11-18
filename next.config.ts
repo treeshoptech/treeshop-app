@@ -6,10 +6,6 @@ const nextConfig: NextConfig = {
     // TODO: Fix type errors in calculators page, then set to false
     ignoreBuildErrors: true,
   },
-  // Transpile AI SDK packages for Turbopack
-  transpilePackages: ['ai', '@ai-sdk/openai'],
-  // Add empty turbopack config to silence webpack/turbopack conflict
-  turbopack: {},
   async rewrites() {
     return [
       {
@@ -20,8 +16,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-// PWA configuration
-const pwaConfig = withPWA({
+// PWA configuration - merge with transpilePackages for AI SDK
+const configWithPWA = withPWA({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
   register: true,
@@ -68,6 +64,11 @@ const pwaConfig = withPWA({
   // CRITICAL: Exclude Convex and Clerk from caching
   publicExcludes: ['!sw.js', '!workbox-*.js'],
   buildExcludes: [/middleware-manifest\.json$/],
-});
+})(nextConfig);
 
-export default pwaConfig(nextConfig);
+// Add transpilePackages AFTER PWA config to ensure it's not overridden
+export default {
+  ...configWithPWA,
+  // CRITICAL: Transpile AI SDK packages for Turbopack compatibility
+  transpilePackages: ['ai', '@ai-sdk/openai'],
+};
