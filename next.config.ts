@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
     // TODO: Fix type errors in calculators page, then set to false
     ignoreBuildErrors: true,
   },
+  // Transpile AI SDK packages for Turbopack
+  transpilePackages: ['ai', '@ai-sdk/openai'],
   // Add empty turbopack config to silence webpack/turbopack conflict
   turbopack: {},
   async rewrites() {
